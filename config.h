@@ -18,7 +18,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define OPENSPEEDY_VERSION "v1.8.0"
+#define OPENSPEEDY_VERSION "v1.8.1"
 
 #define BRIDGE32_EXE "bridge32.exe"
 #define BRIDGE64_EXE "bridge64.exe"
@@ -29,6 +29,8 @@
 #define CONFIG_LANGUAGE "General/Language"
 #define CONFIG_THEME "General/Theme"
 
+#define CONFIG_PROFILES_KEY "Profiles/List"
+#define CONFIG_CURRENT_PROFILE_KEY "Profiles/Current"
 
 // 热键ID
 enum HotkeyIds

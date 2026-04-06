@@ -16,9 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "./ui_mainwindow.h"
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QMenu>
+#include <QMenuBar>
 #include "mainwindow.h"
-#include "themeutils.h"
-#include <thread>
 #include <QCloseEvent>
 #include <QDateTime>
 #include <QDebug>
@@ -143,17 +145,46 @@ void MainWindow::on_sliderCtrl_valueChanged(int value)
     m_settings->sync();
 }
 
+void MainWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    if (!m_taskbarButton && windowHandle()) {
+        m_taskbarButton = new QWinTaskbarButton(this);
+        m_taskbarButton->setWindow(windowHandle());
+        m_taskbarProgress = m_taskbarButton->progress();
+    }
+}
+
 void MainWindow::updateRamping()
 {
     if (qAbs(m_currentFactor - m_targetFactor) < 0.001) {
         m_currentFactor = m_targetFactor;
         m_rampingTimer->stop();
+        
+        // Final update to overlay when target reached
+        if (m_overlay && m_currentFactor != 1.0) {
+            m_overlay->setSpeedText(QString("Speed: %1x").arg(m_currentFactor, 0, 'f', 1));
+            m_overlay->showTemporarily(2000);
+        }
     } else {
         // Move 10% of the way each frame for smooth eased transition
         m_currentFactor += (m_targetFactor - m_currentFactor) * 0.1;
     }
     
+    // Block signals to avoid recursion back into this logic
+    bool oldState = ui->sliderCtrl->blockSignals(true);
+    ui->sliderCtrl->setValue(sliderValue(m_currentFactor));
+    ui->sliderCtrl->blockSignals(oldState);
+
+    // Apply the speed change to the targeted processes
     m_processMonitor->changeSpeed(m_currentFactor);
+
+    if (m_taskbarProgress) {
+        m_taskbarProgress->setVisible(m_currentFactor != 1.0);
+        // Map 1.0 -> 5.0 speed to 0-100% progress
+        int progressVal = (int)((m_currentFactor - 1.0) / 4.0 * 100.0);
+        m_taskbarProgress->setValue(qBound(0, progressVal, 100));
+    }
 }
 
 void MainWindow::setMiniMode(bool enable)
@@ -268,6 +299,12 @@ void MainWindow::createTray()
     connect(ui->actionAlwaysOnTop, &QAction::toggled, alwaysOnTopTrayAction, &QAction::setChecked);
     trayMenu->addAction(alwaysOnTopTrayAction);
 
+    QAction* autoSpeedTrayAction = new QAction(tr("自动加速 (焦点模式)"), this);
+    autoSpeedTrayAction->setCheckable(true);
+    autoSpeedTrayAction->setChecked(m_autoSpeedEnabled);
+    connect(autoSpeedTrayAction, &QAction::toggled, this, &MainWindow::on_autoSpeedAction_triggered);
+    trayMenu->addAction(autoSpeedTrayAction);
+
     trayMenu->addAction(miniAction);
     trayMenu->addSeparator();
     trayMenu->addAction(quitAction);
@@ -297,6 +334,13 @@ double MainWindow::speedFactor(int sliderValue)
     else
     {
         factor = 1.0;
+    }
+
+    if (m_currentFactor != m_targetFactor) {
+        if (m_overlay) {
+            m_overlay->setSpeedText(QString("Speed: %1x").arg(m_targetFactor, 0, 'f', 1));
+            m_overlay->showTemporarily(2000);
+        }
     }
 
     return factor;
@@ -388,6 +432,8 @@ void MainWindow::init()
     m_currentFactor = 1.0;
     m_targetFactor = 1.0;
     m_isMiniMode = false;
+    m_taskbarButton = nullptr;
+    m_taskbarProgress = nullptr;
     
     // 初始化窗口置顶
     m_alwaysOnTop = m_settings->value("MainWindow/AlwaysOnTop", false).toBool();
@@ -402,6 +448,14 @@ void MainWindow::init()
 
     ui->sliderCtrl->setValue(value);
 
+    // 初始化自动加速
+    m_autoSpeedEnabled = m_settings->value("MainWindow/AutoSpeed", false).toBool();
+    m_focusMonitor = new FocusMonitor(this);
+    connect(m_focusMonitor, &FocusMonitor::foregroundProcessChanged, this, &MainWindow::onForegroundProcessChanged);
+    m_focusMonitor->start(1000); // 1秒检查一次即可
+    
+    m_overlay = new OverlayWidget(this);
+    
     if (winutils::isAutoStartEnabled(QApplication::applicationName()))
     {
         ui->autoStartCheckBox->setCheckState(Qt::Checked);
@@ -545,6 +599,10 @@ void MainWindow::init()
         ThemeUtils::applyTheme(ThemeUtils::Modern);
         refresh();
     });
+
+    // 初始化配置文件菜单
+    m_profilesMenu = menuBar()->addMenu(tr("配置文件 (Profiles)"));
+    refreshProfilesMenu();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -719,5 +777,79 @@ void MainWindow::on_alwaysOnTopAction_triggered(bool checked)
     if (flags != windowFlags()) {
         setWindowFlags(flags);
         show(); // 标志改变后需要重新显示
+    }
+}
+
+void MainWindow::on_autoSpeedAction_triggered(bool checked)
+{
+    m_autoSpeedEnabled = checked;
+    m_settings->setValue("MainWindow/AutoSpeed", checked);
+    if (m_processMonitor) {
+        m_processMonitor->setAutoSpeedEnabled(checked);
+    }
+}
+
+void MainWindow::onForegroundProcessChanged(DWORD pid)
+{
+    if (!m_autoSpeedEnabled || !m_processMonitor) return;
+
+    bool isTarget = m_processMonitor->isTarget(pid);
+    double targetLimit = speedFactor(ui->sliderCtrl->value());
+    double target = isTarget ? targetLimit : 1.0;
+
+    if (m_targetFactor != target) {
+        m_targetFactor = target;
+        m_rampingTimer->start(30);
+        qDebug() << "Auto-Speed: Focus switch to" << (isTarget ? "Target" : "Normal") << "setting factor to" << target;
+    }
+}
+
+void MainWindow::refreshProfilesMenu()
+{
+    if (!m_profilesMenu) return;
+    m_profilesMenu->clear();
+    
+    QAction* defaultAction = m_profilesMenu->addAction(tr("默认 (Default)"));
+    connect(defaultAction, &QAction::triggered, [this]() { switchProfile("Default"); });
+    
+    m_profilesMenu->addSeparator();
+
+    QStringList profiles = m_settings->value(CONFIG_PROFILES_KEY).toStringList();
+    for (const QString& name : profiles) {
+        QAction* action = m_profilesMenu->addAction(name);
+        connect(action, &QAction::triggered, [this, name]() { switchProfile(name); });
+    }
+    
+    m_profilesMenu->addSeparator();
+    QAction* addAction = m_profilesMenu->addAction(tr("新建配置文件..."));
+    connect(addAction, &QAction::triggered, this, &MainWindow::addNewProfile);
+}
+
+void MainWindow::switchProfile(const QString& name)
+{
+    m_settings->setValue(CONFIG_CURRENT_PROFILE_KEY, name);
+    int value = m_settings->value(QString("Profile/%1/SliderValue").arg(name), 0).toInt();
+    ui->sliderCtrl->setValue(value);
+    
+    if (m_overlay) {
+        m_overlay->setSpeedText(tr("Profile: %1").arg(name));
+        m_overlay->showTemporarily(2000);
+    }
+}
+
+void MainWindow::addNewProfile()
+{
+    bool ok;
+    QString name = QInputDialog::getText(this, tr("新建配置文件"), tr("名称:"), QLineEdit::Normal, "", &ok);
+    if (ok && !name.isEmpty()) {
+        QStringList profiles = m_settings->value(CONFIG_PROFILES_KEY).toStringList();
+        if (!profiles.contains(name)) {
+            profiles.append(name);
+            m_settings->setValue(CONFIG_PROFILES_KEY, profiles);
+            m_settings->setValue(QString("Profile/%1/SliderValue").arg(name), ui->sliderCtrl->value());
+            refreshProfilesMenu();
+        } else {
+            QMessageBox::warning(this, tr("警告"), tr("配置文件 %1 已存在").arg(name));
+        }
     }
 }

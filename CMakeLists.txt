@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(OpenSpeedy VERSION 1.8.0 LANGUAGES CXX)
+project(OpenSpeedy VERSION 1.8.1 LANGUAGES CXX)
 
 
 set(CMAKE_AUTOUIC ON)
@@ -28,6 +28,10 @@ set(PROJECT_SOURCES
         mainwindow.ui
         themeutils.h
         themeutils.cpp
+        focusmonitor.h
+        focusmonitor.cpp
+        overlaywidget.h
+        overlaywidget.cpp
         ${TS_FILES}
 )
 

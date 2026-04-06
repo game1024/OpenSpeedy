@@ -23,12 +23,15 @@
 #include "memutils.h"
 #include "preferencedialog.h"
 #include "processmonitor.h"
+#include "focusmonitor.h"
 #include "winutils.h"
 #include <QAbstractNativeEventFilter>
 #include <QActionGroup>
 #include <QMainWindow>
 #include <QSettings>
 #include <QSystemTrayIcon>
+#include <QtWinExtras/QWinTaskbarButton>
+#include <QtWinExtras/QWinTaskbarProgress>
 #define CONFIG_SLIDERVALUE_KEY "MainWindow/SliderValue"
 
 QT_BEGIN_NAMESPACE
@@ -68,6 +71,11 @@ class MainWindow
     void on_autoStartCheckBox_stateChanged(int arg1);
     void on_alwaysOnTopAction_triggered(bool checked);
     void applySearchFilter();
+    void on_autoSpeedAction_triggered(bool checked);
+    void onForegroundProcessChanged(DWORD pid);
+    void refreshProfilesMenu();
+    void switchProfile(const QString& name);
+    void addNewProfile();
 
   private:
     Ui::MainWindow* ui;
@@ -109,6 +117,7 @@ class MainWindow
 
   protected:
     void closeEvent(QCloseEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
     bool nativeEventFilter(const QByteArray& eventType,
                            void* message,
@@ -118,7 +127,13 @@ class MainWindow
     double m_currentFactor;
     QTimer* m_rampingTimer;
     QTimer* m_searchDebounceTimer;
+    OverlayWidget* m_overlay;
+    QMenu* m_profilesMenu;
+    QWinTaskbarButton* m_taskbarButton;
+    QWinTaskbarProgress* m_taskbarProgress;
     bool m_isMiniMode;
     bool m_alwaysOnTop;
+    bool m_autoSpeedEnabled;
+    FocusMonitor* m_focusMonitor;
 };
 #endif // MAINWINDOW_H
