@@ -18,6 +18,8 @@
 #include "winutils.h"
 #include <QDebug>
 #include <QFileInfo>
+#include <QDir>
+#include <shellapi.h>
 #include <psapi.h>
 #include <string>
 #include <tlhelp32.h>
@@ -900,13 +902,23 @@ QList<ProcessInfo> winutils::getProcessList()
 QString winutils::getProcessPath(DWORD processId)
 {
     QString processPath;
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-                                  FALSE, processId);
-
+    // 使用新的QueryFullProcessImageName，这在处理即使是挂起的进程时也更可靠
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+    if (!hProcess)
+    {
+        // 备选方案，如果上述权限不足
+        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processId);
+    }
+    
     if (hProcess != NULL)
     {
         wchar_t buffer[MAX_PATH];
-        if (GetModuleFileNameEx(hProcess, NULL, buffer, MAX_PATH) > 0)
+        DWORD dwSize = MAX_PATH;
+        if (QueryFullProcessImageNameW(hProcess, 0, buffer, &dwSize))
+        {
+            processPath = QString::fromWCharArray(buffer);
+        }
+        else if (GetModuleFileNameExW(hProcess, NULL, buffer, MAX_PATH) > 0)
         {
             processPath = QString::fromWCharArray(buffer);
         }
@@ -914,6 +926,30 @@ QString winutils::getProcessPath(DWORD processId)
     }
 
     return processPath;
+}
+
+bool winutils::terminateProcess(DWORD processId)
+{
+    HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, processId);
+    if (hProcess == NULL)
+        return false;
+
+    BOOL result = TerminateProcess(hProcess, 0);
+    CloseHandle(hProcess);
+    return result != FALSE;
+}
+
+void winutils::openProcessFolder(DWORD processId)
+{
+    QString path = getProcessPath(processId);
+    if (!path.isEmpty())
+    {
+        QString nativePath = QDir::toNativeSeparators(path);
+        // 使用 /select 选中文件而不仅仅是打开文件夹
+        ShellExecute(NULL, L"open", L"explorer.exe",
+                     (L" /select,\"" + nativePath.toStdWString() + L"\"").c_str(),
+                     NULL, SW_SHOWNORMAL);
+    }
 }
 
 DWORD

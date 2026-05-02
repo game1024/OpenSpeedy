@@ -26,8 +26,11 @@ public:
     enum Theme {
         Light,
         Dark,
-        System
+        System,
+        Modern
     };
+
+    static void setModernTheme();
 
     static void applyTheme(Theme theme);
     static void setDarkTheme();

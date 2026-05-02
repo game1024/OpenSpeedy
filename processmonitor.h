@@ -30,6 +30,8 @@
 #include <tlhelp32.h>
 
 #define CONFIG_TARGETNAMES_KEY "ProcessMonitor/TargetNames"
+#define CONFIG_FAVORITENAMES_KEY "ProcessMonitor/FavoriteNames"
+#define CONFIG_AUTOSPEED_KEY "ProcessMonitor/AutoSpeed"
 
 class ProcessMonitor : public QObject
 {
@@ -53,12 +55,23 @@ void changeSpeed(double factor);
 
 public slots:
 // 定时刷新槽函数
-void refresh();
-
 void start();
+
+bool isTarget(DWORD pid) const;
+bool isFavorite(const QString& name) const;
+void toggleFavorite(const QString& name);
+
+void setAutoSpeedEnabled(bool enabled) { m_autoSpeedEnabled = enabled; }
+bool autoSpeedEnabled() const { return m_autoSpeedEnabled; }
+
+signals:
+void processFound(DWORD pid, bool isTarget);
 
 private slots:
 void onItemChanged(QTreeWidgetItem* item, int column);
+void showContextMenu(const QPoint& pos);
+void openFolder();
+void terminateProcess();
 
 private:
 QTreeWidget* m_treeWidget;
@@ -82,6 +95,12 @@ QMap<DWORD, QTreeWidgetItem*> m_processItems;
 
 // 存储需要加速的进程
 QSet<QString> m_targetNames;
+
+// 存储收藏（精选）的进程
+QSet<QString> m_favoriteNames;
+
+// 是否开启自动加速（当焦点在该进程时）
+bool m_autoSpeedEnabled;
 
 void init();
 

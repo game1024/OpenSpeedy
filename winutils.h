@@ -81,6 +81,12 @@ class winutils
     // 获取进程路径
     static QString getProcessPath(DWORD processId);
 
+    // 终止进程
+    static bool terminateProcess(DWORD processId);
+
+    // 打开进程所在文件夹
+    static void openProcessFolder(DWORD processId);
+
     // 获取进程中的主线程
     static DWORD getProcessMainThread(DWORD processId);
 

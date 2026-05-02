@@ -26,7 +26,9 @@
 #include <QStyle>
 #include <QtConcurrent/QtConcurrent>
 #include <QtWinExtras/QtWin>
-#include <QMessageBox>
+#include <QMenu>
+#include <QAction>
+#include <QClipboard>
 #include <psapi.h>
 ProcessMonitor::ProcessMonitor(QSettings*   settings,
                                QTreeWidget* treeWidget,
@@ -55,6 +57,9 @@ ProcessMonitor::ProcessMonitor(QSettings*   settings,
 
     this->startBridge32();
     this->startBridge64();
+
+    m_treeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_treeWidget, &QTreeWidget::customContextMenuRequested, this, &ProcessMonitor::showContextMenu);
 
     init();
     refresh();
@@ -150,12 +155,82 @@ ProcessMonitor::onItemChanged(QTreeWidgetItem* item, int column)
     }
 }
 
+void ProcessMonitor::showContextMenu(const QPoint& pos)
+{
+    QTreeWidgetItem* item = m_treeWidget->itemAt(pos);
+    if (!item) return;
+
+    QMenu menu(m_treeWidget);
+    QAction* openAction = menu.addAction(tr("打开文件夹"));
+    connect(openAction, &QAction::triggered, this, &ProcessMonitor::openFolder);
+    
+    QAction* copyPathAction = menu.addAction(tr("复制完整路径"));
+    connect(copyPathAction, &QAction::triggered, [this, item]() {
+        DWORD pid = item->text(1).toUInt();
+        QString path = winutils::getProcessPath(pid);
+        if (!path.isEmpty()) {
+            QApplication::clipboard()->setText(path);
+        }
+    });
+
+    menu.addSeparator();
+
+    QString name = item->text(0);
+    if (name.startsWith("⭐ ")) name = name.mid(2);
+    
+    QAction* favAction = menu.addAction(m_favoriteNames.contains(name) ? tr("取消收藏") : tr("收藏进程"));
+    connect(favAction, &QAction::triggered, [this, name]() {
+        this->toggleFavorite(name);
+    });
+
+    menu.addSeparator();
+
+    QAction* terminateAction = menu.addAction(tr("终止进程"));
+    connect(terminateAction, &QAction::triggered, this, &ProcessMonitor::terminateProcess);
+
+    menu.exec(m_treeWidget->mapToGlobal(pos));
+}
+
+void ProcessMonitor::openFolder()
+{
+    QTreeWidgetItem* item = m_treeWidget->currentItem();
+    if (item) {
+        DWORD pid = item->text(1).toUInt();
+        winutils::openProcessFolder(pid);
+    }
+}
+
+void ProcessMonitor::terminateProcess()
+{
+    QTreeWidgetItem* item = m_treeWidget->currentItem();
+    if (item) {
+        DWORD pid = item->text(1).toUInt();
+        QString name = item->text(0);
+        if (QMessageBox::question(nullptr, tr("终止进程"),
+                                  tr("确定要结束进程 %1 (PID: %2) 吗？").arg(name).arg(pid)) 
+            == QMessageBox::Yes) 
+        {
+            if (winutils::terminateProcess(pid)) {
+                refresh();
+            } else {
+                QMessageBox::warning(nullptr, tr("错误"), tr("无法结束该进程"));
+            }
+        }
+    }
+}
+
 void
 ProcessMonitor::init()
 {
     QStringList targetNames =
         m_settings->value(CONFIG_TARGETNAMES_KEY).toStringList();
     m_targetNames = QSet<QString>(targetNames.begin(), targetNames.end());
+    
+    QStringList favoriteNames = 
+        m_settings->value(CONFIG_FAVORITENAMES_KEY).toStringList();
+    m_favoriteNames = QSet<QString>(favoriteNames.begin(), favoriteNames.end());
+    
+    m_autoSpeedEnabled = m_settings->value(CONFIG_AUTOSPEED_KEY, false).toBool();
 }
 
 void
@@ -168,6 +243,7 @@ ProcessMonitor::dump()
 void
 ProcessMonitor::update(const QList<ProcessInfo>& processList)
 {
+    m_treeWidget->setUpdatesEnabled(false);
     // 跟踪现有进程，用于确定哪些已终止
     QSet<DWORD> currentPids;
     for (const ProcessInfo& info : processList)
@@ -219,10 +295,19 @@ ProcessMonitor::update(const QList<ProcessInfo>& processList)
     // 添加或更新进程信息
     for (const ProcessInfo& info : processList)
     {
+        QString displayName = info.name;
+        if (m_favoriteNames.contains(info.name)) displayName = "⭐ " + info.name;
+
         if (m_processItems.contains(info.pid))
         {
             // 更新已存在的进程信息
             QTreeWidgetItem* item = m_processItems[info.pid];
+            item->setText(0, displayName);
+            if (m_favoriteNames.contains(info.name)) {
+                item->setForeground(0, QBrush(QColor(0, 191, 255))); // Modern Cyan
+            } else {
+                item->setForeground(0, QBrush(Qt::white));
+            }
             item->setText(1, QString::number(info.pid));
             item->setData(1, Qt::UserRole, (long long)info.pid);
             item->setText(2,
@@ -271,7 +356,10 @@ ProcessMonitor::update(const QList<ProcessInfo>& processList)
             // 添加新进程
             QTreeWidgetItem* item = new SortTreeWidgetItem();
 
-            item->setText(0, info.name);
+            item->setText(0, displayName);
+            if (m_favoriteNames.contains(info.name)) {
+                item->setForeground(0, QBrush(QColor(0, 191, 255))); // Modern Cyan
+            }
             item->setData(0, Qt::UserRole, info.name.toLower());
             item->setText(1, QString::number(info.pid));
             item->setData(1, Qt::UserRole, (long long)info.pid);
@@ -306,10 +394,20 @@ ProcessMonitor::update(const QList<ProcessInfo>& processList)
             }
             item->setText(4, priority);
             item->setCheckState(5, Qt::Unchecked);
+            
+            // 如果是收藏进程，加个星星
+            if (m_favoriteNames.contains(info.name))
+            {
+                item->setText(0, "⭐ " + info.name);
+                item->setForeground(0, QBrush(QColor(0, 191, 255))); // Modern Cyan
+                // 收藏的进程默认显示在最前面（由于我们可以根据文字排序，加了星星会自然排前）
+            }
+
             m_treeWidget->addTopLevelItem(item);
             m_processItems[info.pid] = item;
         }
     }
+    m_treeWidget->setUpdatesEnabled(true);
 }
 
 void
@@ -456,14 +554,77 @@ QIcon
 ProcessMonitor::getProcessIconCached(DWORD processId)
 {
     QString processPath = winutils::getProcessPath(processId);
-    if (m_iconCache.contains(processPath))
+    QString cacheKey = processPath;
+    if (cacheKey.isEmpty()) {
+        cacheKey = QString("PID_%1").arg(processId);
+    }
+    
+    if (m_iconCache.contains(cacheKey))
     {
-        return m_iconCache[processPath];
+        return m_iconCache[cacheKey];
     }
 
     QIcon icon = getProcessIcon(processPath);
-    m_iconCache.insert(processPath, icon);
+    if (!icon.isNull()) {
+        m_iconCache.insert(cacheKey, icon);
+    }
     return icon;
+}
+
+bool ProcessMonitor::isTarget(DWORD pid) const
+{
+    if (m_processItems.contains(pid))
+    {
+        return m_processItems[pid]->checkState(5) == Qt::Checked;
+    }
+    return false;
+}
+
+bool ProcessMonitor::isFavorite(const QString& name) const
+{
+    return m_favoriteNames.contains(name);
+}
+
+void ProcessMonitor::toggleFavorite(const QString& name)
+{
+    if (m_favoriteNames.contains(name)) {
+        m_favoriteNames.remove(name);
+    } else {
+        m_favoriteNames.insert(name);
+        // 如果收藏了，自动加入加速列表（可选逻辑）
+        m_targetNames.insert(name);
+        dump();
+    }
+    m_settings->setValue(CONFIG_FAVORITENAMES_KEY, QStringList(m_favoriteNames.toList()));
+    refresh();
+}
+
+bool ProcessMonitor::isTarget(DWORD pid) const
+{
+    if (m_processItems.contains(pid))
+    {
+        return m_processItems[pid]->checkState(0) == Qt::Checked;
+    }
+    return false;
+}
+
+bool ProcessMonitor::isFavorite(const QString& name) const
+{
+    return m_favoriteNames.contains(name);
+}
+
+void ProcessMonitor::toggleFavorite(const QString& name)
+{
+    if (m_favoriteNames.contains(name)) {
+        m_favoriteNames.remove(name);
+    } else {
+        m_favoriteNames.insert(name);
+        // 如果收藏了，自动加入加速列表
+        m_targetNames.insert(name);
+        m_settings->setValue(CONFIG_TARGETNAMES_KEY, QStringList(m_targetNames.toList()));
+    }
+    m_settings->setValue(CONFIG_FAVORITENAMES_KEY, QStringList(m_favoriteNames.toList()));
+    refresh();
 }
 
 QIcon

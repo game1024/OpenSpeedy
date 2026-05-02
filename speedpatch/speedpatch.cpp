@@ -1,4 +1,4 @@
-﻿/*
+/*
  * OpenSpeedy - Open Source Game Speed Controller
  * Copyright (C) 2025 Game1024
  *
@@ -288,7 +288,7 @@ static std::atomic<bool> shouldUpdateGetMessageTime = false;
 LONG WINAPI DetourGetMessageTime(VOID)
 {
     std::shared_lock<std::shared_mutex> lock(mutex);
-    if (pre_factor == SpeedFactor())
+    if (pre_factor != SpeedFactor())
     {
         pre_factor = SpeedFactor();
         shouldUpdateAll();

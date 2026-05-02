@@ -875,12 +875,20 @@ QTreeWidget {
     </property>
     <addaction name="actionLightTheme"/>
     <addaction name="actionDarkTheme"/>
+       <addaction name="actionModernTheme"/>
    </widget>
    <addaction name="menuPreference"/>
+    <addaction name="menuView"/>
    <addaction name="menuLanguage"/>
    <addaction name="menuTheme"/>
    <addaction name="menuAbout"/>
   </widget>
+    <widget class="QMenu" name="menuView">
+     <property name="title">
+      <string>👁️视图</string>
+     </property>
+     <addaction name="actionAlwaysOnTop"/>
+    </widget>
   <action name="actionCN">
    <property name="checkable">
     <bool>true</bool>
@@ -928,6 +936,23 @@ QTreeWidget {
    </property>
    <property name="text">
     <string>深色</string>
+   </property>
+  </action>
+ 
+  <action name="actionModernTheme">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>现代</string>
+   </property>
+  </action>
+  <action name="actionAlwaysOnTop">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>窗口置顶</string>
    </property>
   </action>
  </widget>
