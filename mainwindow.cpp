@@ -18,7 +18,7 @@
 #include "./ui_mainwindow.h"
 #include "mainwindow.h"
 #include "themeutils.h"
-#include <thread>
+
 #include <QCloseEvent>
 #include <QDateTime>
 #include <QDebug>
@@ -495,9 +495,6 @@ bool MainWindow::nativeEventFilter(const QByteArray &eventType,
 
         if (msg->message == WM_HOTKEY)
         {
-            static qint64 lastSoundTime = 0;
-            qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-            bool canPlaySound = (currentTime - lastSoundTime > 500);
             int hotkeyId = msg->wParam;
 
             switch (hotkeyId)
@@ -507,11 +504,6 @@ bool MainWindow::nativeEventFilter(const QByteArray &eventType,
                 int currentValue = ui->sliderCtrl->value();
                 if (currentValue < ui->sliderCtrl->maximum())
                 {
-                    if (canPlaySound)
-                    {
-                        std::thread([]() { Beep(400, 5); }).detach();
-                        lastSoundTime = currentTime;
-                    }
                     ui->sliderCtrl->setValue(
                         currentValue + m_preferenceDlg->getIncreaseStep());
                     qDebug() << "全局快捷键: 增加速度到"
@@ -526,11 +518,6 @@ bool MainWindow::nativeEventFilter(const QByteArray &eventType,
                 int currentValue = ui->sliderCtrl->value();
                 if (currentValue > ui->sliderCtrl->minimum())
                 {
-                    if (canPlaySound)
-                    {
-                        std::thread([]() { Beep(400, 5); }).detach();
-                        lastSoundTime = currentTime;
-                    }
                     ui->sliderCtrl->setValue(
                         currentValue - m_preferenceDlg->getDecreaseStep());
                     qDebug() << "全局快捷键: 降低速度到"
@@ -541,57 +528,27 @@ bool MainWindow::nativeEventFilter(const QByteArray &eventType,
             break;
 
             case HOTKEY_RESET_SPEED:
-                if (canPlaySound)
-                {
-                    std::thread([]() { Beep(1600, 5); }).detach();
-                    lastSoundTime = currentTime;
-                }
-                ui->sliderCtrl->setValue(0);
+ui->sliderCtrl->setValue(0);
                 qDebug() << "全局快捷键: 重置速度";
                 break;
             case HOTKEY_SHIFT1:
-                if (canPlaySound)
-                {
-                    std::thread([]() { Beep(1600, 5); }).detach();
-                    lastSoundTime = currentTime;
-                }
-                ui->sliderCtrl->setValue(
+ui->sliderCtrl->setValue(
                     sliderValue(m_preferenceDlg->getShift1()));
                 break;
             case HOTKEY_SHIFT2:
-                if (canPlaySound)
-                {
-                    std::thread([]() { Beep(1600, 5); }).detach();
-                    lastSoundTime = currentTime;
-                }
-                ui->sliderCtrl->setValue(
+ui->sliderCtrl->setValue(
                     sliderValue(m_preferenceDlg->getShift2()));
                 break;
             case HOTKEY_SHIFT3:
-                if (canPlaySound)
-                {
-                    std::thread([]() { Beep(1600, 5); }).detach();
-                    lastSoundTime = currentTime;
-                }
-                ui->sliderCtrl->setValue(
+ui->sliderCtrl->setValue(
                     sliderValue(m_preferenceDlg->getShift3()));
                 break;
             case HOTKEY_SHIFT4:
-                if (canPlaySound)
-                {
-                    std::thread([]() { Beep(1600, 5); }).detach();
-                    lastSoundTime = currentTime;
-                }
-                ui->sliderCtrl->setValue(
+ui->sliderCtrl->setValue(
                     sliderValue(m_preferenceDlg->getShift4()));
                 break;
             case HOTKEY_SHIFT5:
-                if (canPlaySound)
-                {
-                    std::thread([]() { Beep(1600, 5); }).detach();
-                    lastSoundTime = currentTime;
-                }
-                ui->sliderCtrl->setValue(
+ui->sliderCtrl->setValue(
                     sliderValue(m_preferenceDlg->getShift5()));
                 break;
             }

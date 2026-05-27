@@ -807,17 +807,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="preferencedialog.cpp" line="272"/>
+        <location filename="preferencedialog.cpp" line="277"/>
         <source>%1 增加速度</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="preferencedialog.cpp" line="277"/>
+        <location filename="preferencedialog.cpp" line="282"/>
         <source>%1 减少速度</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="preferencedialog.cpp" line="282"/>
+        <location filename="preferencedialog.cpp" line="287"/>
         <source>%1 重置速度</source>
         <translation type="unfinished"></translation>
     </message>

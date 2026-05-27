@@ -70,6 +70,17 @@ QSingleKeySequenceEdit::keyPressEvent(QKeyEvent* event)
         return;
     }
 
+    // Backspace 或 Delete 清除快捷键
+    if (key == Qt::Key_Backspace || key == Qt::Key_Delete)
+    {
+        m_key = 0;
+        m_modifier = Qt::NoModifier;
+        clear();
+        emit editingFinished();
+        clearFocus();
+        return;
+    }
+
     m_key = key;
     m_modifier = modifiers;
 
@@ -286,6 +297,10 @@ QSingleKeySequenceEdit::toModifier(Qt::KeyboardModifiers qtMod)
 QString
 QSingleKeySequenceEdit::wrapText(QString keyText)
 {
+    if (keyText.isEmpty())
+    {
+        return QStringLiteral("无");
+    }
     return keyText.replace("Up", "⬆️")
       .replace("Down", "⬇️")
       .replace("Left", "⬅️")

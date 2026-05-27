@@ -140,6 +140,11 @@ PreferenceDialog::setupGlobalHotkeys()
         int id = it.key();
         QtCombinedKey combined = it.value();
 
+        if (combined.key == 0)
+        {
+            continue;
+        }
+
         UINT vk = QSingleKeySequenceEdit::toVK(combined.key, combined.modifier);
         UINT modifier = QSingleKeySequenceEdit::toModifier(combined.modifier);
         RegisterHotKey(m_mainwindow, id, modifier, vk);

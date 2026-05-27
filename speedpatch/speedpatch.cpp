@@ -157,7 +157,7 @@ void Clean()
 
 BOOL GetStatus()
 {
-    return *pEnable;
+    return pEnable ? *pEnable : FALSE;
 }
 
 void SetProcessStatus(DWORD processId, BOOL status)
@@ -288,7 +288,7 @@ static std::atomic<bool> shouldUpdateGetMessageTime = false;
 LONG WINAPI DetourGetMessageTime(VOID)
 {
     std::shared_lock<std::shared_mutex> lock(mutex);
-    if (pre_factor == SpeedFactor())
+    if (pre_factor != SpeedFactor())
     {
         pre_factor = SpeedFactor();
         shouldUpdateAll();
@@ -299,7 +299,7 @@ LONG WINAPI DetourGetMessageTime(VOID)
         baselineKernelGetMessageTime = prevcallKernelGetMessageTime;
         baselineDetourGetMessageTime = prevcallDetourGetMessageTime;
     }
-    DWORD now = pfnKernelGetMessageTime();
+    LONG now = pfnKernelGetMessageTime();
     prevcallKernelGetMessageTime = now;
     DWORD delta = SpeedFactor() * (now - baselineKernelGetMessageTime);
     prevcallDetourGetMessageTime = baselineDetourGetMessageTime + delta;
@@ -520,6 +520,10 @@ BOOL WINAPI DetourSetWaitableTimerEx(
     ULONG                TolerableDelay
     )
 {
+    if (lpDueTime == NULL)
+    {
+        return FALSE;
+    }
     LARGE_INTEGER dueTime = {0};
     dueTime.QuadPart = lpDueTime->QuadPart / SpeedFactor();
     return pfnKernelSetWaitableTimerEx(hTimer,
