@@ -1,0 +1,20 @@
+[package]
+name = "openspeedy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit"] }
+gpui-component = { git = "https://github.com/longbridge/gpui-component" }
+gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
+windows = { version = "0.58", features = [
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_Foundation",
+] }
+
+[build-dependencies]
+cmake = "0.1"
