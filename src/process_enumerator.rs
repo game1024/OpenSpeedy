@@ -2,6 +2,9 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM};
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
+use windows::Win32::System::ProcessStatus::{
+    GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+};
 use windows::Win32::System::Threading::{
     IsWow64Process, OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
 };
@@ -38,12 +41,14 @@ pub fn enumerate_processes() -> Vec<ProcessInfo> {
             if !name.is_empty() {
                 let arch = detect_arch(pid);
                 let window_title = find_window_title(pid);
+                let memory_kb = get_memory_kb(pid);
 
                 processes.push(ProcessInfo {
                     pid,
                     name,
                     arch,
                     window_title,
+                    memory_kb,
                     enabled: false,
                 });
             }
@@ -126,6 +131,30 @@ unsafe extern "system" fn enum_window_callback(
     }
 
     windows::Win32::Foundation::BOOL::from(true)
+}
+
+/// 获取进程内存占用（KB）
+fn get_memory_kb(pid: u32) -> u64 {
+    let handle = open_process(pid);
+    if handle.is_none() {
+        return 0;
+    }
+    let handle = handle.unwrap();
+
+    let mut pmc = PROCESS_MEMORY_COUNTERS {
+        cb: std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
+        ..Default::default()
+    };
+
+    let result = unsafe { GetProcessMemoryInfo(handle, &mut pmc, std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32) };
+
+    unsafe { CloseHandle(handle) };
+
+    if result.is_ok() {
+        pmc.WorkingSetSize as u64 / 1024
+    } else {
+        0
+    }
 }
 
 /// 打开进程句柄

@@ -35,6 +35,7 @@ pub struct ProcessInfo {
     pub name: String,
     pub arch: Arch,
     pub window_title: Option<String>,
+    pub memory_kb: u64,
     pub enabled: bool,
 }
 
@@ -98,6 +99,7 @@ impl ListDelegate for ProcessListDelegate {
         let name = proc.name.clone();
         let arch = proc.arch;
         let enabled = proc.enabled;
+        let memory_kb = proc.memory_kb;
         let window_title = proc.window_title.clone();
 
         let row = ListItem::new(ElementId::Name(format!("row-{}", ix.row).into()))
@@ -113,7 +115,7 @@ impl ListDelegate for ProcessListDelegate {
                     .w_full()
                     // checkbox
                     .child(
-                        div().w(px(35.)).child(
+                        div().flex_auto().child(
                             Checkbox::new(ElementId::Name(format!("cb-{}", pid).into()))
                                 .checked(enabled)
                                 .on_click(move |checked: &bool, _window, cx: &mut App| {
@@ -127,7 +129,7 @@ impl ListDelegate for ProcessListDelegate {
                     // 图标 + 进程名 + 窗口标题
                     .child(
                         h_flex()
-                            .flex_1()
+                            .flex_auto()
                             .gap_1()
                             .items_center()
                             .overflow_hidden()
@@ -171,7 +173,7 @@ impl ListDelegate for ProcessListDelegate {
                     // 架构
                     .child(
                         div()
-                            .w(px(30.))
+                            .flex_auto()
                             .text_xs()
                             .text_color(arch.color())
                             .child(arch.label()),
@@ -179,12 +181,22 @@ impl ListDelegate for ProcessListDelegate {
                     // PID
                     .child(
                         div()
-                            .w(px(80.))
+                            .flex_auto()
                             .flex()
                             .justify_end()
                             .text_xs()
                             .text_color(rgb(0x6c7086))
                             .child(format!("{}", pid)),
+                    )
+                    // 内存
+                    .child(
+                        div()
+                            .flex_auto()
+                            .flex()
+                            .justify_end()
+                            .text_xs()
+                            .text_color(rgb(0x6c7086))
+                            .child(format_memory(memory_kb)),
                     )
             );
 
@@ -214,6 +226,16 @@ impl ProcessListView {
             state.delegate_mut().apply_filter(&query);
             cx.notify();
         });
+    }
+}
+
+fn format_memory(kb: u64) -> String {
+    if kb >= 1024 * 1024 {
+        format!("{:.1} GB", kb as f64 / (1024.0 * 1024.0))
+    } else if kb >= 1024 {
+        format!("{:.1} MB", kb as f64 / 1024.0)
+    } else {
+        format!("{} KB", kb)
     }
 }
 
@@ -248,7 +270,7 @@ impl Render for ProcessListView {
                 div()
                     .px_3()
                     .py_2()
-                    .child(Input::new(&self.search).cleanable(true).appearance(false).rounded(px(6.)).px_2().py_2().bg(white()).prefix(
+                    .child(Input::new(&self.search).cleanable(true).large().h(px(56.)).prefix(
                         div().text_xs().text_color(rgb(0x6c7086)).child("🔍"),
                     )),
             )
@@ -262,11 +284,11 @@ impl Render for ProcessListView {
                     .py_0()
                     .gap_1()
                     .bg(cx.theme().muted)
-                    .child(div().w(px(35.)).text_sm().text_color(rgb(0x9399b2)).child("加速"))
+                    .child(div().flex_auto().text_sm().text_color(rgb(0x9399b2)).child("加速"))
                     .child(div().flex_auto().text_sm().text_color(rgb(0x9399b2)).child("进程"))
                     .child(div().flex_auto().text_xs().text_color(rgb(0x9399b2)).child("架构"))
                     .child(div().flex_auto().flex().justify_end().text_xs().text_color(rgb(0x9399b2)).child("PID"))
-                    .child(div().flex_1()),
+                    .child(div().flex_auto().flex().justify_end().text_xs().text_color(rgb(0x9399b2)).child("内存")),
             )
             .child(
                 // 进程列表主体
