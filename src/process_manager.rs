@@ -239,7 +239,7 @@ impl Render for ProcessListView {
                         div()
                             .text_size(px(24.))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(cx.theme().primary)
+                            .text_color(rgb(0x000000))
                             .child("进程管理器"),
                     ),
             )
