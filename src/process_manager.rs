@@ -127,7 +127,7 @@ impl ListDelegate for ProcessListDelegate {
                     // 图标 + 进程名 + 窗口标题
                     .child(
                         h_flex()
-                            .w(px(150.))
+                            .flex_1()
                             .gap_1()
                             .items_center()
                             .overflow_hidden()
@@ -153,7 +153,7 @@ impl ListDelegate for ProcessListDelegate {
                                     .child(
                                         div()
                                             .text_xs()
-                                            .text_color(rgb(0xcdd6f4))
+                                            .text_color(rgb(0x0b1d3a))
                                             .truncate()
                                             .child(name.clone()),
                                     )
@@ -186,7 +186,6 @@ impl ListDelegate for ProcessListDelegate {
                             .text_color(rgb(0x6c7086))
                             .child(format!("{}", pid)),
                     )
-                    .child(div().flex_1()),
             );
 
         Some(row)
@@ -231,6 +230,20 @@ impl Render for ProcessListView {
             .size_full()
             .bg(cx.theme().background)
             .child(
+                // 内部标题
+                h_flex()
+                    .px_3()
+                    .py_2()
+                    .justify_center()
+                    .child(
+                        div()
+                            .text_size(px(24.))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(cx.theme().primary)
+                            .child("进程管理器"),
+                    ),
+            )
+            .child(
                 // 搜索框
                 div()
                     .px_3()
@@ -251,8 +264,8 @@ impl Render for ProcessListView {
                     .bg(cx.theme().muted)
                     .child(div().w(px(35.)).text_sm().text_color(rgb(0x9399b2)).child("加速"))
                     .child(div().flex_auto().text_sm().text_color(rgb(0x9399b2)).child("进程"))
-                    .child(div().w(px(30.)).text_xs().text_color(rgb(0x9399b2)).child("架构"))
-                    .child(div().w(px(80.)).flex().justify_end().text_xs().text_color(rgb(0x9399b2)).child("PID"))
+                    .child(div().flex_auto().text_xs().text_color(rgb(0x9399b2)).child("架构"))
+                    .child(div().flex_auto().flex().justify_end().text_xs().text_color(rgb(0x9399b2)).child("PID"))
                     .child(div().flex_1()),
             )
             .child(
