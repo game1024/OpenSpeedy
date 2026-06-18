@@ -10,10 +10,11 @@ fn main() {
         .with_assets(gpui_component_assets::Assets)
         .run(|cx: &mut App| {
             gpui_component::init(cx);
+            gpui_component::Theme::change(gpui_component::ThemeMode::Light, None, cx);
             let _ = cx.open_window(
                 WindowOptions {
                     titlebar: Some(TitlebarOptions {
-                        title: Some("OpenSpeedy 进程管理器".into()),
+                        title: Some("进程管理器".into()),
                         ..Default::default()
                     }),
                     window_bounds: Some(WindowBounds::Windowed(Bounds::centered(

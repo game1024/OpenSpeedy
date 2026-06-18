@@ -106,7 +106,7 @@ impl ListDelegate for ProcessListDelegate {
             .h(px(40.))
             .child(
                 h_flex()
-                    .gap_2()
+                    .gap_1()
                     .px_3()
                     .h(px(40.))
                     .items_center()
@@ -127,8 +127,8 @@ impl ListDelegate for ProcessListDelegate {
                     // 图标 + 进程名 + 窗口标题
                     .child(
                         h_flex()
-                            .w(px(480.))
-                            .gap_2()
+                            .w(px(150.))
+                            .gap_1()
                             .items_center()
                             .overflow_hidden()
                             .child(
@@ -229,42 +229,28 @@ impl Render for ProcessListView {
 
         v_flex()
             .size_full()
-            .bg(rgb(0x1e1e2e))
-            .child(
-                // 标题栏
-                h_flex()
-                    .px_1()
-                    .py_3()
-                    .items_center()
-                    .justify_center()
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .child(
-                        div()
-                            .text_size(px(24.))
-                            .font_bold()
-                            .text_color(rgb(0x89b4fa))
-                            .child("OpenSpeedy 进程管理器"),
-                    ),
-            )
+            .bg(cx.theme().background)
             .child(
                 // 搜索框
                 div()
                     .px_3()
                     .py_2()
-                    .child(Input::new(&self.search).cleanable(true).bg(rgb(0x313244)).prefix(
+                    .child(Input::new(&self.search).cleanable(true).appearance(false).rounded(px(6.)).px_2().py_2().bg(white()).prefix(
                         div().text_xs().text_color(rgb(0x6c7086)).child("🔍"),
                     )),
+            )
+            .child(
+                div().h(px(1.)).w_full().bg(cx.theme().border),
             )
             .child(
                 // 表头
                 h_flex()
                     .px_3()
                     .py_0()
-                    .gap_2()
-                    .bg(rgb(0x313244))
+                    .gap_1()
+                    .bg(cx.theme().muted)
                     .child(div().w(px(35.)).text_sm().text_color(rgb(0x9399b2)).child("加速"))
-                    .child(div().w(px(480.)).text_sm().text_color(rgb(0x9399b2)).child("进程"))
+                    .child(div().flex_auto().text_sm().text_color(rgb(0x9399b2)).child("进程"))
                     .child(div().w(px(30.)).text_xs().text_color(rgb(0x9399b2)).child("架构"))
                     .child(div().w(px(80.)).flex().justify_end().text_xs().text_color(rgb(0x9399b2)).child("PID"))
                     .child(div().flex_1()),
