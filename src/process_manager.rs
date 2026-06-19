@@ -59,12 +59,23 @@ impl TableDelegate for ProcessTableDelegate {
 
     fn column(&self, col: usize, _cx: &App) -> Column {
         match col {
-            COL_ENABLE => Column::new("enable", "加速").width(px(50.)),
-            COL_PROC => Column::new("proc", "进程").width(px(280.)),
-            COL_ARCH => Column::new("arch", "架构").width(px(50.)),
-            COL_PID => Column::new("pid", "PID").width(px(80.)),
-            COL_MEM => Column::new("mem", "内存").width(px(100.)),
+            COL_ENABLE => Column::new("enable", "").width(px(50.)),
+            COL_PROC => Column::new("proc", "").width(px(280.)),
+            COL_ARCH => Column::new("arch", "").width(px(50.)),
+            COL_PID => Column::new("pid", "").width(px(80.)),
+            COL_MEM => Column::new("mem", "").width(px(100.)),
             _ => Column::new("", "").width(px(0.)),
+        }
+    }
+
+    fn render_th(&mut self, col: usize, _w: &mut Window, _cx: &mut Context<TableState<Self>>) -> impl IntoElement {
+        match col {
+            COL_ENABLE => div().w_full().h(px(36.)).flex().items_center().justify_center().text_xs().text_color(rgb(0x9399b2)).child("加速"),
+            COL_PROC => div().w_full().h(px(36.)).flex().items_center().text_xs().text_color(rgb(0x9399b2)).child("进程"),
+            COL_ARCH => div().w_full().h(px(36.)).flex().items_center().justify_center().text_xs().text_color(rgb(0x9399b2)).child("架构"),
+            COL_PID => div().w_full().h(px(36.)).flex().items_center().justify_end().text_xs().text_color(rgb(0x9399b2)).child("PID"),
+            COL_MEM => div().w_full().h(px(36.)).flex().items_center().justify_end().text_xs().text_color(rgb(0x9399b2)).child("内存"),
+            _ => div(),
         }
     }
 
@@ -166,11 +177,9 @@ impl Render for ProcessListView {
                         .child(div().w(px(56.)).text_sm().text_color(rgb(0x9399b2)).child("0.25x"))
                         .child(div().flex_1().child(Slider::new(&self.speed).h(px(32.))))
                         .child(div().w(px(64.)).text_sm().text_color(rgb(0x9399b2)).child("1000x")),
-                    ),
+                    )
+                    .child(Input::new(&self.search).cleanable(true).h(px(40.)).bg(white()).prefix(div().text_xs().text_color(rgb(0x6c7086)).child("🔍"))),
             )
-            .child(div().px_3().py_2().child(
-                Input::new(&self.search).cleanable(true).h(px(40.)).prefix(div().text_xs().text_color(rgb(0x6c7086)).child("🔍")),
-            ))
             .child(div().h(px(1.)).w_full().bg(cx.theme().border))
             .child(div().flex_1().child(DataTable::new(&self.table)))
             .children(Root::render_dialog_layer(w, cx))
