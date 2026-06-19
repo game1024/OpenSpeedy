@@ -1,8 +1,8 @@
 use gpui::{prelude::FluentBuilder as _, *};
 use gpui_component::checkbox::Checkbox;
 use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::list::{List, ListDelegate, ListItem, ListState};
-use gpui_component::IndexPath;
+use gpui_component::slider::{Slider, SliderEvent, SliderState};
+use gpui_component::table::{Column, DataTable, TableDelegate, TableState};
 use gpui_component::{h_flex, v_flex, ActiveTheme as _, Root, StyledExt};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -23,16 +23,22 @@ fn fmt_mem(kb: u64) -> String {
     else { format!("{} KB", kb) }
 }
 
-// ── Delegate ──────────────────────────────
+const COL_ENABLE: usize = 0;
+const COL_PROC: usize = 1;
+const COL_ARCH: usize = 2;
+const COL_PID: usize = 3;
+const COL_MEM: usize = 4;
 
-pub struct ProcessListDelegate {
+// ── TableDelegate ──────────────────────────
+
+pub struct ProcessTableDelegate {
     pub all: Vec<ProcessInfo>,
     pub filtered: Vec<usize>,
     filter_text: String,
     loading: bool,
 }
 
-impl ProcessListDelegate {
+impl ProcessTableDelegate {
     pub fn new() -> Self {
         Self { all: vec![], filtered: vec![], filter_text: String::new(), loading: true }
     }
@@ -46,76 +52,94 @@ impl ProcessListDelegate {
     }
 }
 
-impl ListDelegate for ProcessListDelegate {
-    type Item = ListItem;
-
-    fn items_count(&self, _section: usize, _cx: &App) -> usize { self.filtered.len() }
-
-    fn set_selected_index(&mut self, _ix: Option<IndexPath>, _w: &mut Window, _cx: &mut Context<ListState<Self>>) {}
-
+impl TableDelegate for ProcessTableDelegate {
+    fn columns_count(&self, _cx: &App) -> usize { 5 }
+    fn rows_count(&self, _cx: &App) -> usize { self.filtered.len() }
     fn loading(&self, _cx: &App) -> bool { self.loading }
 
-    fn render_item(&mut self, ix: IndexPath, _w: &mut Window, cx: &mut Context<ListState<Self>>) -> Option<Self::Item> {
-        let idx = self.filtered[ix.row];
+    fn column(&self, col: usize, _cx: &App) -> Column {
+        match col {
+            COL_ENABLE => Column::new("enable", "加速").width(px(50.)),
+            COL_PROC => Column::new("proc", "进程").width(px(280.)),
+            COL_ARCH => Column::new("arch", "架构").width(px(50.)),
+            COL_PID => Column::new("pid", "PID").width(px(80.)),
+            COL_MEM => Column::new("mem", "内存").width(px(100.)),
+            _ => Column::new("", "").width(px(0.)),
+        }
+    }
+
+    fn render_td(&mut self, row: usize, col: usize, _w: &mut Window, cx: &mut Context<TableState<Self>>) -> impl IntoElement {
+        let idx = self.filtered[row];
         let p = &self.all[idx];
         let weak = cx.entity().downgrade();
-        let (pid, name, arch, enabled, mem, title) = (
-            p.pid, p.name.clone(), p.arch, p.enabled, p.memory_kb, p.window_title.clone(),
-        );
 
-        Some(ListItem::new(ElementId::Name(format!("r{}", ix.row).into()))
-            .py(px(0.)).h(px(36.))
-            .child(columns(
-                div().w(px(50.)).child(
-                    Checkbox::new(ElementId::Name(format!("cb-{}", pid).into())).checked(enabled)
-                        .on_click(move |checked: &bool, _w, cx: &mut App| {
-                            let _ = weak.update(cx, |state, cx| {
-                                state.delegate_mut().all[idx].enabled = *checked; cx.notify();
-                            });
-                        }),
-                ),
-                div().w(px(280.)).overflow_hidden().child(
-                    h_flex().gap_1().items_center()
-                        .child(div().flex_shrink_0().w(px(14.)).h(px(14.)).flex().items_center().justify_center()
-                            .rounded(px(3.)).bg(rgb(0x45475a)).text_xs().child(if title.is_some() { "🎮" } else { "⚙" }))
-                        .child(h_flex().flex_1().gap_1().items_center().overflow_hidden()
-                            .child(div().text_xs().text_color(rgb(0x0b1d3a)).truncate().child(name))
-                            .when_some(title, |el, t| el.child(div().text_xs().text_color(rgb(0x6c7086)).truncate().child(t)))),
-                ),
-                div().w(px(50.)).text_xs().text_color(arch.color()).child(arch.label()),
-                div().w(px(80.)).flex().justify_end().text_xs().text_color(rgb(0x6c7086)).child(format!("{}", pid)),
-                div().w(px(100.)).flex().justify_end().text_xs().text_color(rgb(0x6c7086)).child(fmt_mem(mem)),
-            ))
-        )
+        match col {
+            COL_ENABLE => div().w_full().h(px(36.)).flex().items_center().justify_center().child(
+                Checkbox::new(ElementId::Name(format!("cb-{}", p.pid).into())).checked(p.enabled)
+                    .on_click(move |checked: &bool, _w, cx: &mut App| {
+                        let _ = weak.update(cx, |state, cx| {
+                            state.delegate_mut().all[idx].enabled = *checked; cx.notify();
+                        });
+                    }),
+            ).into_any_element(),
+            COL_PROC => {
+                let icon = div().flex_shrink_0().w(px(14.)).h(px(14.)).flex().items_center().justify_center()
+                    .rounded(px(3.)).bg(rgb(0x45475a)).text_xs()
+                    .child(if p.window_title.is_some() { "🎮" } else { "⚙" });
+                let title_el = h_flex().flex_1().gap_1().items_center().overflow_hidden()
+                    .child(div().text_xs().text_color(rgb(0x0b1d3a)).truncate().child(p.name.clone()));
+                let title_el = if let Some(t) = p.window_title.clone() {
+                    title_el.child(div().text_xs().text_color(rgb(0x6c7086)).truncate().child(t))
+                } else { title_el };
+                h_flex().gap_1().items_center().h(px(36.)).overflow_hidden()
+                    .child(icon).child(title_el).into_any_element()
+            },
+            COL_ARCH => div().h(px(36.)).flex().items_center().justify_center().text_xs().text_color(p.arch.color()).child(p.arch.label()).into_any_element(),
+            COL_PID => div().h(px(36.)).flex().items_center().justify_end().text_xs().text_color(rgb(0x6c7086)).child(format!("{}", p.pid)).into_any_element(),
+            COL_MEM => div().h(px(36.)).flex().items_center().justify_end().text_xs().text_color(rgb(0x6c7086)).child(fmt_mem(p.memory_kb)).into_any_element(),
+            _ => div().into_any_element(),
+        }
     }
-}
-
-fn columns(
-    check: impl IntoElement, proc: impl IntoElement, arch: impl IntoElement,
-    pid: impl IntoElement, mem: impl IntoElement,
-) -> Div {
-    h_flex().w_full().items_center()
-        .child(check).child(proc).child(arch).child(pid).child(mem)
 }
 
 // ── 主视图 ────────────────────────────────
 
 pub struct ProcessListView {
-    list: Entity<ListState<ProcessListDelegate>>,
+    table: Entity<TableState<ProcessTableDelegate>>,
     search: Entity<InputState>,
+    speed: Entity<SliderState>,
+    current_speed: f64,
+    _search_sub: Subscription,
+    _slider_sub: Subscription,
 }
 
 impl ProcessListView {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let list = cx.new(|cx| ListState::new(ProcessListDelegate::new(), window, cx));
+        let table = cx.new(|cx| TableState::new(ProcessTableDelegate::new(), window, cx));
         let search = cx.new(|cx| InputState::new(window, cx).placeholder("搜索进程名或窗口标题..."));
-        // 异步加载进程
+
+        let speed = cx.new(|_| SliderState::new().min(0.25).max(1000.0).step(0.25).default_value(1.0));
+        let _slider_sub = cx.subscribe(&speed, |this: &mut Self, _s, e: &SliderEvent, cx| {
+            if let SliderEvent::Change(v) = e { this.current_speed = v.start() as f64; cx.notify(); }
+        });
+
+        let _search_sub = cx.subscribe_in(&search, window, |this: &mut Self, state, event, _w, cx| {
+            if matches!(event, InputEvent::Change) {
+                let query = state.read(cx).value().to_string();
+                this.table.update(cx, |state, cx| {
+                    state.delegate_mut().filter_text = query;
+                    state.delegate_mut().apply_filter();
+                    cx.notify();
+                });
+            }
+        });
+
         cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut procs = crate::process_enumerator::enumerate_processes();
             procs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
             let _ = this.update(cx, |this, cx| {
                 let len = procs.len();
-                this.list.update(cx, |state, cx| {
+                this.table.update(cx, |state, cx| {
                     let d = state.delegate_mut();
                     d.loading = false;
                     d.all = procs;
@@ -125,44 +149,30 @@ impl ProcessListView {
                 cx.notify();
             });
         }).detach();
-        Self { list, search }
-    }
-
-    fn apply_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let query = self.search.read(cx).value().to_string();
-        self.list.update(cx, |state, cx| {
-            state.delegate_mut().filter_text = query;
-            state.delegate_mut().apply_filter();
-            cx.notify();
-        });
+        Self { table, search, speed, current_speed: 1.0, _search_sub, _slider_sub }
     }
 }
 
 impl Render for ProcessListView {
     fn render(&mut self, w: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        cx.subscribe_in(&self.search, w, |this, _state, event, w, cx| {
-            if matches!(event, InputEvent::Change) { this.apply_search(w, cx); }
-        });
-
         v_flex().size_full().bg(cx.theme().background)
-            .child(h_flex().px_3().py_2().justify_center().child(
-                div().text_size(px(24.)).font_weight(FontWeight::BOLD).text_color(rgb(0x000000)).child("进程管理器"),
-            ))
-            .child(div().h(px(40.)))
+            .child(
+                v_flex().px_4().py_3().gap_2().bg(rgb(0xe8f0fe))
+                    .child(div().text_size(px(16.)).font_weight(FontWeight::SEMIBOLD).text_color(rgb(0x000000)).child("⚡ 变速控制"))
+                    .child(div().w_full().flex().justify_center().child(
+                        div().text_size(px(22.)).font_weight(FontWeight::BOLD).text_color(rgb(0x1d4ed8)).child(format!("{:.2}x", self.current_speed)),
+                    ))
+                    .child(h_flex().gap_4().items_center()
+                        .child(div().w(px(56.)).text_sm().text_color(rgb(0x9399b2)).child("0.25x"))
+                        .child(div().flex_1().child(Slider::new(&self.speed).h(px(32.))))
+                        .child(div().w(px(64.)).text_sm().text_color(rgb(0x9399b2)).child("1000x")),
+                    ),
+            )
             .child(div().px_3().py_2().child(
                 Input::new(&self.search).cleanable(true).h(px(40.)).prefix(div().text_xs().text_color(rgb(0x6c7086)).child("🔍")),
             ))
             .child(div().h(px(1.)).w_full().bg(cx.theme().border))
-            .child(
-                columns(
-                    div().w(px(50.)).text_sm().text_color(rgb(0x9399b2)).child("加速"),
-                    div().w(px(280.)).text_sm().text_color(rgb(0x9399b2)).child("进程"),
-                    div().w(px(50.)).text_xs().text_color(rgb(0x9399b2)).child("架构"),
-                    div().w(px(80.)).flex().justify_end().text_xs().text_color(rgb(0x9399b2)).child("PID"),
-                    div().w(px(100.)).flex().justify_end().text_xs().text_color(rgb(0x9399b2)).child("内存"),
-                ).px_3().py_2().bg(cx.theme().muted)
-            )
-            .child(div().flex_1().child(List::new(&self.list)))
+            .child(div().flex_1().child(DataTable::new(&self.table)))
             .children(Root::render_dialog_layer(w, cx))
             .children(Root::render_sheet_layer(w, cx))
             .children(Root::render_notification_layer(w, cx))

@@ -19,7 +19,7 @@ fn main() {
                     }),
                     window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
                         None,
-                        size(px(1280.0), px(500.0)),
+                        size(px(640.0), px(480.0)),
                         cx,
                     ))),
                     ..Default::default()
