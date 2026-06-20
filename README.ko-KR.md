@@ -56,6 +56,15 @@
   </a>
 </p>
 
+<p align="center">
+  🌐 <a href="https://github.com/game1024/OpenSpeedy/blob/master/README.en-US.md">English</a> |
+  <a href="https://github.com/game1024/OpenSpeedy/blob/master/README.de-DE.md">Deutsch</a> |
+  <a href="https://github.com/game1024/OpenSpeedy/blob/master/README.fr-FR.md">Français</a> |
+  <a href="https://github.com/game1024/OpenSpeedy/blob/master/README.ja-JP.md">日本語</a> |
+  <a href="https://github.com/game1024/OpenSpeedy/blob/master/README.ko-KR.md">한국어</a> |
+  <a href="https://github.com/game1024/OpenSpeedy/blob/master/README.md">中文</a>
+</p>
+
 
 # 🚀 기능
 - 빠른 속도 조절
