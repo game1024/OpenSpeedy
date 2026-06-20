@@ -108,7 +108,17 @@ Besuchen Sie die [Releases-Seite](https://github.com/game1024/OpenSpeedy/release
 
 # 🔧 Technische Details
 
-Anweisungen zum Kompilieren finden Sie in der [Entwicklerdokumentation](https://github.com/game1024/OpenSpeedy/wiki/%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3).
+Voraussetzungen:
+- [Node.js](https://nodejs.org/) 18+
+- [Rust](https://www.rust-lang.org/)
+- [CMake](https://cmake.org/)
+- [Visual Studio](https://visualstudio.microsoft.com/) (mit C++-Desktopentwicklungskomponente)
+
+Build-Befehl:
+
+``` powershell
+npm run tauri dev
+```
 
 OpenSpeedy passt die Spielgeschwindigkeit durch Hooking der folgenden Windows-Zeitfunktionen an:
 

@@ -108,7 +108,17 @@ openspeedy
 
 # 🔧 작동 원리
 
-프로젝트 빌드 방법은 [개발자 문서](https://github.com/game1024/OpenSpeedy/wiki/%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)를 참조하세요.
+사전 요구사항:
+- [Node.js](https://nodejs.org/) 18+
+- [Rust](https://www.rust-lang.org/)
+- [CMake](https://cmake.org/)
+- [Visual Studio](https://visualstudio.microsoft.com/) (C++ 데스크톱 개발 워크로드 포함)
+
+빌드 명령어:
+
+``` powershell
+npm run tauri dev
+```
 
 OpenSpeedy는 다음 Windows 시스템 시간 함수를 후킹하여 게임 속도를 조정합니다:
 

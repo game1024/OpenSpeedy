@@ -109,7 +109,17 @@ openspeedy
 
 # 🔧 技术原理
 
-如果想要了解如何编译项目，可以参考[开发者文档](https://github.com/game1024/OpenSpeedy/wiki/%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
+编译环境要求：
+- [Node.js](https://nodejs.org/) 18+
+- [Rust](https://www.rust-lang.org/)
+- [CMake](https://cmake.org/)
+- [Visual Studio](https://visualstudio.microsoft.com/)（含 C++ 桌面开发工作负载）
+
+编译命令：
+
+``` powershell
+npm run tauri dev
+```
 
 OpenSpeedy 通过 Hook 以下 Windows 系统时间函数来实现游戏速度调整：
 
