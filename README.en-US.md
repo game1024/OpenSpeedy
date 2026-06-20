@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://ref.365tz87989.com/?r=RWQVZD">
-  <img width="1584" height="672" alt="Gemini_Generated_Image_n3p4rln3p4rln3p4" src="https://github.com/user-attachments/assets/572fbf30-5d58-4b1d-b28e-b07494585ffa" />
+  <img src="https://github.com/user-attachments/assets/bde1585b-d0ca-4892-b84a-9c0276804422" />
   </a>
 </p>
 
