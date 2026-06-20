@@ -1,0 +1,61 @@
+{
+  "app": {
+    "title": "OpenSpeedy",
+    "tabs": {
+      "speed": "變速",
+      "settings": "設定",
+      "about": "關於"
+    }
+  },
+  "titleBar": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "bridgeOnline": "線上",
+    "bridgeOffline": "離線"
+  },
+  "speed": {
+    "title": "速度倍率",
+    "slow": "SLOW",
+    "fast": "FAST",
+    "normal": "原速",
+    "reset": "原速"
+  },
+  "process": {
+    "title": "系統程序",
+    "search": "搜尋程序名稱、PID 或視窗標題…",
+    "pid": "PID",
+    "name": "程序名稱",
+    "arch": "架構",
+    "memory": "記憶體",
+    "enable": "加速",
+    "loading": "正在載入程序列表…",
+    "noResults": "無符合程序"
+  },
+  "settings": {
+    "loading": "載入設定中…",
+    "speedShortcuts": "速度快捷鍵",
+    "shortcut": "快捷鍵",
+    "step": "步長",
+    "increase": "加速",
+    "decrease": "減速",
+    "reset": "重置",
+    "gears": "檔位設定",
+    "gear": "檔位",
+    "multiplier": "倍率",
+    "general": "一般設定",
+    "autoStart": "開機自動啟動",
+    "alwaysOnTop": "視窗置頂",
+    "language": "語言",
+    "registerSuccess": "快捷鍵 \"{{shortcut}}\" 註冊成功",
+    "registerFail": "快捷鍵 \"{{shortcut}}\" 註冊失敗"
+  },
+  "shortcut": {
+    "notSet": "未設定"
+  },
+  "about": {
+    "title": "OpenSpeedy",
+    "description": "開源遊戲變速控制器",
+    "author": "作者",
+    "license": "授權"
+  }
+}

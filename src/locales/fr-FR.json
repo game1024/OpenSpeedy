@@ -1,0 +1,67 @@
+{
+  "tray": {
+    "show": "Afficher",
+    "quit": "Quitter"
+  },
+  "app": {
+    "title": "OpenSpeedy",
+    "tabs": {
+      "speed": "Vitesse",
+      "settings": "Paramètres",
+      "about": "À propos"
+    }
+  },
+  "titleBar": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "bridgeOnline": "En ligne",
+    "bridgeOffline": "Hors ligne"
+  },
+  "speed": {
+    "title": "Facteur de Vitesse",
+    "slow": "RALENTI",
+    "fast": "RAPIDE",
+    "normal": "Normal",
+    "reset": "Réinit."
+  },
+  "process": {
+    "title": "Processus Système",
+    "search": "Rechercher par nom, PID ou titre de fenêtre…",
+    "pid": "PID",
+    "name": "Nom du processus",
+    "arch": "Arch",
+    "memory": "Mémoire",
+    "enable": "Vitesse",
+    "loading": "Chargement des processus…",
+    "noResults": "Aucun processus correspondant"
+  },
+  "settings": {
+    "loading": "Chargement des paramètres…",
+    "speedShortcuts": "Raccourcis de Vitesse",
+    "shortcut": "Raccourci",
+    "step": "Pas",
+    "increase": "Augmenter",
+    "decrease": "Diminuer",
+    "reset": "Réinitialiser",
+    "gears": "Préréglages",
+    "gear": "Préréglage",
+    "multiplier": "Multiplicateur",
+    "general": "Général",
+    "autoStart": "Démarrage Auto",
+    "alwaysOnTop": "Toujours au premier plan",
+    "language": "Langue",
+    "registerSuccess": "Raccourci \"{{shortcut}}\" enregistré",
+    "registerFail": "Échec de l'enregistrement de \"{{shortcut}}\""
+  },
+  "shortcut": {
+    "notSet": "Non défini"
+  },
+  "about": {
+    "title": "OpenSpeedy",
+    "description": "Contrôleur de Vitesse de Jeu Open Source",
+    "author": "Auteur",
+    "license": "Licence",
+    "version": "Version",
+    "system": "Système"
+  }
+}

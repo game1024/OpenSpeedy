@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tauri *)",
+      "Bash(node -e \"const api = require\\('@tauri-apps/api'\\); const TrayIcon = api.tray.TrayIcon; const proto = Object.getOwnPropertyNames\\(TrayIcon.prototype\\); console.log\\(proto\\)\")"
+    ]
+  }
+}

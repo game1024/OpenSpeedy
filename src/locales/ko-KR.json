@@ -1,0 +1,61 @@
+{
+  "app": {
+    "title": "OpenSpeedy",
+    "tabs": {
+      "speed": "변속",
+      "settings": "설정",
+      "about": "정보"
+    }
+  },
+  "titleBar": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "bridgeOnline": "온라인",
+    "bridgeOffline": "오프라인"
+  },
+  "speed": {
+    "title": "속도 배율",
+    "slow": "SLOW",
+    "fast": "FAST",
+    "normal": "기본",
+    "reset": "초기화"
+  },
+  "process": {
+    "title": "시스템 프로세스",
+    "search": "프로세스 이름, PID 또는 창 제목 검색…",
+    "pid": "PID",
+    "name": "프로세스 이름",
+    "arch": "아키텍처",
+    "memory": "메모리",
+    "enable": "가속",
+    "loading": "프로세스 목록 로딩 중…",
+    "noResults": "일치하는 프로세스 없음"
+  },
+  "settings": {
+    "loading": "설정 로딩 중…",
+    "speedShortcuts": "속도 단축키",
+    "shortcut": "단축키",
+    "step": "단계",
+    "increase": "증가",
+    "decrease": "감소",
+    "reset": "초기화",
+    "gears": "기어 프리셋",
+    "gear": "기어",
+    "multiplier": "배율",
+    "general": "일반 설정",
+    "autoStart": "자동 시작",
+    "alwaysOnTop": "항상 위",
+    "language": "언어",
+    "registerSuccess": "단축키 \"{{shortcut}}\" 등록 성공",
+    "registerFail": "단축키 \"{{shortcut}}\" 등록 실패"
+  },
+  "shortcut": {
+    "notSet": "설정 안 됨"
+  },
+  "about": {
+    "title": "OpenSpeedy",
+    "description": "오픈소스 게임 속도 컨트롤러",
+    "author": "제작자",
+    "license": "라이선스"
+  }
+}

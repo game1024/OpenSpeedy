@@ -1,0 +1,61 @@
+{
+  "app": {
+    "title": "OpenSpeedy",
+    "tabs": {
+      "speed": "変速",
+      "settings": "設定",
+      "about": "概要"
+    }
+  },
+  "titleBar": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "bridgeOnline": "オンライン",
+    "bridgeOffline": "オフライン"
+  },
+  "speed": {
+    "title": "速度倍率",
+    "slow": "SLOW",
+    "fast": "FAST",
+    "normal": "通常",
+    "reset": "リセット"
+  },
+  "process": {
+    "title": "システムプロセス",
+    "search": "プロセス名、PID、ウィンドウタイトルで検索…",
+    "pid": "PID",
+    "name": "プロセス名",
+    "arch": "アーキテクチャ",
+    "memory": "メモリ",
+    "enable": "加速",
+    "loading": "プロセスリストを読み込み中…",
+    "noResults": "一致するプロセスがありません"
+  },
+  "settings": {
+    "loading": "設定を読み込み中…",
+    "speedShortcuts": "速度ショートカット",
+    "shortcut": "ショートカット",
+    "step": "ステップ",
+    "increase": "加速",
+    "decrease": "減速",
+    "reset": "リセット",
+    "gears": "ギアプリセット",
+    "gear": "ギア",
+    "multiplier": "倍率",
+    "general": "一般設定",
+    "autoStart": "自動起動",
+    "alwaysOnTop": "常に最前面",
+    "language": "言語",
+    "registerSuccess": "ショートカット \"{{shortcut}}\" 登録成功",
+    "registerFail": "ショートカット \"{{shortcut}}\" 登録失敗"
+  },
+  "shortcut": {
+    "notSet": "未設定"
+  },
+  "about": {
+    "title": "OpenSpeedy",
+    "description": "オープンソースゲーム速度コントローラー",
+    "author": "作者",
+    "license": "ライセンス"
+  }
+}

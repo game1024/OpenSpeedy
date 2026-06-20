@@ -1,0 +1,61 @@
+{
+  "app": {
+    "title": "OpenSpeedy",
+    "tabs": {
+      "speed": "Tempo",
+      "settings": "Einstellungen",
+      "about": "Über"
+    }
+  },
+  "titleBar": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "bridgeOnline": "Online",
+    "bridgeOffline": "Offline"
+  },
+  "speed": {
+    "title": "Geschwindigkeit",
+    "slow": "LANGSAM",
+    "fast": "SCHNELL",
+    "normal": "Normal",
+    "reset": "Reset"
+  },
+  "process": {
+    "title": "Systemprozesse",
+    "search": "Nach Name, PID oder Fenstertitel suchen…",
+    "pid": "PID",
+    "name": "Prozessname",
+    "arch": "Arch",
+    "memory": "Speicher",
+    "enable": "Tempo",
+    "loading": "Prozesse werden geladen…",
+    "noResults": "Keine passenden Prozesse"
+  },
+  "settings": {
+    "loading": "Einstellungen laden…",
+    "speedShortcuts": "Tastenkürzel",
+    "shortcut": "Kürzel",
+    "step": "Schritt",
+    "increase": "Erhöhen",
+    "decrease": "Verringern",
+    "reset": "Reset",
+    "gears": "Presets",
+    "gear": "Preset",
+    "multiplier": "Multiplikator",
+    "general": "Allgemein",
+    "autoStart": "Autostart",
+    "alwaysOnTop": "Immer im Vordergrund",
+    "language": "Sprache",
+    "registerSuccess": "Kürzel \"{{shortcut}}\" registriert",
+    "registerFail": "Kürzel \"{{shortcut}}\" fehlgeschlagen"
+  },
+  "shortcut": {
+    "notSet": "Nicht gesetzt"
+  },
+  "about": {
+    "title": "OpenSpeedy",
+    "description": "Open Source Game Speed Controller",
+    "author": "Autor",
+    "license": "Lizenz"
+  }
+}
