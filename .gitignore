@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Rust build artifacts
+target/
+src-bridge/target/
+src-tauri/target/
+
+# Tauri generated
+src-tauri/gen/
+
+# Claude
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
