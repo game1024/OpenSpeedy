@@ -3,15 +3,15 @@ import { useTranslation } from "react-i18next";
 import { Box, Paper, Typography, Slider } from "@mui/material";
 import SpeedIcon from "@mui/icons-material/Speed";
 
-// ── Speed mapping: slider [-1000, 1000] → speed [0.01, 100], 1× at 0 ──
+// ── Speed mapping: slider [-999, 999] → speed [0.001, 1000], 1× at 0 ──
 
 export function toSpeed(v: number): number {
-  if (v <= 0) { const t = Math.abs(v) / 1000; return 1.0 - 0.99 * t * t; }
-  else        { const t = v / 1000; return 1.0 + 99.0 * t * t; }
+  if (v <= 0) { return 1 + v * 0.001; }
+  else        { return 1 + v; }
 }
 export function toSlider(s: number): number {
-  if (s <= 1.0) return -Math.sqrt((1.0 - s) / 0.99) * 1000;
-  else          return Math.sqrt((s - 1.0) / 99.0) * 1000;
+  if (s <= 1.0) return (s - 1) / 0.001;
+  else          return s - 1;
 }
 
 interface SpeedPanelProps {
@@ -50,7 +50,7 @@ export default React.memo(function SpeedPanel({ speed, onChange, onCommit }: Spe
         value={toSlider(speed)}
         onChange={(_, v) => onChange(toSpeed(v as number))}
         onChangeCommitted={(_, v) => onCommit(toSpeed(v as number))}
-        min={-1000} max={1000} step={1}
+        min={-999} max={999} step={1}
         valueLabelDisplay="auto"
         valueLabelFormat={v => `${toSpeed(v).toFixed(2)}×`}
         size="small"
