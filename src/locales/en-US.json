@@ -1,0 +1,67 @@
+{
+  "tray": {
+    "show": "Show Window",
+    "quit": "Quit"
+  },
+  "app": {
+    "title": "OpenSpeedy",
+    "tabs": {
+      "speed": "Speed",
+      "settings": "Settings",
+      "about": "About"
+    }
+  },
+  "titleBar": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "bridgeOnline": "Online",
+    "bridgeOffline": "Offline"
+  },
+  "speed": {
+    "title": "Speed Factor",
+    "slow": "SLOW",
+    "fast": "FAST",
+    "normal": "Normal",
+    "reset": "Reset"
+  },
+  "process": {
+    "title": "System Processes",
+    "search": "Search by name, PID, or window title…",
+    "pid": "PID",
+    "name": "Process Name",
+    "arch": "Arch",
+    "memory": "Memory",
+    "enable": "Speed",
+    "loading": "Loading processes…",
+    "noResults": "No matching processes"
+  },
+  "shortcut": {
+    "notSet": "Not set"
+  },
+  "settings": {
+    "loading": "Loading settings…",
+    "speedShortcuts": "Speed Shortcuts",
+    "shortcut": "Shortcut",
+    "step": "Step",
+    "increase": "Increase",
+    "decrease": "Decrease",
+    "reset": "Reset",
+    "gears": "Gear Presets",
+    "gear": "Gear",
+    "multiplier": "Multiplier",
+    "general": "General",
+    "autoStart": "Auto Start",
+    "alwaysOnTop": "Always on Top",
+    "language": "Language",
+    "registerSuccess": "Shortcut \"{{shortcut}}\" registered",
+    "registerFail": "Shortcut \"{{shortcut}}\" registration failed"
+  },
+  "about": {
+    "title": "OpenSpeedy",
+    "description": "Open Source Game Speed Controller",
+    "author": "Author",
+    "license": "License",
+    "version": "Version",
+    "system": "System"
+  }
+}

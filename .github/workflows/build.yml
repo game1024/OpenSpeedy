@@ -1,0 +1,103 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64]
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      msi-artifact-id: ${{ steps.upload-unsigned-msi.outputs.artifact-id }}
+      portable-artifact-id: ${{ steps.upload-unsigned-portable.outputs.artifact-id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Rust targets
+        run: rustup target add i686-pc-windows-msvc
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Get version
+        id: version
+        run: |
+          $ver = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Build
+        run: npx tauri build
+
+      - name: Upload unsigned MSI
+        id: upload-unsigned-msi
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenSpeedy-${{ steps.version.outputs.version }}-msi-unsigned
+          path: src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Upload unsigned portable
+        id: upload-unsigned-portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenSpeedy-${{ steps.version.outputs.version }}-portable-unsigned
+          path: |
+            src-tauri/target/release/openspeedy.exe
+            src-tauri/target/release/bridge32.exe
+            src-tauri/target/release/bridge64.exe
+            src-tauri/target/release/speedpatch32.dll
+            src-tauri/target/release/speedpatch64.dll
+
+  sign-msi:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: SignPath signing (MSI)
+        uses: signpath/github-action-submit-signing-request@v1.1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: '58b9835d-38ea-4898-a564-76610c01cecd'
+          project-slug: OpenSpeedy
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ needs.build.outputs.msi-artifact-id }}
+          artifact-configuration-slug: msi
+          wait-for-completion: true
+          output-artifact-directory: signed-msi/
+
+      - name: Upload signed MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenSpeedy-${{ needs.build.outputs.version }}-msi-signed
+          path: signed-msi/
+
+  sign-portable:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: SignPath signing (Portable)
+        uses: signpath/github-action-submit-signing-request@v1.1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: '58b9835d-38ea-4898-a564-76610c01cecd'
+          project-slug: OpenSpeedy
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ needs.build.outputs.portable-artifact-id }}
+          artifact-configuration-slug: zip
+          wait-for-completion: true
+          output-artifact-directory: signed-portable/
+
+      - name: Upload signed portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenSpeedy-${{ needs.build.outputs.version }}-portable-signed
+          path: signed-portable/

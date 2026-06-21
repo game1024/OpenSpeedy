@@ -1,0 +1,67 @@
+{
+  "tray": {
+    "show": "显示窗口",
+    "quit": "退出"
+  },
+  "app": {
+    "title": "OpenSpeedy",
+    "tabs": {
+      "speed": "变速",
+      "settings": "设置",
+      "about": "关于"
+    }
+  },
+  "titleBar": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "bridgeOnline": "在线",
+    "bridgeOffline": "离线"
+  },
+  "speed": {
+    "title": "速度倍率",
+    "slow": "SLOW",
+    "fast": "FAST",
+    "normal": "原速",
+    "reset": "原速"
+  },
+  "process": {
+    "title": "系统进程",
+    "search": "搜索进程名、PID 或窗口标题…",
+    "pid": "PID",
+    "name": "进程名称",
+    "arch": "架构",
+    "memory": "内存",
+    "enable": "加速",
+    "loading": "正在加载进程列表…",
+    "noResults": "无匹配进程"
+  },
+  "shortcut": {
+    "notSet": "未设置"
+  },
+  "settings": {
+    "loading": "加载设置中…",
+    "speedShortcuts": "速度快捷键",
+    "shortcut": "快捷键",
+    "step": "步长",
+    "increase": "加速",
+    "decrease": "减速",
+    "reset": "重置",
+    "gears": "档位设置",
+    "gear": "档位",
+    "multiplier": "倍率",
+    "general": "通用设置",
+    "autoStart": "开机自启动",
+    "alwaysOnTop": "窗口置顶",
+    "language": "语言",
+    "registerSuccess": "快捷键 \"{{shortcut}}\" 注册成功",
+    "registerFail": "快捷键 \"{{shortcut}}\" 注册失败"
+  },
+  "about": {
+    "title": "OpenSpeedy",
+    "description": "开源游戏变速控制器",
+    "author": "作者",
+    "license": "协议",
+    "version": "版本",
+    "system": "系统"
+  }
+}
