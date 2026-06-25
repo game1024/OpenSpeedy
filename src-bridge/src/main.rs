@@ -231,6 +231,14 @@ fn do_enable(pid: u32) -> Result<(), String> {
     let dll_wide = to_wide(OWN_SPEEDPATCH);
     unsafe {
         let h = LoadLibraryW(PCWSTR::from_raw(dll_wide.as_ptr())).map_err(|e| format!("LoadLibraryW: {e:?}"))?;
+
+        // Already enabled? — treat as success
+        let sp_is_enabled: Option<unsafe extern "system" fn(u32) -> i32> =
+            std::mem::transmute(GetProcAddress(h, s!("SP_IsEnabledById")));
+        if let Some(f) = sp_is_enabled {
+            if f(pid) != 0 { return Ok(()); }
+        }
+
         let sp_enable: Option<unsafe extern "system" fn(u32)> =
             std::mem::transmute(GetProcAddress(h, s!("SP_Enable")));
         sp_enable.ok_or("GetProcAddress SP_Enable failed")?(pid);

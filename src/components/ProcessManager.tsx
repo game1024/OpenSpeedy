@@ -173,7 +173,8 @@ export default function ProcessManager() {
       if (!wasInjected) {
         // First time inject
         setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch }); return n; });
-        const ok = await invoke<boolean>("bridge_inject", { pid, arch }).catch(() => false);
+        const ok = await invoke<boolean>("bridge_inject", { pid, arch }).catch((e) => { console.error("[toggle] bridge_inject error:", e); return false; });
+        console.log("[toggle] bridge_inject result:", ok);
         if (!ok) {
           setSpeedMap(prev => { const n = new Map(prev); n.delete(pid); return n; });
           notify(t("process.injectFail"), "error");

@@ -45,8 +45,13 @@ fn pipe_command(pipe: &str, cmd: &str) -> Option<String> {
     let ok = unsafe { ReadFile(h, Some(&mut buf), Some(&mut nread), None) };
     unsafe { let _ = CloseHandle(h); }
 
-    if ok.is_err() || nread == 0 { return None; }
-    Some(String::from_utf8_lossy(&buf[..nread as usize]).trim().to_string())
+    if ok.is_err() || nread == 0 {
+        eprintln!("[bridge] {cmd} → pipe read failed (err={:?}, nread={nread})", ok.err());
+        return None;
+    }
+    let resp = String::from_utf8_lossy(&buf[..nread as usize]).trim().to_string();
+    eprintln!("[bridge] {cmd} → {resp}");
+    Some(resp)
 }
 
 /// Check if bridge64 is running and responsive.
