@@ -21,6 +21,19 @@ export function useShortcut() {
     });
   }, []);
 
+  const registerHold = useCallback(async (
+    shortcut: string,
+    onPress: () => void,
+    onRelease: () => void,
+  ) => {
+    if (!shortcut) return;
+    if (await GlobalShortcut.isRegistered(shortcut)) await GlobalShortcut.unregister(shortcut);
+    await GlobalShortcut.register(shortcut, ({ state }: ShortcutTriggerState) => {
+      if (state === "Pressed") onPress();
+      else onRelease();
+    });
+  }, []);
+
   const unregister = useCallback(async (shortcut: string) => {
     if (!shortcut) return;
     if (await GlobalShortcut.isRegistered(shortcut)) await GlobalShortcut.unregister(shortcut);
@@ -57,7 +70,20 @@ export function useShortcut() {
         set("speed", speed);
       });
     }
-  }, [register, set, getAll]);
 
-  return { register, unregister, init };
+    // Hold shortcut: press → target speed, release → reset to 1.0
+    const holdShortcut = s.holdShortcut as string | undefined;
+    if (holdShortcut) {
+      const holdSpeed = (s.holdSpeed as number) || 2.0;
+      await registerHold(holdShortcut, () => {
+        invoke("bridge_set_speed", { factor: holdSpeed });
+        set("speed", holdSpeed);
+      }, () => {
+        invoke("bridge_set_speed", { factor: 1.0 });
+        set("speed", 1.0);
+      });
+    }
+  }, [register, registerHold, set, getAll, get]);
+
+  return { register, registerHold, unregister, init };
 }

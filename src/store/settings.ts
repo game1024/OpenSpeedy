@@ -20,6 +20,9 @@ export interface SettingsState {
   gear5Shortcut: string;
   gear5Speed: number;
 
+  holdShortcut: string;
+  holdSpeed: number;
+
   autoStart: boolean;
   alwaysOnTop: boolean;
   language: "zh-CN" | "zh-TW" | "ja-JP" | "ko-KR" | "de-DE" | "fr-FR" | "en-US";
@@ -45,6 +48,9 @@ export const DEFAULTS: SettingsState = {
   gear4Speed: 10.0,
   gear5Shortcut: "",
   gear5Speed: 100.0,
+
+  holdShortcut: "",
+  holdSpeed: 2.0,
 
   autoStart: false,
   alwaysOnTop: false,

@@ -35,7 +35,7 @@ function Row({ label, children }: { label: React.ReactNode; children: React.Reac
 export default function SettingsManager() {
   const { t } = useTranslation();
   const { settings, get, set } = useSettings();
-  const { register, unregister } = useShortcut();
+  const { register, registerHold, unregister } = useShortcut();
   const { notify } = useSnackbar();
 
   // Sync auto-start state from system on mount
@@ -171,6 +171,38 @@ export default function SettingsManager() {
                 </TableCell>
               </TableRow>
             ))}
+            {/* Hold shortcut — press to activate, release to reset */}
+            <TableRow>
+              <TableCell sx={{ borderBottom: "none" }}>{t("settings.hold")}</TableCell>
+              <TableCell sx={{ borderBottom: "none" }}>
+                <ShortcutField
+                  value={settings?.holdShortcut as string}
+                  onChange={v => {
+                    const old = settings?.holdShortcut as string;
+                    changeShortcut("holdShortcut", old, v, () => {
+                      const hs = (get("holdSpeed") as number) || 2.0;
+                      invoke("bridge_set_speed", { factor: hs });
+                    });
+                    if (old) unregister(old).catch(() => {});
+                    if (v) registerHold(v, () => {
+                      const hs = (get("holdSpeed") as number) || 2.0;
+                      invoke("bridge_set_speed", { factor: hs });
+                      set("speed", hs);
+                    }, () => {
+                      invoke("bridge_set_speed", { factor: 1.0 });
+                      set("speed", 1.0);
+                    });
+                  }}
+                />
+              </TableCell>
+              <TableCell sx={{ borderBottom: "none" }}>
+                <TextField type="number" size="small"
+                  value={settings?.holdSpeed as number}
+                  onChange={e => set("holdSpeed", Number(e.target.value) || 2)}
+                  sx={{ width: 80 }}
+                  slotProps={{ htmlInput: { min: 0.01, max: 100, step: 0.1 } }} />
+              </TableCell>
+            </TableRow>
           </TableBody>
         </Table>
 

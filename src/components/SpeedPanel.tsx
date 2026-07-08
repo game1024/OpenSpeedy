@@ -84,7 +84,7 @@ export default React.memo(function SpeedPanel({ speed, gears, onChange, onCommit
               }}
             />
             <Typography variant="caption" sx={{ display: "block", mt: 0.3, color: "text.disabled" }}>
-              ⏎ Enter {t("speed.confirm")} · Esc {t("speed.cancel")}
+              ⏎ Enter {t("speed.confirm")}
             </Typography>
           </Box>
         ) : (
