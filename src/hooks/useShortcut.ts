@@ -74,10 +74,10 @@ export function useShortcut() {
     // Hold shortcut: press → target speed, release → reset to 1.0
     const holdShortcut = s.holdShortcut as string | undefined;
     if (holdShortcut) {
-      const holdSpeed = (s.holdSpeed as number) || 2.0;
       await registerHold(holdShortcut, () => {
-        invoke("bridge_set_speed", { factor: holdSpeed });
-        set("speed", holdSpeed);
+        const hs = (get("holdSpeed") as number) || 2.0;
+        invoke("bridge_set_speed", { factor: hs });
+        set("speed", hs);
       }, () => {
         invoke("bridge_set_speed", { factor: 1.0 });
         set("speed", 1.0);

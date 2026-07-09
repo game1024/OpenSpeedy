@@ -54,6 +54,19 @@ export default function SettingsManager() {
     await set(key as keyof SettingsState, newVal);
   }
 
+  async function changeHoldShortcut(oldVal: string, newVal: string, onPress: () => void, onRelease: () => void) {
+    if (oldVal) await unregister(oldVal).catch(() => { });
+    if (newVal) {
+      try {
+        await registerHold(newVal, onPress, onRelease);
+        notify(t("settings.registerSuccess", { shortcut: newVal }), "success");
+      } catch {
+        notify(t("settings.registerFail", { shortcut: newVal }), "error");
+      }
+    }
+    await set("holdShortcut", newVal);
+  }
+
   if (!settings) {
     return <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Typography color="text.disabled">{t("settings.loading")}</Typography>
@@ -179,13 +192,8 @@ export default function SettingsManager() {
                   value={settings?.holdShortcut as string}
                   onChange={v => {
                     const old = settings?.holdShortcut as string;
-                    changeShortcut("holdShortcut", old, v, () => {
-                      const hs = (get("holdSpeed") as number) || 2.0;
-                      invoke("bridge_set_speed", { factor: hs });
-                    });
-                    if (old) unregister(old).catch(() => {});
-                    if (v) registerHold(v, () => {
-                      const hs = (get("holdSpeed") as number) || 2.0;
+                    const hs = (get("holdSpeed") as number) || 2.0;
+                    changeHoldShortcut(old, v, () => {
                       invoke("bridge_set_speed", { factor: hs });
                       set("speed", hs);
                     }, () => {
