@@ -1,6 +1,6 @@
 [package]
 name = "openspeedy"
-version = "3.3.3"
+version = "3.3.4"
 description = "Open Source Game Speed Controller"
 authors = ["Game1024"]
 edition = "2021"
