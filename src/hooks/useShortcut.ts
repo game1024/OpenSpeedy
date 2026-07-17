@@ -1,4 +1,5 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback } from "react";
+import { useSyncExternalStore } from "react";
 import * as GlobalShortcut from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "./useSettings";
@@ -9,23 +10,29 @@ type ShortcutTriggerState = {
   state: "Pressed" | "Released";
 };
 
-// Module-level — tracks which shortcuts failed to register
-let _statusCache: Record<string, boolean> = {};
-const _statusListeners = new Set<(s: Record<string, boolean>) => void>();
+// ── Module-level store (useSyncExternalStore compatible) ────────────────────
 
-function emitStatusChange(s: Record<string, boolean>) {
-  _statusListeners.forEach(fn => fn(s));
+let _statusCache: Record<string, boolean> = {};
+const _statusListeners = new Set<() => void>();
+
+function subscribe(callback: () => void) {
+  _statusListeners.add(callback);
+  return () => { _statusListeners.delete(callback); };
 }
+
+function getSnapshot(): Record<string, boolean> {
+  return _statusCache;
+}
+
+function emit() {
+  _statusListeners.forEach(fn => fn());
+}
+
+// ── Hook ────────────────────────────────────────────────────────────────────
 
 export function useShortcut() {
   const { getAll, get, set } = useSettings();
-  const [shortcutStatus, setShortcutStatus] = useState<Record<string, boolean>>(_statusCache);
-
-  useEffect(() => {
-    const fn = (s: Record<string, boolean>) => setShortcutStatus({ ...s });
-    _statusListeners.add(fn);
-    return () => { _statusListeners.delete(fn); };
-  }, []);
+  const shortcutStatus = useSyncExternalStore(subscribe, getSnapshot);
 
   const doRegister = useCallback(async (
     shortcut: string,
@@ -35,13 +42,13 @@ export function useShortcut() {
     try {
       await GlobalShortcut.register(shortcut, handler);
       _statusCache = { ..._statusCache, [shortcut]: true };
-      emitStatusChange(_statusCache);
+      emit();
       console.log("[shortcut] register OK:", shortcut);
       return true;
     } catch (e) {
       console.error("[shortcut] register FAIL:", shortcut, e);
       _statusCache = { ..._statusCache, [shortcut]: false };
-      emitStatusChange(_statusCache);
+      emit();
       return false;
     }
   }, []);
@@ -69,7 +76,7 @@ export function useShortcut() {
     if (await GlobalShortcut.isRegistered(shortcut)) await GlobalShortcut.unregister(shortcut);
     const { [shortcut]: _, ...rest } = _statusCache;
     _statusCache = rest;
-    emitStatusChange(_statusCache);
+    emit();
   }, []);
 
   const init = useCallback(async () => {
