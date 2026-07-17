@@ -145,7 +145,7 @@ pub fn enumerate_modules(pid: u32) -> Vec<ModuleInfo> {
             ))
         };
         let is_wow64 = if let Some(f) = is_wow64_proc {
-            unsafe { f(h_proc, &mut wow64); }
+            unsafe { let _ = f(h_proc, &mut wow64); }
             wow64.as_bool()
         } else {
             false
