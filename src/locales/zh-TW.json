@@ -10,7 +10,7 @@
   "titleBar": {
     "cpu": "處理器(CPU)",
     "ram": "記憶體(RAM)",
-    "bridgeOnline": "線上",
+    "bridgeOnline": "在線",
     "bridgeOffline": "離線"
   },
   "speed": {
@@ -51,7 +51,7 @@
       "statusEnabled": "加速已啟用",
       "statusDisabled": "加速已停用",
       "statusNotInjected": "未注入",
-      "noSelection": "請在左側列表中選擇一個程序查看詳情",
+      "noSelection": "請在左側列表中選擇一個程序以檢視詳情",
       "yes": "是",
       "no": "否",
       "modules": "已載入模組",
@@ -75,7 +75,7 @@
     "gears": "檔位設定",
     "hold": "按住變速",
     "gear": "檔位",
-    "multiplier": "速度倍率",
+    "multiplier": "變速倍率",
     "general": "一般設定",
     "autoStart": "開機自動啟動",
     "alwaysOnTop": "視窗最上層",
