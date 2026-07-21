@@ -116,7 +116,12 @@ async fn bridge_get_speed() -> Option<f64> {
 
 #[tauri::command(async)]
 async fn get_system_stats() -> system_stats::SystemStats {
-    system_stats::get_system_stats()
+    // GPU APIs and stale display drivers can block for several seconds. Keep
+    // those synchronous probes off Tauri's event loop so the window stays
+    // responsive while the first probe is being resolved and cached.
+    tauri::async_runtime::spawn_blocking(system_stats::get_system_stats)
+        .await
+        .expect("system statistics worker panicked")
 }
 
 #[tauri::command(async)]

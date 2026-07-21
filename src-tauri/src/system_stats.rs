@@ -1,9 +1,12 @@
+use std::io::Read;
 use std::os::windows::process::CommandExt;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Mutex, OnceLock,
 };
+use std::thread;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use windows::Win32::Foundation::FILETIME;
@@ -87,10 +90,22 @@ static CPU_PREV: Mutex<Option<CpuSnapshot>> = Mutex::new(None);
 // systems with a stale NVIDIA driver but no usable NVIDIA GPU. Keep the
 // fallback under our control so it is hidden and stop retrying after a failure.
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-static NVIDIA_SMI_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
-static NVIDIA_SMI_QUERY_LOCK: Mutex<()> = Mutex::new(());
+const NVIDIA_SMI_TIMEOUT: Duration = Duration::from_secs(2);
+static GPU_STATS_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
+static GPU_QUERY_LOCK: Mutex<()> = Mutex::new(());
 
 fn gpu_stats() -> Option<GpuStats> {
+    if GPU_STATS_UNAVAILABLE.load(Ordering::Acquire) {
+        return None;
+    }
+
+    // Serialize the complete native/fallback probe. Multiple frontend refreshes
+    // can overlap while a broken display driver is taking a long time to fail.
+    let _query_guard = GPU_QUERY_LOCK.lock().ok()?;
+    if GPU_STATS_UNAVAILABLE.load(Ordering::Acquire) {
+        return None;
+    }
+
     let native = hypomnesis::Snapshot::now(0).ok().and_then(|snap| {
         snap.gpu_device.map(|dev| GpuStats {
             name: dev.name.unwrap_or_default(),
@@ -99,37 +114,52 @@ fn gpu_stats() -> Option<GpuStats> {
         })
     });
 
-    native.or_else(nvidia_smi_gpu_stats)
+    if native.is_some() {
+        return native;
+    }
+
+    let fallback = nvidia_smi_gpu_stats();
+    if fallback.is_none() {
+        // A machine without a usable GPU will not recover during the process
+        // lifetime. Avoid repeatedly entering slow or broken driver code.
+        GPU_STATS_UNAVAILABLE.store(true, Ordering::Release);
+    }
+    fallback
 }
 
 fn nvidia_smi_gpu_stats() -> Option<GpuStats> {
-    if NVIDIA_SMI_UNAVAILABLE.load(Ordering::Acquire) {
-        return None;
-    }
-
-    let _query_guard = NVIDIA_SMI_QUERY_LOCK.lock().ok()?;
-    if NVIDIA_SMI_UNAVAILABLE.load(Ordering::Acquire) {
-        return None;
-    }
-
     let mut command = Command::new("nvidia-smi");
-    command.creation_flags(CREATE_NO_WINDOW);
-    let stats = command
+    command
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .args([
             "--query-gpu=name,memory.used,memory.total",
             "--format=csv,noheader,nounits",
             "--id=0",
-        ])
-        .output()
-        .ok()
-        .filter(|output| output.status.success())
-        .and_then(|output| parse_nvidia_smi_output(&output.stdout));
+        ]);
 
-    if stats.is_none() {
-        NVIDIA_SMI_UNAVAILABLE.store(true, Ordering::Release);
+    let mut child = command.spawn().ok()?;
+    let deadline = Instant::now() + NVIDIA_SMI_TIMEOUT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                if !status.success() {
+                    return None;
+                }
+
+                let mut output = Vec::new();
+                child.stdout.take()?.read_to_end(&mut output).ok()?;
+                return parse_nvidia_smi_output(&output);
+            }
+            Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(20)),
+            Ok(None) | Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
     }
-
-    stats
 }
 
 fn parse_nvidia_smi_output(output: &[u8]) -> Option<GpuStats> {

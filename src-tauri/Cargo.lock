@@ -1611,8 +1611,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28c66fb449c6c2b488d43ca524b9fbbf92f910344551d38e1da4baeff8dfb1f1"
 dependencies = [
  "libloading 0.9.0",
- "objc2",
- "objc2-metal",
  "thiserror 2.0.18",
  "windows 0.62.2",
 ]
@@ -2319,17 +2317,6 @@ dependencies = [
  "bitflags 2.13.0",
  "objc2",
  "objc2-core-foundation",
-]
-
-[[package]]
-name = "objc2-metal"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0125f776a10d00af4152d74616409f0d4a2053a6f57fa5b7d6aa2854ac04794"
-dependencies = [
- "bitflags 2.13.0",
- "objc2",
- "objc2-foundation",
 ]
 
 [[package]]
