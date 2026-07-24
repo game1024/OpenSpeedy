@@ -62,6 +62,9 @@
   </p>
 
   <p align="center">
+    <a href="https://trendshift.io/repositories/17801?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17801" target="_blank" rel="noopener noreferrer">
+      <img src="https://trendshift.io/api/badge/trendshift/repositories/17801/monthly?language=C%2B%2B" alt="game1024%2FOpenSpeedy | Trendshift" width="250" height="55"/>
+    </a>
     <a href="https://hellogithub.com/repository/975f473c56ad4369a1c30ac9aa5819e0" target="_blank">
       <img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=975f473c56ad4369a1c30ac9aa5819e0&claim_uid=kmUCncHJr9SpNV7&theme=neutral" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" />
     </a>
