@@ -647,7 +647,7 @@
           <div class="label">Total Downloads</div>
         </div>
         <div class="stat-card">
-          <div class="value" id="stat-version">v3.3.8</div>
+          <div class="value" id="stat-version">v3.3.9</div>
           <div class="label">Latest Version</div>
         </div>
         <div class="stat-card">
@@ -752,6 +752,10 @@
           });
           const el = document.getElementById('stat-downloads');
           el.textContent = total >= 1000 ? (total / 1000).toFixed(1) + 'k' : total;
+          // Latest release tag — keeps the version card current without a manual edit
+          if (releases[0]?.tag_name) {
+            document.getElementById('stat-version').textContent = 'v' + releases[0].tag_name.replace(/^v/, '');
+          }
         }
       } catch {}
     })();
