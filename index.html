@@ -1,765 +1,474 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenSpeedy — Open-Source Game Speed Controller</title>
-  <meta name="description" content="The Best Open-Source Game Speed Controller. Adjust game speed on the fly with a modern UI, supporting x86/x64 processes. No kernel intrusion — Ring-3 level hooking.">
-  <meta property="og:title" content="OpenSpeedy">
-  <meta property="og:description" content="The Best Open-Source Game Speed Controller">
-  <meta property="og:image" content="https://github.com/user-attachments/assets/a82ceda2-9b7b-41e4-96dc-cd250c9bd3ff">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenSpeedy — 开源游戏变速控制器</title>
+<meta name="description" content="OpenSpeedy 是一个开源游戏变速控制器。纯 Ring-3 层 API Hook，不加载内核驱动，为任意 Windows 进程实时调整时间流速，x86 与 x64 通吃。">
+<meta name="theme-color" content="#070a12">
+<meta name="color-scheme" content="dark">
 
-    :root {
-      --bg: #0a0e1a;
-      --bg-card: #111827;
-      --bg-card-hover: #1a2332;
-      --border: #1e2d4a;
-      --text: #e2e8f0;
-      --text-secondary: #94a3b8;
-      --accent: #00d4ff;
-      --accent2: #60a5fa;
-      --accent3: #f87171;
-      --gradient: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
-      --gradient-hero: linear-gradient(135deg, #0a0e1a 0%, #111827 40%, #0f1729 70%, #0a0e1a 100%);
-      --radius: 12px;
-      --glow: 0 0 30px rgba(0,212,255,0.15);
-    }
+<meta property="og:type" content="website">
+<meta property="og:title" content="OpenSpeedy — 开源游戏变速控制器">
+<meta property="og:description" content="纯 Ring-3 层 API Hook，不加载内核驱动。为任意 Windows 进程实时调整时间流速。">
+<meta property="og:image" content="assets/hero/promo-small.webp">
+<meta property="og:url" content="https://game1024.github.io/OpenSpeedy/">
+<meta name="twitter:card" content="summary_large_image">
 
-    html {
-      scroll-behavior: smooth;
-    }
+<link rel="icon" href="assets/brand/logo-mark.png">
+<link rel="apple-touch-icon" href="assets/brand/logo-mark.png">
 
-    body {
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    h1, h2, h3, .section-title {
-      font-family: "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    code, pre, td:first-child, td:nth-child(2) {
-      font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace !important;
-    }
-
-    /* ── Nav ──────────────────────── */
-    nav {
-      position: fixed;
-      top: 0;
-      width: 100%;
-      z-index: 100;
-      background: rgba(10, 14, 26, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
-    nav .nav-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 24px;
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    nav .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      font-size: 1.2rem;
-      font-family: "Space Grotesk", "Inter", sans-serif;
-      color: var(--text);
-      text-decoration: none;
-    }
-    nav .logo img {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-    }
-    nav .nav-links {
-      display: flex;
-      gap: 24px;
-      align-items: center;
-    }
-    nav .nav-links a {
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.2s;
-    }
-    nav .nav-links a:hover { color: var(--text); }
-
-    /* ── Hero ─────────────────────── */
-    #hero {
-      padding: 120px 24px 80px;
-      text-align: center;
-      background: var(--gradient-hero);
-      position: relative;
-      overflow: hidden;
-    }
-    #hero::before {
-      content: "";
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(ellipse at 50% 0%, rgba(0,212,255,0.06) 0%, transparent 60%);
-      pointer-events: none;
-    }
-    #hero .hero-logo {
-      width: 120px;
-      height: 120px;
-      border-radius: 24px;
-      margin-bottom: 28px;
-      box-shadow: 0 0 80px rgba(0,212,255,0.2), 0 0 40px rgba(124,58,237,0.1);
-      position: relative;
-    }
-    #hero h1 {
-      font-size: clamp(2.2rem, 5vw, 3.6rem);
-      font-weight: 800;
-      background: var(--gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      position: relative;
-    }
-    #hero .tagline {
-      font-size: 1.15rem;
-      color: var(--text-secondary);
-      margin-top: 12px;
-      position: relative;
-    }
-    #hero .hero-actions {
-      margin-top: 36px;
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-      position: relative;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 28px;
-      font-size: 1rem;
-      font-weight: 600;
-      border-radius: 8px;
-      text-decoration: none;
-      transition: all 0.25s;
-      cursor: pointer;
-      border: none;
-    }
-    .btn-primary {
-      background: var(--gradient);
-      color: #fff;
-    }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(0,212,255,0.25);
-    }
-    .btn-outline {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-outline:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* ── Section ──────────────────── */
-    section {
-      padding: 80px 24px;
-    }
-    .section-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-    .section-title {
-      font-size: 2rem;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 16px;
-    }
-    .section-subtitle {
-      text-align: center;
-      color: var(--text-secondary);
-      margin-bottom: 48px;
-      font-size: 1.05rem;
-    }
-
-    /* ── Features ─────────────────── */
-    #features {
-      background: var(--bg-card);
-    }
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 24px;
-    }
-    .feature-card {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px 24px;
-      transition: all 0.3s;
-    }
-    .feature-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 0 20px rgba(0,212,255,0.06);
-    }
-    .feature-card .icon {
-      font-size: 2rem;
-      margin-bottom: 16px;
-    }
-    .feature-card h3 {
-      font-size: 1.1rem;
-      margin-bottom: 8px;
-    }
-    .feature-card p {
-      color: var(--text-secondary);
-      font-size: 0.92rem;
-    }
-
-    /* ── Hook Table ───────────────── */
-    .table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 12px 16px;
-      text-align: left;
-      font-size: 0.92rem;
-    }
-    th {
-      background: var(--bg-card);
-      color: var(--text-secondary);
-      font-weight: 600;
-      border-bottom: 1px solid var(--border);
-    }
-    td {
-      border-bottom: 1px solid var(--border);
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(0,212,255,0.04); }
-    td:first-child { color: var(--accent2); }
-    td:nth-child(2) { color: var(--text-secondary); }
-
-    /* ── Stats ────────────────────── */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 16px;
-      margin-bottom: 40px;
-    }
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      text-align: center;
-      transition: all 0.3s;
-    }
-    .stat-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-    }
-    .stat-card .value {
-      font-size: 1.8rem;
-      font-weight: 700;
-      background: var(--gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .stat-card .label {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-
-    /* ── Badges ───────────────────── */
-    .badges {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 16px;
-      align-items: center;
-    }
-    .badges a { display: inline-block; }
-
-    /* ── Warning ──────────────────── */
-    #warnings {
-      background: var(--bg-card);
-    }
-    .warning-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .warning-list li {
-      padding: 14px 20px;
-      background: rgba(248,113,113,0.06);
-      border: 1px solid rgba(248,113,113,0.15);
-      border-radius: 8px;
-      color: var(--accent3);
-      font-size: 0.92rem;
-    }
-    .warning-list li::before {
-      content: "⚠ ";
-    }
-
-    /* ── Footer ──────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 40px 24px;
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 0.88rem;
-    }
-    footer a {
-      color: var(--accent2);
-      text-decoration: none;
-    }
-    footer a:hover { text-decoration: underline; }
-    footer .footer-links {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
-    /* ── Animations: Keyframes ───── */
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(-8px); }
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.3); }
-      50%      { box-shadow: 0 0 0 12px rgba(0,212,255,0); }
-    }
-    @keyframes shimmer {
-      0%   { background-position: -200% center; }
-      100% { background-position: 200% center; }
-    }
-    @keyframes slideInLeft {
-      from { opacity: 0; transform: translateX(-20px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes scaleIn {
-      from { opacity: 0; transform: scale(0.9); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-
-    /* ── Scroll-reveal base ──────── */
-    .reveal {
-      opacity: 0;
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    .reveal.reveal-up    { transform: translateY(30px); }
-    .reveal.reveal-left  { transform: translateX(-20px); }
-    .reveal.reveal-scale { transform: scale(0.9); }
-    .reveal.visible {
-      opacity: 1;
-      transform: translate(0) scale(1);
-    }
-
-    /* ── Hero animations ─────────── */
-    #hero .hero-logo {
-      animation: fadeIn 0.8s ease-out, float 3s ease-in-out 0.8s infinite;
-    }
-    #hero h1 {
-      animation: fadeInUp 0.7s ease-out 0.15s both;
-    }
-    #hero .tagline {
-      animation: fadeInUp 0.7s ease-out 0.3s both;
-    }
-    #hero .hero-actions {
-      animation: fadeInUp 0.7s ease-out 0.45s both;
-    }
-
-    /* ── Feature card stagger ────── */
-    .feature-card.reveal.visible { transition-delay: var(--delay, 0s); }
-
-    /* ── Stat card hover ─────────── */
-    .stat-card {
-      transition: all 0.3s ease, box-shadow 0.3s ease;
-    }
-    .stat-card:hover {
-      box-shadow: 0 4px 20px rgba(0,212,255,0.12);
-    }
-
-    /* ── Table row stagger ───────── */
-    tbody tr.reveal.visible { transition-delay: var(--delay, 0s); }
-
-    /* ── Warning item slide ──────── */
-    .warning-list li.reveal.visible { transition-delay: var(--delay, 0s); }
-
-    /* ── Badge hover ─────────────── */
-    .badges a {
-      transition: transform 0.3s ease, opacity 0.3s ease;
-    }
-    .badges a:hover {
-      transform: translateY(-3px);
-      opacity: 0.85;
-    }
-
-    /* ── Nav scroll shadow ───────── */
-    nav.scrolled {
-      box-shadow: 0 1px 12px rgba(0,0,0,0.4);
-    }
-
-    /* ── Feature icon bounce ─────── */
-    .feature-card:hover .icon {
-      animation: float 0.6s ease-in-out;
-    }
-
-    /* ── Button pulse ────────────── */
-    .btn-primary:active {
-      transform: scale(0.97);
-    }
-    .btn-outline:active {
-      transform: scale(0.97);
-    }
-
-    /* ── Section title underline ─── */
-    .section-title {
-      position: relative;
-      display: inline-block;
-      width: 100%;
-    }
-    .section-title::after {
-      content: "";
-      position: absolute;
-      bottom: -6px;
-      left: 50%;
-      transform: translateX(-50%) scaleX(0);
-      width: 48px;
-      height: 3px;
-      background: var(--gradient);
-      border-radius: 2px;
-      transition: transform 0.4s ease;
-    }
-    .section-title.visible-underline::after {
-      transform: translateX(-50%) scaleX(1);
-    }
-
-    /* ── Download card hover ─────── */
-    #download .install-card {
-      transition: all 0.3s ease, box-shadow 0.3s ease;
-    }
-    #download .install-card:hover {
-      box-shadow: 0 4px 20px rgba(0,212,255,0.1);
-      border-color: var(--accent);
-    }
-
-    /* ── Responsive ──────────────── */
-    @media (max-width: 640px) {
-      nav .nav-links { display: none; }
-      #hero { padding: 100px 20px 60px; }
-      section { padding: 48px 20px; }
-      .features-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.github.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,500;0,700;0,800;0,900;1,700;1,900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+<script>document.documentElement.className += " js";</script>
 </head>
+
 <body>
 
-  <!-- ─── NAV ──────────────────────── -->
-  <nav>
-    <div class="nav-inner">
-      <a class="logo" href="#hero">
-        <img src="https://github.com/user-attachments/assets/a82ceda2-9b7b-41e4-96dc-cd250c9bd3ff" alt="OpenSpeedy logo">
-        OpenSpeedy
+<!-- ======================================================================
+     Icon sprite — hand-built line set, 1.5px stroke on a 24px grid.
+     Replaces the emoji the previous page used as icons.
+     ====================================================================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.475 2 2 6.475 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.604-3.369-1.341-3.369-1.341-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.607.069-.607 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.682-.103-.253-.447-1.27.098-2.647 0 0 .84-.269 2.75 1.025a9.564 9.564 0 0 1 2.504-.337 9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.547 1.377.203 2.394.1 2.647.641.698 1.028 1.591 1.028 2.682 0 3.842-2.339 4.687-4.566 4.935.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.525-4.475-10-10-10Z"/>
+  </symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.2 16.8a9 9 0 1 1 15.6 0"/><path d="m12 14.6 3.6-4.2"/><circle cx="12" cy="15.6" r="1.4"/>
+  </symbol>
+  <symbol id="i-keys" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M8 14h8"/>
+  </symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m12 3.5 8.5 4.6L12 12.7 3.5 8.1 12 3.5Z"/><path d="m3.5 13.2 8.5 4.6 8.5-4.6"/>
+  </symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="7" y="7" width="10" height="10" rx="1.5"/><rect x="10.4" y="10.4" width="3.2" height="3.2" rx=".6"/>
+    <path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/>
+  </symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 5 5.8v5.4c0 4.3 2.9 8.2 7 9.3 4.1-1.1 7-5 7-9.3V5.8L12 3Z"/><path d="m9.4 12 1.9 1.9 3.6-3.7"/>
+  </symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6"/><ellipse cx="12" cy="12" rx="4" ry="9"/>
+  </symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4.2 2.8 20h18.4L12 4.2Z"/><path d="M12 10v4.2"/><path d="M12 17.2h.01"/>
+  </symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6.5 15h-1A1.5 1.5 0 0 1 4 13.5v-8A1.5 1.5 0 0 1 5.5 4h8A1.5 1.5 0 0 1 15 5.5v1"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m5 12.5 4.5 4.5L19 7.5"/>
+  </symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>
+  </symbol>
+</svg>
+
+
+<!-- ======================================================================
+     Nav
+     ====================================================================== -->
+<header class="nav" id="nav">
+  <div class="wrap nav__inner">
+    <a class="brand" href="#top" aria-label="OpenSpeedy">
+      <img class="brand__mark" src="assets/brand/logo-mark.png" alt="" width="495" height="495">
+      <img class="brand__word" src="assets/brand/logo-wordmark.png" alt="OpenSpeedy" width="1044" height="168">
+    </a>
+
+    <nav class="nav__links">
+      <a href="#features" data-i18n="nav.features">功能</a>
+      <a href="#shots" data-i18n="nav.shots">截图</a>
+      <a href="#api" data-i18n="nav.api">接口</a>
+      <a href="#download" data-i18n="nav.download">下载</a>
+    </nav>
+
+    <div class="nav__actions">
+      <div class="seg" role="group" aria-label="Language">
+        <button type="button" data-lang-btn="zh" aria-pressed="true">中</button>
+        <button type="button" data-lang-btn="en" aria-pressed="false">EN</button>
+      </div>
+      <a class="btn btn--ghost btn--sm" href="https://github.com/game1024/OpenSpeedy" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"/></svg>
+        <span>GitHub</span>
+        <span id="nav-stars" style="color:var(--text-lo)"></span>
       </a>
-      <div class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="#download">Download</a>
-        <a href="https://github.com/game1024/OpenSpeedy" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</header>
+
+
+<!-- ======================================================================
+     Hero — copy left, real product shot right
+     ====================================================================== -->
+<section class="hero" id="top">
+  <canvas id="embers" aria-hidden="true"></canvas>
+
+  <div class="wrap hero__grid">
+    <div class="hero__copy">
+      <p class="eyebrow">Ring-3 · Windows 10+</p>
+
+      <img class="hero__mark" src="assets/brand/logo-mark.png" alt="" width="495" height="495">
+
+      <h1 class="fire-text">OpenSpeedy</h1>
+
+      <p class="hero__tag" data-i18n="hero.tag">开源游戏变速控制器</p>
+      <p class="hero__sub" data-i18n="hero.sub">纯 Ring-3 层 API Hook，不加载内核驱动。为任意 Windows 进程实时调整时间流速，x86 与 x64 通吃。</p>
+
+      <div class="hero__cta">
+        <a class="btn btn--primary" href="https://github.com/game1024/OpenSpeedy/releases/latest" target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-download"/></svg>
+          <span data-i18n="hero.cta.dl" data-ver>下载 v3.3.9</span>
+        </a>
+        <a class="btn btn--ghost" href="https://github.com/game1024/OpenSpeedy" target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-github"/></svg>
+          <span>GitHub</span>
+          <span id="cta-stars" style="color:var(--text-lo)"></span>
+        </a>
+      </div>
+
+      <div class="hero__meta">
+        <span data-i18n="hero.meta.win">Windows 10+</span>
+        <span data-i18n="hero.meta.lic">GPL-3.0</span>
+        <span data-i18n="hero.meta.nodrv">无内核驱动</span>
       </div>
     </div>
-  </nav>
 
-  <!-- ─── HERO ────────────────────── -->
-  <section id="hero">
-    <img class="hero-logo" src="https://github.com/user-attachments/assets/a82ceda2-9b7b-41e4-96dc-cd250c9bd3ff" alt="OpenSpeedy">
-    <h1>OpenSpeedy</h1>
-    <p class="tagline">The Best Open-Source Game Speed Controller</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="https://github.com/game1024/OpenSpeedy/releases" target="_blank" rel="noopener">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download
-      </a>
-      <a class="btn btn-outline" href="https://github.com/game1024/OpenSpeedy" target="_blank" rel="noopener">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.604-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12 24 5.37 18.63 0 12 0z"/></svg>
-        View on GitHub
-      </a>
-    </div>
-  </section>
-
-  <!-- ─── FEATURES ────────────────── -->
-  <section id="features">
-    <div class="section-inner">
-      <h2 class="section-title reveal reveal-up">Features</h2>
-      <p class="section-subtitle reveal reveal-up">Everything you need to control game speed</p>
-      <div class="features-grid">
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">⚡</div>
-          <h3>Instant Speed Control</h3>
-          <p>Adjust game speed on the fly with global shortcuts or the intuitive slider. Changes take effect immediately.</p>
-        </div>
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">🎨</div>
-          <h3>Modern UI</h3>
-          <p>Clean, responsive interface built with React and MUI. Dark theme with real-time speed dashboard.</p>
-        </div>
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">🖥️</div>
-          <h3>x86 &amp; x64 Support</h3>
-          <p>Works with both 32-bit and 64-bit processes. Select any running process for targeted speed control.</p>
-        </div>
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">🔒</div>
-          <h3>Ring-3 Safe</h3>
-          <p>No kernel intrusion, no driver installation. Pure user-mode API hooking — won't tamper with the system.</p>
-        </div>
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">🌍</div>
-          <h3>12 Languages</h3>
-          <p>Full i18n support: English, 简体中文, 繁體中文, Deutsch, Français, 日本語, 한국어, Русский, Español, Nederlands, Português, हिन्दी.</p>
-        </div>
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">🆓</div>
-          <h3>Free &amp; Open Source</h3>
-          <p>Licensed under GPLv3. No ads, no telemetry, no paywalls. Community-driven development.</p>
-        </div>
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">⌨️</div>
-          <h3>Global Shortcuts</h3>
-          <p>Bind custom hotkeys for speed up, speed down, toggle, and presets. Control speed without leaving your game.</p>
-        </div>
-        <div class="feature-card reveal reveal-up">
-          <div class="icon">📊</div>
-          <h3>Process Dashboard</h3>
-          <p>Real-time process list with memory usage, PID, and architecture info. Sort and filter with ease.</p>
+    <div class="hero__shot" id="hero-shot">
+      <div class="shot-frame">
+        <img data-shot="dark:home" src="assets/shots/dark-home-zh.webp" alt="" width="1216" height="816" fetchpriority="high">
+        <div class="hero__float">
+          <span class="dot"></span>
+          <span data-i18n="hero.float">桥接在线 · 32/64 位就绪</span>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ─── HOW IT WORKS ────────────── -->
-  <section id="how-it-works">
-    <div class="section-inner">
-      <h2 class="section-title reveal reveal-up">How It Works</h2>
-      <p class="section-subtitle reveal reveal-up">OpenSpeedy hooks Windows time APIs to manipulate the perception of time in target processes</p>
-      <div class="table-wrap reveal reveal-scale">
+  <div class="wrap">
+    <div class="stats rv">
+      <div class="stat">
+        <div class="stat__v" id="s-stars" data-live>—</div>
+        <div class="stat__k" data-i18n="stat.stars">Stars</div>
+      </div>
+      <div class="stat">
+        <div class="stat__v" id="s-dl" data-live>—</div>
+        <div class="stat__k" data-i18n="stat.dl">总下载量</div>
+      </div>
+      <div class="stat">
+        <div class="stat__v fire-text" data-ver-tpl="v{ver}">v3.3.9</div>
+        <div class="stat__k" data-i18n="stat.ver">最新版本</div>
+      </div>
+      <div class="stat">
+        <div class="stat__v">GPL-3.0</div>
+        <div class="stat__k" data-i18n="stat.lic">开源协议</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================================================================
+     Full-bleed band — a pure image beat, no copy laid over the artwork
+     ====================================================================== -->
+<div class="band" aria-hidden="true">
+  <img src="assets/hero/highway.webp" alt="" width="2400" height="775" loading="lazy" decoding="async">
+  <div class="band__scrim"></div>
+  <p class="band__cap" data-i18n="band.cap">RING-3 API HOOK · 无内核驱动</p>
+</div>
+
+
+<!-- ======================================================================
+     Features — true hairline grid, no card chrome
+     ====================================================================== -->
+<section class="section" id="features">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="feat.eyebrow">能力</p>
+    <h2 class="h2 rv" style="--d:60ms" data-i18n="feat.h">它做什么</h2>
+    <p class="lede rv" style="--d:120ms" data-i18n="feat.lede">一个进程列表，一个倍率滑块，就这些。剩下的交给 17 个被 Hook 的 Windows 时间 API。</p>
+
+    <div class="feat-grid rv" style="--d:180ms">
+      <article class="feat">
+        <svg class="feat__ico" aria-hidden="true"><use href="#i-gauge"/></svg>
+        <h3 class="feat__t" data-i18n="feat.1.t">实时倍率</h3>
+        <p class="feat__d" data-i18n="feat.1.d">拖动即生效，无需重启游戏。变速步长与档位可分别配置，也可按住快捷键临时加速。</p>
+        <span class="feat__tag">SP_SetSpeed</span>
+      </article>
+      <article class="feat">
+        <svg class="feat__ico" aria-hidden="true"><use href="#i-keys"/></svg>
+        <h3 class="feat__t" data-i18n="feat.2.t">档位与快捷键</h3>
+        <p class="feat__d" data-i18n="feat.2.d">升速、降速、重置各绑定一个全局快捷键，加速档位可预设，冲突会被立即报出。</p>
+        <span class="feat__tag">RegisterHotKey</span>
+      </article>
+      <article class="feat">
+        <svg class="feat__ico" aria-hidden="true"><use href="#i-layers"/></svg>
+        <h3 class="feat__t" data-i18n="feat.3.t">名称 / PID 双视图</h3>
+        <p class="feat__d" data-i18n="feat.3.d">按进程名分组，或按 PID 逐条展开。搜索同时匹配进程名、PID 与窗口标题。</p>
+        <span class="feat__tag">Enumerate</span>
+      </article>
+      <article class="feat">
+        <svg class="feat__ico" aria-hidden="true"><use href="#i-cpu"/></svg>
+        <h3 class="feat__t" data-i18n="feat.4.t">x86 + x64 桥接</h3>
+        <p class="feat__d" data-i18n="feat.4.d">同一份界面同时驱动 32 位与 64 位目标进程，桥接在线状态在标题栏实时可见。</p>
+        <span class="feat__tag">Bridge</span>
+      </article>
+      <article class="feat">
+        <svg class="feat__ico" aria-hidden="true"><use href="#i-shield"/></svg>
+        <h3 class="feat__t" data-i18n="feat.5.t">不碰内核</h3>
+        <p class="feat__d" data-i18n="feat.5.d">全部 Hook 停留在 Ring-3，不加载内核驱动、不改动系统内核，卸载即完全还原。</p>
+        <span class="feat__tag">MinHook · Ring 3</span>
+      </article>
+      <article class="feat">
+        <svg class="feat__ico" aria-hidden="true"><use href="#i-globe"/></svg>
+        <h3 class="feat__t" data-i18n="feat.6.t">12 种语言</h3>
+        <p class="feat__d" data-i18n="feat.6.d">界面与文档覆盖 12 种语言，含简体与繁体中文。深色、浅色主题随你切换。</p>
+        <span class="feat__tag">i18n × 12</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================================================================
+     Hook API
+     ====================================================================== -->
+<section class="section hooks" id="api">
+  <div class="hooks__bg" aria-hidden="true">
+    <img src="assets/hero/flame-space.webp" alt="" width="1232" height="706" loading="lazy" decoding="async">
+  </div>
+
+  <div class="wrap">
+    <div class="hooks__head">
+      <p class="eyebrow rv" data-i18n="api.eyebrow">原理</p>
+      <h2 class="h2 rv" style="--d:60ms" data-i18n="api.h">被 Hook 的时间 API</h2>
+      <p class="lede rv" style="--d:120ms" data-i18n="api.lede">OpenSpeedy 不修改游戏逻辑，只接管游戏读取时间的入口。所有 Hook 在目标进程内完成，向下调用原始实现。</p>
+    </div>
+
+    <div class="flow rv" style="--d:180ms">
+      <div class="flow__s">
+        <p class="flow__n">01</p>
+        <h3 class="flow__t" data-i18n="api.flow.1.t">注入</h3>
+        <p class="flow__d" data-i18n="api.flow.1.d">由桥接进程把 speedpatch 注入目标进程，失败会在界面上直接报出原因。</p>
+      </div>
+      <div class="flow__s">
+        <p class="flow__n">02</p>
+        <h3 class="flow__t" data-i18n="api.flow.2.t">接管</h3>
+        <p class="flow__d" data-i18n="api.flow.2.d">MinHook 在 17 个时间 API 上挂载 detour，读到的时刻按倍率缩放后返回。</p>
+      </div>
+      <div class="flow__s">
+        <p class="flow__n">03</p>
+        <h3 class="flow__t" data-i18n="api.flow.3.t">还原</h3>
+        <p class="flow__d" data-i18n="api.flow.3.d">关闭加速或卸载 DLL 时移除全部 Hook，游戏恢复真实时间。</p>
+      </div>
+    </div>
+
+    <div class="hook-panel rv" style="--d:240ms">
+      <div class="hook-panel__bar">
+        <span class="dot"></span>
+        <span><b>speedpatch.dll</b> · 17</span>
+      </div>
+      <div class="scroll-x">
         <table>
           <thead>
             <tr>
-              <th>API Function</th>
-              <th>Library</th>
-              <th>Purpose</th>
+              <th data-i18n="api.col.fn">函数</th>
+              <th data-i18n="api.col.dll">所属库</th>
+              <th data-i18n="api.col.desc">作用</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="reveal reveal-left"><td>Sleep</td><td>kernel32.dll</td><td>Thread sleep duration</td></tr>
-            <tr class="reveal reveal-left"><td>SleepEx</td><td>kernel32.dll</td><td>Extended thread sleep</td></tr>
-            <tr class="reveal reveal-left"><td>SetTimer</td><td>user32.dll</td><td>Message-based timer intervals</td></tr>
-            <tr class="reveal reveal-left"><td>timeGetTime</td><td>winmm.dll</td><td>System uptime (ms)</td></tr>
-            <tr class="reveal reveal-left"><td>GetTickCount</td><td>kernel32.dll</td><td>System uptime (ms)</td></tr>
-            <tr class="reveal reveal-left"><td>GetTickCount64</td><td>kernel32.dll</td><td>System uptime (ms, 64-bit)</td></tr>
-            <tr class="reveal reveal-left"><td>QueryPerformanceCounter</td><td>kernel32.dll</td><td>High-resolution performance counter</td></tr>
-            <tr class="reveal reveal-left"><td>GetSystemTimeAsFileTime</td><td>kernel32.dll</td><td>System time</td></tr>
-            <tr class="reveal reveal-left"><td>GetSystemTimePreciseAsFileTime</td><td>kernel32.dll</td><td>High-precision system time</td></tr>
-            <tr class="reveal reveal-left"><td>SetWaitableTimer</td><td>kernel32.dll</td><td>Waitable timer setup</td></tr>
-            <tr class="reveal reveal-left"><td>SetWaitableTimerEx</td><td>kernel32.dll</td><td>Extended waitable timer</td></tr>
-            <tr class="reveal reveal-left"><td>WaitForSingleObject</td><td>kernel32.dll</td><td>Single-object wait timeout</td></tr>
-            <tr class="reveal reveal-left"><td>WaitForMultipleObjects</td><td>kernel32.dll</td><td>Multiple-object wait timeout</td></tr>
-            <tr class="reveal reveal-left"><td>WaitForSingleObjectEx</td><td>kernel32.dll</td><td>Extended single-object wait</td></tr>
-            <tr class="reveal reveal-left"><td>WaitForMultipleObjectsEx</td><td>kernel32.dll</td><td>Extended multiple-object wait</td></tr>
+            <tr><td>Sleep</td><td>kernel32.dll</td><td data-i18n="fn.sleep">线程休眠</td></tr>
+            <tr><td>SleepEx</td><td>kernel32.dll</td><td data-i18n="fn.sleepex">可中断的线程休眠</td></tr>
+            <tr><td>WaitForSingleObject</td><td>kernel32.dll</td><td data-i18n="fn.wait1">等待单个对象就绪或超时</td></tr>
+            <tr><td>WaitForSingleObjectEx</td><td>kernel32.dll</td><td data-i18n="fn.wait1ex">可警报的单项等待</td></tr>
+            <tr><td>WaitForMultipleObjects</td><td>kernel32.dll</td><td data-i18n="fn.waitn">等待多个对象中的任意一个或全部</td></tr>
+            <tr><td>WaitForMultipleObjectsEx</td><td>kernel32.dll</td><td data-i18n="fn.waitnex">可警报的多项等待</td></tr>
+            <tr><td>SetWaitableTimer</td><td>kernel32.dll</td><td data-i18n="fn.swt">设置可等待定时器</td></tr>
+            <tr><td>SetWaitableTimerEx</td><td>kernel32.dll</td><td data-i18n="fn.swtex">设置可等待定时器（扩展）</td></tr>
+            <tr><td>GetTickCount</td><td>kernel32.dll</td><td data-i18n="fn.gtc">系统启动至今的毫秒数</td></tr>
+            <tr><td>GetTickCount64</td><td>kernel32.dll</td><td data-i18n="fn.gtc64">系统启动至今的毫秒数（64 位）</td></tr>
+            <tr><td>QueryPerformanceCounter</td><td>kernel32.dll</td><td data-i18n="fn.qpc">高精度性能计数器</td></tr>
+            <tr><td>GetSystemTimeAsFileTime</td><td>kernel32.dll</td><td data-i18n="fn.gstaft">系统时间（FILETIME）</td></tr>
+            <tr><td>GetSystemTimePreciseAsFileTime</td><td>kernel32.dll</td><td data-i18n="fn.gstpaft">高精度系统时间（FILETIME）</td></tr>
+            <tr><td>SetTimer</td><td>user32.dll</td><td data-i18n="fn.settimer">创建基于消息的计时器</td></tr>
+            <tr><td>GetMessageTime</td><td>user32.dll</td><td data-i18n="fn.gmt">消息队列中的时间戳</td></tr>
+            <tr><td>timeGetTime</td><td>winmm.dll</td><td data-i18n="fn.tgt">系统启动至今的毫秒数</td></tr>
+            <tr><td>timeSetEvent</td><td>winmm.dll</td><td data-i18n="fn.tst">多媒体定时器事件</td></tr>
           </tbody>
         </table>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ─── DOWNLOAD ────────────────── -->
-  <section id="download" style="background: var(--bg-card);">
-    <div class="section-inner" style="text-align:center;">
-      <h2 class="section-title reveal reveal-up">Installation</h2>
-      <p class="section-subtitle reveal reveal-up">Get OpenSpeedy in seconds</p>
 
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 700px; margin: 0 auto 40px;">
-        <div class="install-card reveal reveal-scale" style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding: 28px 24px;">
-          <div style="font-size:1.5rem; margin-bottom:8px;">📦</div>
-          <h3 style="margin-bottom:12px;">Winget</h3>
-          <code style="display:block; background:var(--bg); padding:12px 16px; border-radius:6px; font-size:0.88rem; text-align:left; border:1px solid var(--border); color:var(--accent);">winget install openspeedy</code>
+<!-- ======================================================================
+     Screenshots — the 12 captures are a theme × language × page cube
+     ====================================================================== -->
+<section class="section" id="shots">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="shot.eyebrow">界面</p>
+    <h2 class="h2 rv" style="--d:60ms" data-i18n="shot.h">看一眼</h2>
+    <p class="lede rv" style="--d:120ms" data-i18n="shot.lede">深色与浅色、中文与 English——四种组合都是真实截图，不是效果图。</p>
+
+    <div class="viewer__bar rv" style="--d:160ms">
+      <div class="viewer__group">
+        <span class="viewer__label" data-i18n="shot.l.theme">主题</span>
+        <div class="seg" role="group">
+          <button type="button" data-v="theme" data-val="dark" aria-pressed="true" data-i18n="shot.dark">深色</button>
+          <button type="button" data-v="theme" data-val="light" aria-pressed="false" data-i18n="shot.light">浅色</button>
         </div>
-        <div class="install-card reveal reveal-scale" style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding: 28px 24px;">
-          <div style="font-size:1.5rem; margin-bottom:8px;">📥</div>
-          <h3 style="margin-bottom:12px;">Manual Download</h3>
-          <p style="color:var(--text-secondary); font-size:0.92rem; margin-bottom:16px;">Get the latest MSI installer from GitHub Releases</p>
-          <a class="btn btn-primary" href="https://github.com/game1024/OpenSpeedy/releases" target="_blank" rel="noopener" style="font-size:0.9rem; padding:10px 20px;">
-            Go to Releases
+      </div>
+
+      <div class="viewer__group">
+        <span class="viewer__label" data-i18n="shot.l.lang">界面语言</span>
+        <div class="seg" role="group">
+          <button type="button" data-v="lang" data-val="zh" aria-pressed="true">中文</button>
+          <button type="button" data-v="lang" data-val="en" aria-pressed="false">English</button>
+        </div>
+      </div>
+
+      <div class="viewer__group">
+        <span class="viewer__label" data-i18n="shot.l.page">页面</span>
+        <div class="seg" role="group">
+          <button type="button" data-v="page" data-val="home" aria-pressed="true" data-i18n="shot.home">主页</button>
+          <button type="button" data-v="page" data-val="settings" aria-pressed="false" data-i18n="shot.settings">设置</button>
+          <button type="button" data-v="page" data-val="about" aria-pressed="false" data-i18n="shot.about">关于</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="viewer__wrap rv" style="--d:200ms">
+      <div class="viewer__glow" aria-hidden="true"></div>
+      <div class="viewer__stage" id="viewer-stage"></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================================================================
+     Download
+     ====================================================================== -->
+<section class="section section--tight" id="download">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="dl.eyebrow">获取</p>
+    <h2 class="h2 rv" style="--d:60ms" data-i18n="dl.h">装它</h2>
+    <p class="lede rv" style="--d:120ms" data-i18n="dl.lede">一条命令，或者从 Releases 直接拿安装包。</p>
+
+    <div class="dl-grid rv" style="--d:180ms">
+      <div class="dl">
+        <h3 class="dl__t"><span data-i18n="dl.m1.t">Winget</span> <span data-i18n="dl.m1.b">推荐</span></h3>
+        <p class="dl__d" data-i18n="dl.m1.d">装完新开一个终端，直接输入 openspeedy 启动。</p>
+        <div class="code">
+          <code>winget install openspeedy</code>
+          <button class="copy" type="button" data-copy="winget install openspeedy" data-i18n-title="dl.copy" aria-label="复制">
+            <svg class="i-copy" aria-hidden="true"><use href="#i-copy"/></svg>
+            <svg class="i-check" aria-hidden="true"><use href="#i-check"/></svg>
+          </button>
+        </div>
+        <div class="reqs">
+          <span><b data-i18n="dl.req.os">系统</b> · Windows 10 / 11</span>
+          <span><b data-i18n="dl.req.arch">架构</b> · x86 + x64</span>
+        </div>
+      </div>
+
+      <div class="dl">
+        <h3 class="dl__t"><span data-i18n="dl.m2.t">手动下载</span> <span data-i18n="dl.m2.b">便携</span></h3>
+        <p class="dl__d" data-i18n="dl.m2.d">从 Releases 页面取最新版本的安装包或绿色版。</p>
+        <div class="dl__links">
+          <a class="btn btn--primary btn--sm" href="https://github.com/game1024/OpenSpeedy/releases/latest" target="_blank" rel="noopener">
+            <svg aria-hidden="true"><use href="#i-download"/></svg>
+            <span data-i18n="hero.cta.dl" data-ver>下载 v3.3.9</span>
+          </a>
+          <a class="btn btn--ghost btn--sm" href="https://github.com/game1024/OpenSpeedy/releases" target="_blank" rel="noopener">
+            <svg aria-hidden="true"><use href="#i-ext"/></svg>
+            <span data-i18n="dl.m2.link">打开 Releases</span>
           </a>
         </div>
-      </div>
-
-      <div class="stats-grid reveal reveal-up" style="margin-top:32px;">
-        <div class="stat-card">
-          <div class="value" id="stat-stars">—</div>
-          <div class="label">GitHub Stars</div>
+        <div class="reqs">
+          <span><b data-i18n="stat.ver">最新版本</b> · <span data-ver-tpl="v{ver}">v3.3.9</span></span>
+          <span><b data-i18n="dl.req.src">源码</b> · C++ / Rust</span>
         </div>
-        <div class="stat-card">
-          <div class="value" id="stat-downloads">—</div>
-          <div class="label">Total Downloads</div>
-        </div>
-        <div class="stat-card">
-          <div class="value" id="stat-version">v3.3.9</div>
-          <div class="label">Latest Version</div>
-        </div>
-        <div class="stat-card">
-          <div class="value">Windows</div>
-          <div class="label">Platform</div>
-        </div>
-      </div>
-
-      <div class="badges reveal reveal-up" style="margin-top:32px;">
-        <a href="https://www.producthunt.com/products/openspeedy?utm_source=badge-featured&utm_medium=badge" target="_blank" rel="noopener">
-          <img alt="Featured on Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1206701&theme=dark">
-        </a>
-        <a href="https://trendshift.io/repositories/17801" target="_blank" rel="noopener">
-          <img alt="Trendshift" width="250" height="55" src="https://trendshift.io/api/badge/trendshift/repositories/17801/monthly?language=C%2B%2B">
-        </a>
-        <a href="https://hellogithub.com/repository/975f473c56ad4369a1c30ac9aa5819e0" target="_blank" rel="noopener">
-          <img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=975f473c56ad4369a1c30ac9aa5819e0&claim_uid=kmUCncHJr9SpNV7&theme=dark" alt="HelloGitHub" width="250" height="54">
-        </a>
       </div>
     </div>
-  </section>
 
-  <!-- ─── WARNINGS ────────────────── -->
-  <section id="warnings">
-    <div class="section-inner">
-      <h2 class="section-title reveal reveal-up">Important Notes</h2>
-      <p class="section-subtitle reveal reveal-up">Please read before using OpenSpeedy</p>
-      <ul class="warning-list">
-        <li class="reveal reveal-left">This tool is for educational and research purposes only.</li>
-        <li class="reveal reveal-left">Some online games have anti-cheat systems — using this tool may result in account bans.</li>
-        <li class="reveal reveal-left">Excessive speed may cause game physics glitches or crashes.</li>
-        <li class="reveal reveal-left">Not recommended for use in competitive online games.</li>
-        <li class="reveal reveal-left">Open-source software without digital signatures may trigger false positives from antivirus software.</li>
+    <div class="notes rv" style="--d:240ms;margin-top:40px">
+      <h3 class="notes__t">
+        <svg aria-hidden="true"><use href="#i-warn"/></svg>
+        <span data-i18n="note.t">使用前请读一遍</span>
+      </h3>
+      <ul>
+        <li data-i18n="note.1">本工具仅供学习和研究使用。</li>
+        <li data-i18n="note.2">部分在线游戏带有反作弊系统，使用本工具可能导致账号被封禁。</li>
+        <li data-i18n="note.3">过度加速可能导致游戏物理引擎异常或崩溃。</li>
+        <li data-i18n="note.4">不建议在竞技类在线游戏中使用。</li>
+        <li data-i18n="note.5">开源产品不带数字签名，可能被杀毒软件误报。</li>
+        <li data-i18n="note.6">遇到问题先查 FAQ，网盘类问题请勿提 Issue。</li>
       </ul>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ─── FOOTER ──────────────────── -->
-  <footer>
-    <div class="footer-links">
-      <a href="https://github.com/game1024/OpenSpeedy" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://github.com/game1024/OpenSpeedy/releases" target="_blank" rel="noopener">Releases</a>
-      <a href="https://github.com/game1024/OpenSpeedy/issues" target="_blank" rel="noopener">Issues</a>
-      <a href="https://github.com/game1024/OpenSpeedy/wiki" target="_blank" rel="noopener">Wiki</a>
-      <a href="https://github.com/game1024/OpenSpeedy/blob/master/LICENSE" target="_blank" rel="noopener">License</a>
+
+<!-- ======================================================================
+     Footer
+     ====================================================================== -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot__grid">
+      <div>
+        <div class="foot__brand">
+          <img src="assets/brand/logo-mark.png" alt="" width="495" height="495">
+          <img src="assets/brand/logo-wordmark.png" alt="OpenSpeedy" width="1044" height="168">
+        </div>
+        <p class="foot__d" data-i18n="foot.d">开源游戏变速控制器。纯 Ring-3 层 API Hook，不加载内核驱动。</p>
+      </div>
+
+      <div>
+        <h4 data-i18n="foot.l.product">产品</h4>
+        <ul>
+          <li><a href="#features" data-i18n="nav.features">功能</a></li>
+          <li><a href="#shots" data-i18n="nav.shots">截图</a></li>
+          <li><a href="#api" data-i18n="foot.api">使用的接口</a></li>
+          <li><a href="#download" data-i18n="foot.req">系统要求</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 data-i18n="foot.l.res">资源</h4>
+        <ul>
+          <li><a href="https://github.com/game1024/OpenSpeedy/releases" target="_blank" rel="noopener" data-i18n="foot.changelog">更新日志</a></li>
+          <li><a href="https://github.com/game1024/OpenSpeedy/blob/master/LICENSE" target="_blank" rel="noopener" data-i18n="foot.license">开源协议</a></li>
+          <li><a href="https://github.com/game1024/OpenSpeedy/issues" target="_blank" rel="noopener" data-i18n="foot.issues">问题反馈</a></li>
+          <li><a href="https://github.com/game1024/OpenSpeedy/wiki" target="_blank" rel="noopener" data-i18n="foot.wiki">FAQ / Wiki</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 data-i18n="foot.l.ack">鸣谢</h4>
+        <ul>
+          <li><a href="https://github.com/TsudaKageyu/minhook" target="_blank" rel="noopener">MinHook</a></li>
+          <li><a href="https://tauri.app/" target="_blank" rel="noopener">Tauri</a></li>
+          <li><a href="https://mui.com/" target="_blank" rel="noopener">MUI</a></li>
+          <li><a href="https://ant.design/" target="_blank" rel="noopener">Ant Design</a></li>
+        </ul>
+      </div>
     </div>
-    <p>OpenSpeedy &copy; 2025–2026 <a href="https://github.com/game1024" target="_blank" rel="noopener">Game1024</a> — Licensed under GPLv3</p>
-  </footer>
 
-  <!-- ─── JS: scroll animations + live stats ───── -->
-  <script>
-    // ── Intersection Observer for scroll-reveal ──
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry, i) => {
-        if (entry.isIntersecting) {
-          // Stagger delay within groups
-          const siblings = entry.target.parentElement?.querySelectorAll('.reveal');
-          if (siblings && siblings.length > 1 && entry.target.dataset.staggered !== 'true') {
-            const index = Array.from(siblings).indexOf(entry.target);
-            entry.target.style.transitionDelay = (index * 0.08) + 's';
-            entry.target.dataset.staggered = 'true';
-          }
-          entry.target.classList.add('visible');
-        }
-      });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    <div class="foot__base">
+      <span>© <span id="year">2026</span> Game1024 · GPL-3.0</span>
+      <span data-i18n="foot.disc">免责声明：OpenSpeedy 仅用于教育和研究目的。用户应自行承担使用本软件的全部风险与责任。</span>
+    </div>
+  </div>
+</footer>
 
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-    // ── Section title underline reveal ──
-    const titleObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) entry.target.classList.add('visible-underline');
-      });
-    }, { threshold: 0.5 });
-    document.querySelectorAll('.section-title').forEach(el => titleObserver.observe(el));
-
-    // ── Nav shadow on scroll ──
-    window.addEventListener('scroll', () => {
-      document.querySelector('nav').classList.toggle('scrolled', window.scrollY > 10);
-    });
-
-    // ── Fetch live stats ──
-    (async () => {
-      try {
-        const repoResp = await fetch('https://api.github.com/repos/game1024/OpenSpeedy');
-        if (repoResp.ok) {
-          const repo = await repoResp.json();
-          document.getElementById('stat-stars').textContent =
-            repo.stargazers_count >= 1000
-              ? (repo.stargazers_count / 1000).toFixed(1) + 'k'
-              : repo.stargazers_count;
-        }
-      } catch {}
-      try {
-        const relResp = await fetch('https://api.github.com/repos/game1024/OpenSpeedy/releases?per_page=50');
-        if (relResp.ok) {
-          const releases = await relResp.json();
-          let total = 0;
-          releases.forEach(r => {
-            r.assets.forEach(a => { total += a.download_count; });
-          });
-          const el = document.getElementById('stat-downloads');
-          el.textContent = total >= 1000 ? (total / 1000).toFixed(1) + 'k' : total;
-          // Latest release tag — keeps the version card current without a manual edit
-          if (releases[0]?.tag_name) {
-            document.getElementById('stat-version').textContent = 'v' + releases[0].tag_name.replace(/^v/, '');
-          }
-        }
-      } catch {}
-    })();
-  </script>
-
+<script src="site.js"></script>
 </body>
 </html>
