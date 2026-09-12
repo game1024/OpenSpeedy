@@ -463,24 +463,6 @@ button {
   pointer-events: none;
 }
 
-.hero__float {
-  position: absolute;
-  left: -14px;
-  bottom: -14px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 14px;
-  border-radius: var(--r-btn);
-  background: rgb(18 24 38 / 0.92);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--hairline-strong);
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--text-mid);
-  box-shadow: var(--ambient);
-}
-
 .dot {
   width: 7px;
   height: 7px;
@@ -1081,7 +1063,6 @@ button {
   .feat { border-left: 0 !important; border-top: 1px solid var(--hairline); }
   .feat:first-child { border-top: 0; }
   .foot__grid { grid-template-columns: 1fr; gap: 32px; }
-  .hero__float { left: 8px; bottom: 8px; font-size: 10.5px; }
   .brand__word { display: none; }
   .btn { width: 100%; justify-content: center; }
   .hero__cta { flex-direction: column; }
