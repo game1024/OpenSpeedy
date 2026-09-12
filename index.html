@@ -125,7 +125,7 @@
       <div class="hero__cta">
         <a class="btn btn--primary" href="https://github.com/game1024/OpenSpeedy/releases/latest" target="_blank" rel="noopener">
           <svg aria-hidden="true"><use href="#i-download"/></svg>
-          <span data-i18n="hero.cta.dl" data-ver>下载 v3.3.9</span>
+          <span data-i18n="hero.cta.dl" data-ver>下载 v3.3.10</span>
         </a>
         <a class="btn btn--ghost" href="https://github.com/game1024/OpenSpeedy" target="_blank" rel="noopener">
           <svg aria-hidden="true"><use href="#i-github"/></svg>
@@ -143,7 +143,16 @@
 
     <div class="hero__shot" id="hero-shot">
       <div class="shot-frame">
-        <img data-shot="dark:home" src="assets/shots/dark-home-zh.webp" alt="" width="1216" height="816" fetchpriority="high">
+        <!-- The app in motion — WebM first (5x smaller), MP4 for everything
+             else. The dark-theme capture stands in while it loads, and stays
+             put for anyone who asked for reduced motion. No [data-shot]: the
+             clip reads the same in every language, so it does not follow the
+             page's language switcher the way the stills do. -->
+        <video autoplay loop muted playsinline preload="auto" width="900" height="506"
+               poster="assets/shots/dark-home-zh.webp" fetchpriority="high">
+          <source src="assets/hero/游戏加速.webm" type="video/webm">
+          <source src="assets/hero/游戏加速.mp4" type="video/mp4">
+        </video>
         <div class="hero__float">
           <span class="dot"></span>
           <span data-i18n="hero.float">桥接在线 · 32/64 位就绪</span>
@@ -163,7 +172,7 @@
         <div class="stat__k" data-i18n="stat.dl">总下载量</div>
       </div>
       <div class="stat">
-        <div class="stat__v fire-text" data-ver-tpl="v{ver}">v3.3.9</div>
+        <div class="stat__v fire-text" data-ver-tpl="v{ver}">v3.3.10</div>
         <div class="stat__k" data-i18n="stat.ver">最新版本</div>
       </div>
       <div class="stat">
@@ -385,7 +394,7 @@
         <div class="dl__links">
           <a class="btn btn--primary btn--sm" href="https://github.com/game1024/OpenSpeedy/releases/latest" target="_blank" rel="noopener">
             <svg aria-hidden="true"><use href="#i-download"/></svg>
-            <span data-i18n="hero.cta.dl" data-ver>下载 v3.3.9</span>
+            <span data-i18n="hero.cta.dl" data-ver>下载 v3.3.10</span>
           </a>
           <a class="btn btn--ghost btn--sm" href="https://github.com/game1024/OpenSpeedy/releases" target="_blank" rel="noopener">
             <svg aria-hidden="true"><use href="#i-ext"/></svg>
@@ -393,7 +402,7 @@
           </a>
         </div>
         <div class="reqs">
-          <span><b data-i18n="stat.ver">最新版本</b> · <span data-ver-tpl="v{ver}">v3.3.9</span></span>
+          <span><b data-i18n="stat.ver">最新版本</b> · <span data-ver-tpl="v{ver}">v3.3.10</span></span>
           <span><b data-i18n="dl.req.src">源码</b> · C++ / Rust</span>
         </div>
       </div>

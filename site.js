@@ -7,7 +7,7 @@
   var REPO = "game1024/OpenSpeedy";
   // Shipped version, used until (and unless) the Releases API answers. Keep in
   // step with package.json / src-tauri/tauri.conf.json.
-  var FALLBACK_VER = "3.3.9";
+  var FALLBACK_VER = "3.3.10";
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ------------------------------------------------------------------------
@@ -342,6 +342,32 @@
       if (next !== lang) setLang(next);
     });
   });
+
+  /* ------------------------------------------------------------------------
+     Hero film  — the looping capture that replaced the hero screenshot. It
+     autoplays in HTML, so this only has to honour a reduce-motion preference:
+     stop it where it stands, leaving the poster frame and the controls, so
+     anyone who wants to watch can still start it by hand.
+     ------------------------------------------------------------------------ */
+
+  var heroFilm = document.querySelector(".shot-frame video");
+  if (heroFilm) {
+    var calmMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    var syncHeroFilm = function () {
+      if (calmMotion.matches) {
+        heroFilm.pause();
+        heroFilm.controls = true;
+      } else {
+        heroFilm.controls = false;
+        // Rejects when the browser refuses the autoplay — the poster stays up.
+        var started = heroFilm.play();
+        if (started) started.catch(function () { /* expected: autoplay blocked */ });
+      }
+    };
+    syncHeroFilm();
+    if (calmMotion.addEventListener) calmMotion.addEventListener("change", syncHeroFilm);
+    else if (calmMotion.addListener) calmMotion.addListener(syncHeroFilm);
+  }
 
   /* ------------------------------------------------------------------------
      Live GitHub stats  — cached 30 min so repeat visits don't burn the

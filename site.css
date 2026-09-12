@@ -446,6 +446,12 @@ button {
 
 .shot-frame img { width: 100%; }
 
+.shot-frame video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .hero__shot { will-change: transform; }
 
 .hero__shot::after {
