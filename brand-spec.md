@@ -39,7 +39,7 @@ The matrix lines up exactly with the two controls in the screenshot viewer
 (app theme × page language), so every combination the user can select has a
 real capture behind it.
 
-> ⚠️ **Captures show v3.3.6.** They predate the v3.3.10 process-list changes
+> ⚠️ **Captures show v3.3.6.** They predate the v3.3.11 process-list changes
 > (name-grouped default, system-process toggle). Not corrected digitally.
 
 ## 2. Color
