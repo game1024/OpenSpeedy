@@ -93,11 +93,12 @@ assert(stripped[1]?.processes.join(",") === "other.exe", "later duplicate exe is
 assert(stripped[0]?.processes.join(",") === "Game.exe", "earliest keeps the exe");
 
 assert(validateProfileName("  ", []) === "empty", "blank name");
-assert(validateProfileName(" 全局 ", []) === "reserved", "reserved name");
+assert(validateProfileName(" Global ", [], undefined, "Global") === "reserved", "reserved name");
 assert(validateProfileName("手柄游戏", [game]) === "duplicate", "duplicate name");
 assert(validateProfileName("  手柄游戏  ", [game], "a") === null, "self rename");
-assert(nextProfileName([]) === "配置 1", "default name");
-assert(nextProfileName([{ ...game, name: "配置 1" }]) === "配置 2", "next free name");
+const fmt = (n: number) => `Profile ${n}`;
+assert(nextProfileName([], fmt) === "Profile 1", "default name");
+assert(nextProfileName([{ ...game, name: "Profile 1" }], fmt) === "Profile 2", "next free name");
 
 const store: { settings: { increaseSpeedShortcut: string }; shortcutProfiles: unknown } = {
   settings: { increaseSpeedShortcut: "NUMPADADD" },

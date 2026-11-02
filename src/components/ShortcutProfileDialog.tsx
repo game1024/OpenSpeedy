@@ -42,7 +42,7 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
 
   useEffect(() => {
     if (!open) return;
-    setName(initial?.name ?? nextProfileName(profiles));
+    setName(initial?.name ?? nextProfileName(profiles, n => t("settings.profileDefaultName", { n })));
     setPicked((initial?.processes ?? []).map(exeBase).filter(Boolean));
     setQuery("");
     setShowSystem(false);
@@ -93,13 +93,14 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
   const runningKeys = new Set(groups.map(g => exeKey(g.name)));
   const kept = picked.filter(label => !occupiedBy(profiles, label, initial?.id));
   const resting = kept.filter(label => !runningKeys.has(exeKey(label)));
-  const nameError: NameError | null = validateProfileName(name, profiles, initial?.id);
+  const globalLabel = t("settings.profileGlobal");
+  const nameError: NameError | null = validateProfileName(name, profiles, initial?.id, globalLabel);
   const nameHelp = nameError === "empty"
     ? t("settings.profileNameEmpty")
     : nameError === "duplicate"
       ? t("settings.profileNameDuplicate")
       : nameError === "reserved"
-        ? t("settings.profileNameReserved")
+        ? t("settings.profileNameReserved", { name: globalLabel })
         : "";
 
   function isPicked(label: string) {

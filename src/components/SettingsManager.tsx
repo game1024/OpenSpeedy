@@ -44,6 +44,7 @@ function Row({ label, children }: { label: React.ReactNode; children: React.Reac
 
 export default function SettingsManager() {
   const { t } = useTranslation();
+  const profileNameSep = t("settings.profileNameSeparator");
   const { settings, set } = useSettings();
   const { shortcutStatus } = useShortcut();
   const { notify } = useSnackbar();
@@ -109,7 +110,7 @@ export default function SettingsManager() {
         {inheriting && <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>}
         {names.length > 0 && (
           <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3 }}>
-            {t("settings.profileOverridden", { names: names.join("、") })}
+            {t("settings.profileOverridden", { names: names.join(profileNameSep) })}
           </Typography>
         )}
       </Box>
@@ -158,7 +159,7 @@ export default function SettingsManager() {
         />
         {overridden.length > 0 && (
           <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3 }}>
-            {t("settings.profileOverridden", { names: overridden.join("、") })}
+            {t("settings.profileOverridden", { names: overridden.join(profileNameSep) })}
           </Typography>
         )}
       </Box>
@@ -187,7 +188,7 @@ export default function SettingsManager() {
         {profile && (
           <Box sx={{ px: 1, pb: 0.5 }}>
             <Typography variant="body2" color="text.secondary">
-              {t("settings.profileProcesses")}　{profile.processes.join("、")}
+              {t("settings.profileProcesses")}　{profile.processes.join(profileNameSep)}
             </Typography>
             <Typography variant="caption" color="text.disabled" sx={{ display: "block" }}>{t("settings.profileWhenForeground")}</Typography>
           </Box>

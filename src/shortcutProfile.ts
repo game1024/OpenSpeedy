@@ -42,8 +42,6 @@ export interface ShortcutProfile {
 
 export type NameError = "empty" | "duplicate" | "reserved";
 
-const RESERVED_NAME = "全局";
-
 export function exeBase(name: string): string {
   const trimmed = name.trim();
   const parts = trimmed.split(/[/\\]/);
@@ -68,19 +66,23 @@ export function validateProfileName(
   name: string,
   profiles: readonly ShortcutProfile[],
   selfId?: string,
+  reservedLabel?: string,
 ): NameError | null {
   const trimmed = name.trim();
   if (!trimmed) return "empty";
-  if (trimmed === RESERVED_NAME) return "reserved";
+  if (reservedLabel && trimmed === reservedLabel.trim()) return "reserved";
   if (profiles.some(p => p.id !== selfId && p.name.trim() === trimmed)) return "duplicate";
   return null;
 }
 
-export function nextProfileName(profiles: readonly ShortcutProfile[]): string {
+export function nextProfileName(
+  profiles: readonly ShortcutProfile[],
+  format: (n: number) => string,
+): string {
   const used = new Set(profiles.map(p => p.name.trim()));
   let n = 1;
-  while (used.has(`配置 ${n}`)) n++;
-  return `配置 ${n}`;
+  while (used.has(format(n))) n++;
+  return format(n);
 }
 
 export function compactShortcuts(
