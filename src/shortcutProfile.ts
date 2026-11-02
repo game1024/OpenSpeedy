@@ -15,11 +15,29 @@ export const SHORTCUT_SLOTS = [
 export type ShortcutSlot = (typeof SHORTCUT_SLOTS)[number];
 export type GlobalShortcuts = Record<ShortcutSlot, string>;
 
+/** Inclusive bounds, same as the global number fields. Missing key means inherit. */
+export const SPEED_VALUE_BOUNDS = {
+  increaseSpeedStep: [0.1, 10],
+  decreaseSpeedStep: [0.1, 100],
+  gear1Speed: [0.01, 100],
+  gear2Speed: [0.01, 100],
+  gear3Speed: [0.01, 100],
+  gear4Speed: [0.01, 100],
+  gear5Speed: [0.01, 100],
+  holdSpeed: [0.01, 100],
+} as const;
+
+export type SpeedValueKey = keyof typeof SPEED_VALUE_BOUNDS;
+export type SpeedValues = Record<SpeedValueKey, number>;
+
+const SPEED_VALUE_KEYS = Object.keys(SPEED_VALUE_BOUNDS) as SpeedValueKey[];
+
 export interface ShortcutProfile {
   id: string;
   name: string;
   processes: string[];
   shortcuts: Partial<Record<ShortcutSlot, string>>;
+  values?: Partial<Record<SpeedValueKey, number>>;
 }
 
 export type NameError = "empty" | "duplicate" | "reserved";
@@ -77,6 +95,19 @@ export function compactShortcuts(
   return out;
 }
 
+export function compactValues(
+  input: Partial<Record<SpeedValueKey, unknown>> | undefined,
+): Partial<Record<SpeedValueKey, number>> {
+  const out: Partial<Record<SpeedValueKey, number>> = {};
+  if (!input) return out;
+  for (const key of SPEED_VALUE_KEYS) {
+    const value = input[key];
+    const [min, max] = SPEED_VALUE_BOUNDS[key];
+    if (typeof value === "number" && Number.isFinite(value) && value >= min && value <= max) out[key] = value;
+  }
+  return out;
+}
+
 /** Earliest profile keeps each exe. Later copies of the same exe are dropped. */
 export function stripDuplicateProcesses(profiles: readonly ShortcutProfile[]): ShortcutProfile[] {
   const seen = new Set<string>();
@@ -104,11 +135,17 @@ export function normalizeProfiles(raw: unknown): ShortcutProfile[] {
     const processes = Array.isArray(row.processes)
       ? row.processes.filter((name): name is string => typeof name === "string")
       : [];
+    const rawValues = row.values;
     parsed.push({
       id: row.id,
       name: typeof row.name === "string" ? row.name : "",
       processes,
       shortcuts: compactShortcuts(row.shortcuts as Partial<Record<ShortcutSlot, string>> | undefined),
+      values: compactValues(
+        rawValues && typeof rawValues === "object"
+          ? rawValues as Partial<Record<SpeedValueKey, unknown>>
+          : undefined,
+      ),
     });
   }
   return stripDuplicateProcesses(parsed);
@@ -123,6 +160,7 @@ export function upsertProfile(
     name: profile.name.trim(),
     processes: profile.processes,
     shortcuts: compactShortcuts(profile.shortcuts),
+    values: compactValues(profile.values),
   };
   const replaced = profiles.some(p => p.id === next.id)
     ? profiles.map(p => (p.id === next.id ? next : p))
@@ -148,6 +186,16 @@ export function profilesOverriding(profiles: readonly ShortcutProfile[], slot: S
   return profiles.filter(p => !!p.shortcuts[slot]).map(p => p.name);
 }
 
+export function profilesOverridingValue(profiles: readonly ShortcutProfile[], key: SpeedValueKey): string[] {
+  return profiles.filter(p => typeof p.values?.[key] === "number").map(p => p.name);
+}
+
+function profileForExe(profiles: readonly ShortcutProfile[], foregroundExe: string): ShortcutProfile | null {
+  const key = exeKey(foregroundExe);
+  if (!key) return null;
+  return profiles.find(p => p.processes.some(proc => exeKey(proc) === key)) ?? null;
+}
+
 export interface ResolveResult {
   profileId: string | null;
   shortcuts: GlobalShortcuts;
@@ -159,16 +207,32 @@ export function resolveShortcuts(
   profiles: readonly ShortcutProfile[],
   foregroundExe: string,
 ): ResolveResult {
-  const key = exeKey(foregroundExe);
-  const profile = key
-    ? profiles.find(p => p.processes.some(proc => exeKey(proc) === key)) ?? null
-    : null;
+  const profile = profileForExe(profiles, foregroundExe);
   const shortcuts = {} as GlobalShortcuts;
   for (const slot of SHORTCUT_SLOTS) {
     const override = profile?.shortcuts[slot];
     shortcuts[slot] = override ? override : (global[slot] ?? "");
   }
   return { profileId: profile?.id ?? null, shortcuts, conflicts: conflictingSlots(shortcuts) };
+}
+
+export function resolveSpeedValues(
+  global: SpeedValues,
+  profiles: readonly ShortcutProfile[],
+  foregroundExe: string,
+): SpeedValues {
+  const overrides = profileForExe(profiles, foregroundExe)?.values;
+  const out = {} as SpeedValues;
+  for (const key of SPEED_VALUE_KEYS) out[key] = overrides?.[key] ?? global[key];
+  return out;
+}
+
+/** The hit profile's stored overrides. Empty when no profile matches, so callers can still read live globals. */
+export function speedOverrides(
+  profiles: readonly ShortcutProfile[],
+  foregroundExe: string,
+): Partial<Record<SpeedValueKey, number>> {
+  return profileForExe(profiles, foregroundExe)?.values ?? {};
 }
 
 /** Editor preview. `shortcuts === null` is the global table. */

@@ -121,6 +121,7 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
       name,
       processes: kept,
       shortcuts: initial?.shortcuts ?? {},
+      values: initial?.values,
     });
   }
 

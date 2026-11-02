@@ -1,4 +1,5 @@
 import {
+  compactValues,
   deleteProfile,
   diffRegistration,
   exeKey,
@@ -6,11 +7,14 @@ import {
   normalizeProfiles,
   previewShortcuts,
   registrationEntries,
+  registrationSignature,
   resolveShortcuts,
+  resolveSpeedValues,
   upsertProfile,
   validateProfileName,
   type GlobalShortcuts,
   type ShortcutProfile,
+  type SpeedValues,
 } from "./shortcutProfile.ts";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -127,5 +131,72 @@ const collided = registrationEntries(previewShortcuts(globalKeys, { increaseSpee
 const collidedSub = collided.find(entry => entry.shortcut === "NUMPADSUB");
 assert(collidedSub?.conflict === true, "conflict chord stays registered");
 assert(collided.filter(entry => entry.shortcut === "NUMPADSUB").length === 1, "conflict chord is registered once");
+
+const steps: SpeedValues = {
+  increaseSpeedStep: 1,
+  decreaseSpeedStep: 0.5,
+  gear1Speed: 1,
+  gear2Speed: 2,
+  gear3Speed: 5,
+  gear4Speed: 10,
+  gear5Speed: 100,
+  holdSpeed: 2,
+};
+const stepped: ShortcutProfile = { ...game, values: { increaseSpeedStep: 3 } };
+const steppedHit = resolveSpeedValues(steps, [stepped], "gameA.exe");
+assert(steppedHit.increaseSpeedStep === 3, "override increase step");
+assert(steppedHit.decreaseSpeedStep === 0.5, "inherit decrease step");
+assert(steppedHit.gear3Speed === 5 && steppedHit.holdSpeed === 2, "inherit gear and hold");
+const pinnedStep = resolveSpeedValues(
+  { ...steps, increaseSpeedStep: 2 },
+  [{ ...game, values: { increaseSpeedStep: 1 } }],
+  "gameA.exe",
+);
+assert(pinnedStep.increaseSpeedStep === 1, "explicit step stays put");
+
+const dirty = normalizeProfiles([{
+  id: "d",
+  name: "脏",
+  processes: ["d.exe"],
+  shortcuts: {},
+  values: { increaseSpeedStep: 11, decreaseSpeedStep: 0.05, gear1Speed: "nope", holdSpeed: Number.NaN, gear2Speed: 4 },
+}]);
+assert(dirty[0]?.values?.increaseSpeedStep === undefined, "increase above 10 dropped");
+assert(dirty[0]?.values?.decreaseSpeedStep === undefined, "decrease below 0.1 dropped");
+assert(dirty[0]?.values?.gear1Speed === undefined, "non-numeric dropped");
+assert(dirty[0]?.values?.holdSpeed === undefined, "non-finite dropped");
+assert(dirty[0]?.values?.gear2Speed === 4, "in-range gear kept");
+assert(compactValues({ increaseSpeedStep: 0.1, holdSpeed: 100 }).increaseSpeedStep === 0.1, "lower bound kept");
+assert(compactValues({ increaseSpeedStep: 10 }).increaseSpeedStep === 10, "upper bound kept");
+
+const legacy = normalizeProfiles([{
+  id: "old",
+  name: "旧",
+  processes: ["old.exe"],
+  shortcuts: { increaseSpeedShortcut: "A" },
+}]);
+const inherited = resolveSpeedValues(steps, legacy, "old.exe");
+assert(
+  (Object.keys(steps) as (keyof SpeedValues)[]).every(key => inherited[key] === steps[key]),
+  "legacy inherits all eight",
+);
+
+const withValue = upsertProfile([], { ...game, values: { increaseSpeedStep: 1 } });
+const resaved = upsertProfile(withValue, {
+  ...withValue[0]!,
+  shortcuts: { increaseSpeedShortcut: "Pad:LB+Down" },
+});
+assert(resaved[0]?.values?.increaseSpeedStep === 1, "shortcut save keeps step");
+assert(resaved[0]?.shortcuts.increaseSpeedShortcut === "Pad:LB+Down", "shortcut updated");
+
+const sameChord = { increaseSpeedShortcut: "NUMPADADD" } as const;
+const stepOne: ShortcutProfile = { ...game, id: "s1", processes: ["one.exe"], shortcuts: sameChord, values: { increaseSpeedStep: 1 } };
+const stepThree: ShortcutProfile = { ...game, id: "s3", processes: ["three.exe"], shortcuts: sameChord, values: { increaseSpeedStep: 3 } };
+const listOne = registrationEntries(resolveShortcuts(globalKeys, [stepOne, stepThree], "one.exe"));
+const listThree = registrationEntries(resolveShortcuts(globalKeys, [stepOne, stepThree], "three.exe"));
+assert(registrationSignature(listOne) === registrationSignature(listThree), "same shortcuts do not reregister");
+assert(resolveSpeedValues(steps, [stepOne, stepThree], "one.exe").increaseSpeedStep === 1, "foreground one uses step 1");
+assert(resolveSpeedValues(steps, [stepOne, stepThree], "three.exe").increaseSpeedStep === 3, "foreground three uses step 3");
+assert(resolveSpeedValues({ ...steps, decreaseSpeedStep: 0.8 }, [stepOne], "one.exe").decreaseSpeedStep === 0.8, "unset step follows live global");
 
 console.log("shortcutProfile.check ok");

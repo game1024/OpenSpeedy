@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import {
-  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Typography, TextField, Switch, Divider,
+  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Typography, TextField, Switch, Divider,
   Select, MenuItem, Table, TableBody, TableCell, TableHead, TableRow,
 } from "@mui/material";
+import ClearIcon from "@mui/icons-material/Clear";
 import ShortcutField from "./ShortcutField";
 import ShortcutProfileDialog from "./ShortcutProfileDialog";
 import SpeedIcon from "@mui/icons-material/Speed";
@@ -23,8 +24,9 @@ import { reportError } from "../utils/frontendLog";
 import type { SettingsState } from "../store/settings";
 import { loadShortcutProfiles, saveShortcutProfiles } from "../store/settings";
 import {
-  deleteProfile, globalShortcuts, previewShortcuts, profilesOverriding, upsertProfile,
-  type ShortcutProfile, type ShortcutSlot,
+  deleteProfile, globalShortcuts, previewShortcuts, profilesOverriding, profilesOverridingValue,
+  SPEED_VALUE_BOUNDS, upsertProfile,
+  type ShortcutProfile, type ShortcutSlot, type SpeedValueKey,
 } from "../shortcutProfile";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -68,7 +70,51 @@ export default function SettingsManager() {
 
   const current = settings;
   const profile = profiles.find(item => item.id === selectedId) ?? null;
-  const numbersLocked = !!profile;
+
+  function numberCell(key: SpeedValueKey, fallback: number) {
+    const [min, max] = SPEED_VALUE_BOUNDS[key];
+    const pinned = profile?.values?.[key];
+    const inheriting = !!profile && pinned === undefined;
+    const raw = profile ? (pinned ?? current[key]) : current[key];
+    const shown = typeof raw === "number" ? raw : fallback;
+    const names = profile ? [] : profilesOverridingValue(profiles, key);
+    return (
+      <Box>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <TextField type="number" size="small" value={shown}
+            onChange={e => {
+              const n = Number(e.target.value);
+              if (!profile) {
+                void set(key, n || fallback);
+                return;
+              }
+              if (!Number.isFinite(n) || n < min || n > max) return;
+              void persistProfiles(
+                upsertProfile(profiles, { ...profile, values: { ...profile.values, [key]: n } }),
+                profile.id,
+              );
+            }}
+            sx={{ width: 80, ...(inheriting ? { "& .MuiInputBase-input": { color: "text.disabled" } } : {}) }}
+            slotProps={{ htmlInput: { min, max, step: 0.1 } }} />
+          {profile && pinned !== undefined && (
+            <IconButton size="small" onClick={() => {
+              const values = { ...profile.values };
+              delete values[key];
+              void persistProfiles(upsertProfile(profiles, { ...profile, values }), profile.id);
+            }}>
+              <ClearIcon sx={{ fontSize: "1rem", color: "text.secondary" }} />
+            </IconButton>
+          )}
+        </Box>
+        {inheriting && <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>}
+        {names.length > 0 && (
+          <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3 }}>
+            {t("settings.profileOverridden", { names: names.join("、") })}
+          </Typography>
+        )}
+      </Box>
+    );
+  }
 
   async function persistProfiles(next: ShortcutProfile[], select: string) {
     setProfiles(next);
@@ -154,14 +200,13 @@ export default function SettingsManager() {
             <Typography variant="subtitle2" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, color: "text.secondary" }}>
               {t("settings.speedShortcuts")}
             </Typography>
-            {profile && <Typography variant="caption" color="text.disabled">{t("settings.profileInheritNote")}</Typography>}
           </Box>
         </Divider>
         <Table size="small">
           <colgroup>
             <col />
             <col width={240} />
-            <col width={80} />
+            <col width={120} />
           </colgroup>
           <TableHead>
             <TableRow>
@@ -174,23 +219,12 @@ export default function SettingsManager() {
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.increase")}</TableCell>
               <TableCell sx={{ border: "none" }}>{cell("increaseSpeedShortcut")}</TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <TextField type="number" size="small" disabled={numbersLocked}
-                  value={settings.increaseSpeedStep}
-                  onChange={e => set("increaseSpeedStep", Number(e.target.value) || 0.1)}
-                  slotProps={{ htmlInput: { min: 0.1, max: 10, step: 0.1 } }} />
-              </TableCell>
+              <TableCell sx={{ border: "none" }}>{numberCell("increaseSpeedStep", 0.1)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.decrease")}</TableCell>
               <TableCell sx={{ border: "none" }}>{cell("decreaseSpeedShortcut")}</TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <TextField type="number" size="small" disabled={numbersLocked}
-                  value={settings.decreaseSpeedStep}
-                  onChange={e => set("decreaseSpeedStep", Number(e.target.value) || 0.1)}
-                  sx={{ width: 80 }}
-                  slotProps={{ htmlInput: { min: 0.1, max: 100, step: 0.1 } }} />
-              </TableCell>
+              <TableCell sx={{ border: "none" }}>{numberCell("decreaseSpeedStep", 0.1)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.reset")}</TableCell>
@@ -206,7 +240,6 @@ export default function SettingsManager() {
               <Typography variant="subtitle2" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, color: "text.secondary" }}>
                 {t("settings.gears")}
               </Typography>
-              {profile && <Typography variant="caption" color="text.disabled">{t("settings.profileInheritNote")}</Typography>}
             </Box>
           </Divider>
 
@@ -215,7 +248,7 @@ export default function SettingsManager() {
             <colgroup>
               <col />
               <col width={240} />
-              <col width={80} />
+              <col width={120} />
             </colgroup>
             <TableHead>
               <TableRow>
@@ -233,26 +266,14 @@ export default function SettingsManager() {
               <TableRow key={gear}>
                 <TableCell sx={{ border: "none" }}>{t("settings.gear")} {gear}</TableCell>
                 <TableCell sx={{ border: "none" }}>{cell(`gear${gear}Shortcut` as ShortcutSlot)}</TableCell>
-                <TableCell sx={{ border: "none" }}>
-                  <TextField type="number" size="small" disabled={numbersLocked}
-                    value={settings?.[`gear${gear}Speed` as keyof SettingsState]}
-                    onChange={e => set(`gear${gear}Speed` as keyof SettingsState, Number(e.target.value) || 1)}
-                    sx={{ width: 80 }}
-                    slotProps={{ htmlInput: { min: 0.01, max: 100, step: 0.1 } }} />
-                </TableCell>
+                <TableCell sx={{ border: "none" }}>{numberCell(`gear${gear}Speed` as SpeedValueKey, 1)}</TableCell>
               </TableRow>
             ))}
             {/* Hold shortcut — press to activate, release to reset */}
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.hold")}</TableCell>
               <TableCell sx={{ border: "none" }}>{cell("holdShortcut")}</TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <TextField type="number" size="small" disabled={numbersLocked}
-                  value={settings?.holdSpeed as number}
-                  onChange={e => set("holdSpeed", Number(e.target.value) || 2)}
-                  sx={{ width: 80 }}
-                  slotProps={{ htmlInput: { min: 0.01, max: 100, step: 0.1 } }} />
-              </TableCell>
+              <TableCell sx={{ border: "none" }}>{numberCell("holdSpeed", 2)}</TableCell>
             </TableRow>
           </TableBody>
         </Table>

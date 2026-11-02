@@ -10,8 +10,10 @@ import {
   registrationEntries,
   registrationSignature,
   resolveShortcuts,
+  speedOverrides,
   type RegEntry,
   type ShortcutSlot,
+  type SpeedValueKey,
 } from "../shortcutProfile";
 
 type ShortcutTriggerState = {
@@ -52,6 +54,13 @@ export function shortcutRegistered(shortcut: string): boolean | undefined {
 
 let persistSpeed: (n: number) => void = (n) => { void setSetting("speed", n); };
 let readNumber: (key: string) => number = () => 0;
+let activeOverrides: Partial<Record<SpeedValueKey, number>> = {};
+
+function speedOf(key: SpeedValueKey, fallback: number): number {
+  const pinned = activeOverrides[key];
+  if (typeof pinned === "number") return pinned;
+  return readNumber(key) || fallback;
+}
 
 let chain: Promise<void> = Promise.resolve();
 let primed = false;
@@ -64,7 +73,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 function runSlot(slot: ShortcutSlot, phase: "press" | "release") {
   if (slot === "increaseSpeedShortcut" && phase === "press") {
     invoke<number | null>("bridge_get_speed").then(current => {
-      const next = (current ?? 1) + (readNumber("increaseSpeedStep") || 0.5);
+      const next = (current ?? 1) + speedOf("increaseSpeedStep", 0.5);
       invoke("bridge_set_speed", { factor: next });
       persistSpeed(next);
     });
@@ -72,7 +81,7 @@ function runSlot(slot: ShortcutSlot, phase: "press" | "release") {
   }
   if (slot === "decreaseSpeedShortcut" && phase === "press") {
     invoke<number | null>("bridge_get_speed").then(current => {
-      const next = Math.max(0.01, (current ?? 1) - (readNumber("decreaseSpeedStep") || 0.5));
+      const next = Math.max(0.01, (current ?? 1) - speedOf("decreaseSpeedStep", 0.5));
       invoke("bridge_set_speed", { factor: next });
       persistSpeed(next);
     });
@@ -84,13 +93,13 @@ function runSlot(slot: ShortcutSlot, phase: "press" | "release") {
     return;
   }
   if (slot.startsWith("gear") && phase === "press") {
-    const speed = readNumber(slot.replace("Shortcut", "Speed")) || 1;
+    const speed = speedOf(slot.replace("Shortcut", "Speed") as SpeedValueKey, 1);
     invoke("bridge_set_speed", { factor: speed });
     persistSpeed(speed);
     return;
   }
   if (slot === "holdShortcut") {
-    const factor = phase === "press" ? (readNumber("holdSpeed") || 2) : 1;
+    const factor = phase === "press" ? speedOf("holdSpeed", 2) : 1;
     invoke("bridge_set_speed", { factor });
     persistSpeed(factor);
   }
@@ -148,6 +157,7 @@ async function applyActive(force: boolean) {
   if (primed && !force && !foregroundChanged) return;
 
   const [settings, profiles] = await Promise.all([loadSettings(), loadShortcutProfiles()]);
+  activeOverrides = speedOverrides(profiles, foreground);
   const next = registrationEntries(resolveShortcuts(globalShortcuts(settings), profiles, foreground));
   const nextSig = registrationSignature(next);
   if (primed && nextSig === activeSig) {
