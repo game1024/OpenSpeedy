@@ -24,6 +24,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { shortcutLabel } from "../hooks/useShortcut";
 import { Box, Typography, IconButton } from "@mui/material";
 import { KeyComboTag } from "@blueprintjs/core";
 import "@blueprintjs/core/lib/css/blueprint.css";
@@ -73,6 +75,9 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
     const { notify } = useSnackbar();
     const inputRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<string>("");
+    const onChangeRef = useRef(onChange);
+    const padCaptured = useRef(false);
+    onChangeRef.current = onChange;
 
     // Load platform once
     useEffect(() => { osRef.current = platform(); }, []);
@@ -227,6 +232,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
     // 处理录制开始
     const handleStartRecording = () => {
         if (disable) return;
+        padCaptured.current = false;
         setIsRecording(true);
         setCurrentCombo('');
     };
@@ -238,8 +244,46 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
         }
     }, [isRecording]);
 
+    // Keyboard capture only sees keys. Held pad buttons are a preview; the
+    // shortcut is written when a button is released.
+    useEffect(() => {
+        if (!isRecording) return;
+        let heldStop: UnlistenFn | undefined;
+        let captureStop: UnlistenFn | undefined;
+        let dead = false;
+        listen<{ tokens: string[] }>("gamepad-held", (event) => {
+            const tokens = event.payload.tokens.filter(Boolean);
+            if (tokens.length === 0) return;
+            setCurrentCombo(tokens.join("+"));
+        }).then((stop) => {
+            if (dead) stop();
+            else heldStop = stop;
+        });
+        listen<{ binding: string }>("gamepad-capture", (event) => {
+            if (!event.payload.binding) return;
+            padCaptured.current = true;
+            onChangeRef.current(event.payload.binding);
+            setIsRecording(false);
+            setCurrentCombo("");
+        }).then((stop) => {
+            if (dead) stop();
+            else captureStop = stop;
+        });
+        return () => {
+            dead = true;
+            heldStop?.();
+            captureStop?.();
+        };
+    }, [isRecording]);
+
     // 处理录制取消
     const handleCancelRecording = () => {
+        if (padCaptured.current) {
+            padCaptured.current = false;
+            setIsRecording(false);
+            setCurrentCombo('');
+            return;
+        }
         // 如果有已按下的组合键，保存它
         if (currentCombo) {
             // 检查是否只有修饰键（不包含实际功能键）
@@ -314,7 +358,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                                 ⚠
                             </Typography>
                         )}
-                        {value.split('+').map((key, index, array) => (
+                        {shortcutLabel(value).split('+').map((key, index, array) => (
                             <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <KeyComboTag combo={displayKey(key)} />
                                 {index < array.length - 1 && (
