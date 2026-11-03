@@ -16,7 +16,7 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useSettings } from "../hooks/useSettings";
-import { useShortcut } from "../hooks/useShortcut";
+import { shortcutLabel, useShortcut } from "../hooks/useShortcut";
 import { useSnackbar } from "../contexts/SnackbarContext";
 import { reportError } from "../utils/frontendLog";
 import type { SettingsState } from "../store/settings";
@@ -54,9 +54,9 @@ export default function SettingsManager() {
     if (newVal) {
       const ok = await register(newVal, cb).catch(() => false);
       if (ok) {
-        notify(t("settings.registerSuccess", { shortcut: newVal }), "success");
+        notify(t("settings.registerSuccess", { shortcut: shortcutLabel(newVal) }), "success");
       } else {
-        notify(t("settings.registerFail", { shortcut: newVal }), "error");
+        notify(t("settings.registerFail", { shortcut: shortcutLabel(newVal) }), "error");
       }
     }
     await set(key as keyof SettingsState, newVal);
@@ -67,9 +67,9 @@ export default function SettingsManager() {
     if (newVal) {
       const ok = await registerHold(newVal, onPress, onRelease).catch(() => false);
       if (ok) {
-        notify(t("settings.registerSuccess", { shortcut: newVal }), "success");
+        notify(t("settings.registerSuccess", { shortcut: shortcutLabel(newVal) }), "success");
       } else {
-        notify(t("settings.registerFail", { shortcut: newVal }), "error");
+        notify(t("settings.registerFail", { shortcut: shortcutLabel(newVal) }), "error");
       }
     }
     await set("holdShortcut", newVal);
