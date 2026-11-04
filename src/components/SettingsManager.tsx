@@ -23,9 +23,8 @@ import { useSnackbar } from "../contexts/SnackbarContext";
 import { reportError } from "../utils/frontendLog";
 import type { SettingsState } from "../store/settings";
 import { loadShortcutProfiles, saveShortcutProfiles } from "../store/settings";
-import { addAcceleratedName } from "../store/process";
 import {
-  deleteProfile, globalShortcuts, newlyAddedExes, previewShortcuts, profilesOverriding, profilesOverridingValue,
+  deleteProfile, exeKey, globalShortcuts, newlyAddedExes, previewShortcuts, profilesOverriding, profilesOverridingValue,
   SPEED_VALUE_BOUNDS, upsertProfile,
   type ShortcutProfile, type ShortcutSlot, type SpeedValueKey,
 } from "../shortcutProfile";
@@ -131,7 +130,18 @@ export default function SettingsManager() {
     setSelectedId(select);
     await saveShortcutProfiles(next);
     await syncShortcuts();
-    for (const name of added) await addAcceleratedName(name);
+    await enableRunning(added);
+  }
+
+  /** Turn matching processes on once. Does not remember the name, so the switch can be turned off later. */
+  async function enableRunning(names: string[]) {
+    if (names.length === 0) return;
+    const wanted = new Set(names.map(exeKey));
+    const list = await invoke<{ pid: number; name: string; arch: string }[]>("get_process_list_fast").catch(() => []);
+    for (const proc of list) {
+      if (!wanted.has(exeKey(proc.name))) continue;
+      invoke("bridge_inject", { pid: proc.pid, arch: proc.arch }).catch(() => {});
+    }
   }
 
   async function saveSlot(slot: ShortcutSlot, value: string) {

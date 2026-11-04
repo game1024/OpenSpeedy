@@ -335,6 +335,8 @@ export default function ProcessManager() {
         .catch((e) => { console.error("[toggle] bridge_inject error:", e); })
         .finally(() => { inflight.current.delete(pid); });
     } else {
+      const procName = processes.find(p => p.pid === pid)?.name;
+      if (procName) await removeAcceleratedName(procName);
       setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { ...prev.get(pid)!, enabled: false }); return n; });
       invoke<boolean>("bridge_disable", { pid, arch })
         .catch(() => {})
@@ -353,7 +355,9 @@ export default function ProcessManager() {
     const names = await getAcceleratedNames();
     for (const name of names) {
       const procs = processes.filter(p =>
-        p.name.toLowerCase() === name.toLowerCase() && !speedMap.get(p.pid)?.enabled
+        p.name.toLowerCase() === name.toLowerCase()
+        && !speedMap.get(p.pid)?.enabled
+        && !inflight.current.has(p.pid)
       );
       if (procs.length === 0) continue;
       const arch = procs[0].arch;
@@ -421,8 +425,8 @@ export default function ProcessManager() {
           .finally(() => { inflight.current.delete(pid); });
       }
     } else {
-      removeAcceleratedName(name);
       for (const pid of group.pids) inflight.current.add(pid);
+      await removeAcceleratedName(name);
       for (const pid of group.pids) {
         setSpeedMap(prev => { const n = new Map(prev); const cur = n.get(pid); if (cur) n.set(pid, { ...cur, enabled: false }); return n; });
       }
