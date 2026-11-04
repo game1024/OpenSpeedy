@@ -10,6 +10,7 @@ import {
   registrationSignature,
   resolveShortcuts,
   resolveSpeedValues,
+  newlyAddedExes,
   upsertProfile,
   validateProfileName,
   type GlobalShortcuts,
@@ -199,5 +200,12 @@ assert(registrationSignature(listOne) === registrationSignature(listThree), "sam
 assert(resolveSpeedValues(steps, [stepOne, stepThree], "one.exe").increaseSpeedStep === 1, "foreground one uses step 1");
 assert(resolveSpeedValues(steps, [stepOne, stepThree], "three.exe").increaseSpeedStep === 3, "foreground three uses step 3");
 assert(resolveSpeedValues({ ...steps, decreaseSpeedStep: 0.8 }, [stepOne], "one.exe").decreaseSpeedStep === 0.8, "unset step follows live global");
+
+const kept = newlyAddedExes(
+  [{ ...game, processes: ["Game.exe"] }],
+  [{ ...game, processes: ["game.exe", "New.exe"] }],
+);
+assert(kept.length === 1 && kept[0] === "New.exe", "only the new exe is enabled");
+assert(newlyAddedExes([{ ...game, processes: ["a.exe"] }], []).length === 0, "removing a profile does not list exes");
 
 console.log("shortcutProfile.check ok");

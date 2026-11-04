@@ -52,6 +52,25 @@ export function exeKey(name: string): string {
   return exeBase(name).toLowerCase();
 }
 
+/** Exe names present in `next` and absent from `previous`. Case-insensitive, file name only. */
+export function newlyAddedExes(
+  previous: readonly ShortcutProfile[],
+  next: readonly ShortcutProfile[],
+): string[] {
+  const had = new Set(previous.flatMap(profile => profile.processes.map(exeKey)).filter(Boolean));
+  const added: string[] = [];
+  const seen = new Set<string>();
+  for (const profile of next) {
+    for (const proc of profile.processes) {
+      const key = exeKey(proc);
+      if (!key || had.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      added.push(exeBase(proc));
+    }
+  }
+  return added;
+}
+
 export function globalShortcuts(source: object): GlobalShortcuts {
   const record = source as Record<string, unknown>;
   const out = {} as GlobalShortcuts;

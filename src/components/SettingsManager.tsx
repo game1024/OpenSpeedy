@@ -23,8 +23,9 @@ import { useSnackbar } from "../contexts/SnackbarContext";
 import { reportError } from "../utils/frontendLog";
 import type { SettingsState } from "../store/settings";
 import { loadShortcutProfiles, saveShortcutProfiles } from "../store/settings";
+import { addAcceleratedName } from "../store/process";
 import {
-  deleteProfile, globalShortcuts, previewShortcuts, profilesOverriding, profilesOverridingValue,
+  deleteProfile, globalShortcuts, newlyAddedExes, previewShortcuts, profilesOverriding, profilesOverridingValue,
   SPEED_VALUE_BOUNDS, upsertProfile,
   type ShortcutProfile, type ShortcutSlot, type SpeedValueKey,
 } from "../shortcutProfile";
@@ -118,10 +119,12 @@ export default function SettingsManager() {
   }
 
   async function persistProfiles(next: ShortcutProfile[], select: string) {
+    const added = newlyAddedExes(profiles, next);
     setProfiles(next);
     setSelectedId(select);
     await saveShortcutProfiles(next);
     await syncShortcuts();
+    for (const name of added) await addAcceleratedName(name);
   }
 
   async function saveSlot(slot: ShortcutSlot, value: string) {
