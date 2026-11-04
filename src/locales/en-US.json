@@ -113,6 +113,7 @@
     "profileDeleteTitle": "Delete profile",
     "profileDeleteAsk": "Delete \"{{name}}\"? Its shortcut and speed overrides will be removed.",
     "profileNameEmpty": "Name is required",
+    "profileNameTooLong": "At most {{max}} characters",
     "profileNameDuplicate": "Name is already used",
     "profileNameReserved": "The name \"{{name}}\" is reserved",
     "profileDefaultName": "Profile {{n}}",

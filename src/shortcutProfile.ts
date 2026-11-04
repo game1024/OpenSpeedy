@@ -40,7 +40,10 @@ export interface ShortcutProfile {
   values?: Partial<Record<SpeedValueKey, number>>;
 }
 
-export type NameError = "empty" | "duplicate" | "reserved";
+/** Fits the settings row: the closed select stays beside the edit and delete buttons. */
+export const PROFILE_NAME_MAX = 20;
+
+export type NameError = "empty" | "duplicate" | "reserved" | "long";
 
 export function exeBase(name: string): string {
   const trimmed = name.trim();
@@ -89,6 +92,7 @@ export function validateProfileName(
 ): NameError | null {
   const trimmed = name.trim();
   if (!trimmed) return "empty";
+  if ([...trimmed].length > PROFILE_NAME_MAX) return "long";
   if (reservedLabel && trimmed === reservedLabel.trim()) return "reserved";
   if (profiles.some(p => p.id !== selfId && p.name.trim() === trimmed)) return "duplicate";
   return null;

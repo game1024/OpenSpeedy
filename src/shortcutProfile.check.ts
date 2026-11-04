@@ -3,6 +3,7 @@ import {
   deleteProfile,
   diffRegistration,
   exeKey,
+  PROFILE_NAME_MAX,
   nextProfileName,
   normalizeProfiles,
   previewShortcuts,
@@ -94,6 +95,8 @@ assert(stripped[1]?.processes.join(",") === "other.exe", "later duplicate exe is
 assert(stripped[0]?.processes.join(",") === "Game.exe", "earliest keeps the exe");
 
 assert(validateProfileName("  ", []) === "empty", "blank name");
+assert(validateProfileName("x".repeat(PROFILE_NAME_MAX), []) === null, "name at the limit");
+assert(validateProfileName(`  ${"x".repeat(PROFILE_NAME_MAX + 1)}  `, []) === "long", "name past the limit");
 assert(validateProfileName(" Global ", [], undefined, "Global") === "reserved", "reserved name");
 assert(validateProfileName("手柄游戏", [game]) === "duplicate", "duplicate name");
 assert(validateProfileName("  手柄游戏  ", [game], "a") === null, "self rename");

@@ -113,6 +113,7 @@
     "profileDeleteTitle": "Excluir perfil",
     "profileDeleteAsk": "Excluir \"{{name}}\"? Atalhos e valores de velocidade personalizados serão removidos.",
     "profileNameEmpty": "O nome é obrigatório",
+    "profileNameTooLong": "No máximo {{max}} caracteres",
     "profileNameDuplicate": "Esse nome já está em uso",
     "profileNameReserved": "O nome \"{{name}}\" é reservado",
     "profileDefaultName": "Perfil {{n}}",

@@ -110,6 +110,7 @@
     "profileDeleteTitle": "刪除子設定",
     "profileDeleteAsk": "刪除「{{name}}」？這條設定上的快捷鍵與數值覆蓋會移除。",
     "profileNameEmpty": "名稱不能為空",
+    "profileNameTooLong": "名稱最多 {{max}} 個字",
     "profileNameDuplicate": "名稱已被使用",
     "profileNameReserved": "名稱不能使用「{{name}}」",
     "profileDefaultName": "設定 {{n}}",

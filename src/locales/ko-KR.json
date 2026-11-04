@@ -115,6 +115,7 @@
     "profileDeleteTitle": "프로필 삭제",
     "profileDeleteAsk": "「{{name}}」을(를) 삭제할까요? 단축키와 속도 값 덮어쓰기가 제거됩니다.",
     "profileNameEmpty": "이름을 입력하세요",
+    "profileNameTooLong": "최대 {{max}}자",
     "profileNameDuplicate": "이미 사용 중인 이름입니다",
     "profileNameReserved": "「{{name}}」 이름은 사용할 수 없습니다",
     "profileDefaultName": "프로필 {{n}}",

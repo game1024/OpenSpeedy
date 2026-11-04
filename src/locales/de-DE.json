@@ -115,6 +115,7 @@
     "profileDeleteTitle": "Profil löschen",
     "profileDeleteAsk": "\"{{name}}\" löschen? Tasten- und Geschwindigkeitsüberschreibungen werden entfernt.",
     "profileNameEmpty": "Name erforderlich",
+    "profileNameTooLong": "Höchstens {{max}} Zeichen",
     "profileNameDuplicate": "Name wird bereits verwendet",
     "profileNameReserved": "Der Name \"{{name}}\" ist reserviert",
     "profileDefaultName": "Profil {{n}}",

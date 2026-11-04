@@ -115,6 +115,7 @@
     "profileDeleteTitle": "プロファイルを削除",
     "profileDeleteAsk": "「{{name}}」を削除しますか？ショートカットと数値の上書きが削除されます。",
     "profileNameEmpty": "名前は必須です",
+    "profileNameTooLong": "{{max}} 文字まで",
     "profileNameDuplicate": "この名前は使われています",
     "profileNameReserved": "「{{name}}」という名前は使えません",
     "profileDefaultName": "プロファイル {{n}}",

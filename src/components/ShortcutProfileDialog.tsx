@@ -10,7 +10,7 @@ import WindowIcon from "@mui/icons-material/Window";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
-  exeBase, exeKey, nextProfileName, occupiedBy, validateProfileName,
+  exeBase, exeKey, nextProfileName, occupiedBy, PROFILE_NAME_MAX, validateProfileName,
   type NameError, type ShortcutProfile,
 } from "../shortcutProfile";
 
@@ -97,11 +97,13 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
   const nameError: NameError | null = validateProfileName(name, profiles, initial?.id, globalLabel);
   const nameHelp = nameError === "empty"
     ? t("settings.profileNameEmpty")
-    : nameError === "duplicate"
-      ? t("settings.profileNameDuplicate")
-      : nameError === "reserved"
-        ? t("settings.profileNameReserved", { name: globalLabel })
-        : "";
+    : nameError === "long"
+      ? t("settings.profileNameTooLong", { max: PROFILE_NAME_MAX })
+      : nameError === "duplicate"
+        ? t("settings.profileNameDuplicate")
+        : nameError === "reserved"
+          ? t("settings.profileNameReserved", { name: globalLabel })
+          : "";
 
   function isPicked(label: string) {
     const key = exeKey(label);
@@ -139,6 +141,7 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
           error={!!nameError}
           helperText={nameHelp}
           onChange={e => setName(e.target.value)}
+          slotProps={{ htmlInput: { maxLength: [...name].length > PROFILE_NAME_MAX ? undefined : PROFILE_NAME_MAX } }}
         />
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
           <TextField

@@ -115,6 +115,7 @@
     "profileDeleteTitle": "Supprimer le profil",
     "profileDeleteAsk": "Supprimer « {{name}} » ? Les remplacements de raccourcis et de valeurs seront retirés.",
     "profileNameEmpty": "Le nom est obligatoire",
+    "profileNameTooLong": "{{max}} caractères maximum",
     "profileNameDuplicate": "Ce nom est déjà utilisé",
     "profileNameReserved": "Le nom « {{name}} » est réservé",
     "profileDefaultName": "Profil {{n}}",

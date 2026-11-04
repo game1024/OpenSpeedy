@@ -113,6 +113,7 @@
     "profileDeleteTitle": "删除子配置",
     "profileDeleteAsk": "删除「{{name}}」？这条配置上的快捷键与数值覆盖会去掉。",
     "profileNameEmpty": "名称不能为空",
+    "profileNameTooLong": "名称最多 {{max}} 个字",
     "profileNameDuplicate": "名称已被使用",
     "profileNameReserved": "名称不能使用「{{name}}」",
     "profileDefaultName": "配置 {{n}}",

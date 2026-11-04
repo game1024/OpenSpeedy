@@ -177,9 +177,22 @@ export default function SettingsManager() {
       <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
         <Row label={t("settings.profile")}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Select size="small" value={profile ? profile.id : "global"} onChange={e => setSelectedId(e.target.value)} sx={{ minWidth: 140 }}>
+            <Select
+              size="small"
+              value={profile ? profile.id : "global"}
+              onChange={e => setSelectedId(e.target.value)}
+              sx={{
+                minWidth: 140,
+                maxWidth: 240,
+                "& .MuiSelect-select": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" },
+              }}
+            >
               <MenuItem value="global">{t("settings.profileGlobal")}</MenuItem>
-              {profiles.map(item => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
+              {profiles.map(item => (
+                <MenuItem key={item.id} value={item.id} sx={{ maxWidth: 320 }}>
+                  <Typography noWrap sx={{ fontSize: "inherit" }}>{item.name}</Typography>
+                </MenuItem>
+              ))}
             </Select>
             {profile ? (
               <>
@@ -352,7 +365,7 @@ export default function SettingsManager() {
         <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
           <DialogTitle>{t("settings.profileDeleteTitle")}</DialogTitle>
           <DialogContent>
-            <Typography variant="body2">{t("settings.profileDeleteAsk", { name: profile?.name ?? "" })}</Typography>
+            <Typography variant="body2" sx={{ wordBreak: "break-all" }}>{t("settings.profileDeleteAsk", { name: profile?.name ?? "" })}</Typography>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setConfirmDelete(false)}>{t("settings.profileCancel")}</Button>

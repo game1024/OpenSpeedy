@@ -113,6 +113,7 @@
     "profileDeleteTitle": "Eliminar perfil",
     "profileDeleteAsk": "¿Eliminar \"{{name}}\"? Se quitarán sus atajos y valores personalizados.",
     "profileNameEmpty": "El nombre es obligatorio",
+    "profileNameTooLong": "Como máximo {{max}} caracteres",
     "profileNameDuplicate": "Ese nombre ya se usa",
     "profileNameReserved": "El nombre \"{{name}}\" está reservado",
     "profileDefaultName": "Perfil {{n}}",

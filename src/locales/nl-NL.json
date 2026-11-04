@@ -113,6 +113,7 @@
     "profileDeleteTitle": "Profiel verwijderen",
     "profileDeleteAsk": "\"{{name}}\" verwijderen? Sneltoets- en waarde-overschrijvingen worden verwijderd.",
     "profileNameEmpty": "Naam is verplicht",
+    "profileNameTooLong": "Maximaal {{max}} tekens",
     "profileNameDuplicate": "Naam is al in gebruik",
     "profileNameReserved": "De naam \"{{name}}\" is gereserveerd",
     "profileDefaultName": "Profiel {{n}}",
