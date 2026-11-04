@@ -73,7 +73,8 @@
   },
   "shortcut": {
     "notSet": "Not set",
-    "keyNotSupported": "This key cannot be used as a shortcut"
+    "keyNotSupported": "This key cannot be used as a shortcut",
+    "inherited": "Inherited"
   },
   "settings": {
     "loading": "Loading settings…",
@@ -93,7 +94,28 @@
     "hideToTray": "Hide to tray",
     "language": "Language",
     "registerSuccess": "Shortcut \"{{shortcut}}\" registered",
-    "registerFail": "Shortcut \"{{shortcut}}\" registration failed"
+    "registerFail": "Shortcut \"{{shortcut}}\" registration failed",
+    "profile": "Profile",
+    "profileNew": "New",
+    "profileEdit": "Edit",
+    "profileDelete": "Delete",
+    "profileProcesses": "Processes",
+    "profileWhenForeground": "These shortcuts apply while a matching process is in the foreground",
+    "profileInheritNote": "Step and multiplier follow the global settings",
+    "profileGlobal": "Global",
+    "profileOverridden": "Overridden in {{names}}",
+    "profileUsedBy": "Used by {{name}}",
+    "profileName": "Name",
+    "profileCreate": "Create",
+    "profileSave": "Save",
+    "profileCancel": "Cancel",
+    "profileDeleteTitle": "Delete profile",
+    "profileDeleteAsk": "Delete \"{{name}}\"? Its shortcut overrides will be removed.",
+    "profileNameEmpty": "Name is required",
+    "profileNameDuplicate": "Name is already used",
+    "profileNameReserved": "This name is reserved",
+    "profileNotRunning": "Not running",
+    "profileSearch": "Search by process or window title"
   },
   "about": {
     "title": "OpenSpeedy",

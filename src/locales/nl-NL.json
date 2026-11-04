@@ -73,7 +73,8 @@
   },
   "shortcut": {
     "notSet": "Niet ingesteld",
-    "keyNotSupported": "Deze toets kan niet als sneltoets worden gebruikt"
+    "keyNotSupported": "Deze toets kan niet als sneltoets worden gebruikt",
+    "inherited": "Geërfd"
   },
   "settings": {
     "loading": "Instellingen laden…",
@@ -93,7 +94,28 @@
     "hideToTray": "Verbergen in systeemvak",
     "language": "Taal",
     "registerSuccess": "Sneltoets \"{{shortcut}}\" geregistreerd",
-    "registerFail": "Sneltoets \"{{shortcut}}\" registratie mislukt"
+    "registerFail": "Sneltoets \"{{shortcut}}\" registratie mislukt",
+    "profile": "Profiel",
+    "profileNew": "Nieuw",
+    "profileEdit": "Bewerken",
+    "profileDelete": "Verwijderen",
+    "profileProcesses": "Processen",
+    "profileWhenForeground": "Deze sneltoetsen gelden terwijl een passend proces op de voorgrond staat",
+    "profileInheritNote": "Stap en vermenigvuldiger volgen de algemene instellingen",
+    "profileGlobal": "Algemeen",
+    "profileOverridden": "Overschreven in {{names}}",
+    "profileUsedBy": "Gebruikt door {{name}}",
+    "profileName": "Naam",
+    "profileCreate": "Maken",
+    "profileSave": "Opslaan",
+    "profileCancel": "Annuleren",
+    "profileDeleteTitle": "Profiel verwijderen",
+    "profileDeleteAsk": "\"{{name}}\" verwijderen? De eigen sneltoetsen verdwijnen.",
+    "profileNameEmpty": "Naam is verplicht",
+    "profileNameDuplicate": "Naam is al in gebruik",
+    "profileNameReserved": "Deze naam is gereserveerd",
+    "profileNotRunning": "Niet actief",
+    "profileSearch": "Zoek op proces of venstertitel"
   },
   "about": {
     "title": "OpenSpeedy",

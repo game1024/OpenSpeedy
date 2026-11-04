@@ -30,7 +30,7 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::Controls::IImageList;
 use windows::Win32::UI::WindowsAndMessaging::{
-    DestroyIcon, DrawIconEx, EnumWindows, GetWindowTextLengthW, GetWindowTextW,
+    DestroyIcon, DrawIconEx, EnumWindows, GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
     GetWindowThreadProcessId, IsWindowVisible, DI_NORMAL,
 };
 
@@ -243,17 +243,21 @@ pub fn enumerate_processes_fast() -> Vec<ProcessInfo> {
                         admin: cached.admin,
                     });
                 } else {
-                    // New process — eagerly fetch arch + exe path + admin (cheapest), defer memory+title
+                    // First sight of this pid. The UI hides memory_kb == 0 as a system
+                    // process, so the cache must keep the values just read. Storing 0
+                    // here made the next fast poll drop a process that had just started.
                     let arch = detect_arch(pid);
                     let exe_path = get_exe_path(pid);
                     let admin = is_admin(pid);
-                    cache_set(pid, arch.clone(), None, 0, exe_path.clone(), admin);
+                    let window_title = find_window_title(pid);
+                    let memory_kb = get_memory_kb(pid);
+                    cache_set(pid, arch.clone(), window_title.clone(), memory_kb, exe_path.clone(), admin);
                     processes.push(ProcessInfo {
                         pid,
                         name,
                         arch,
-                        window_title: find_window_title(pid),
-                        memory_kb: get_memory_kb(pid),
+                        window_title,
+                        memory_kb,
                         exe_path,
                         admin,
                     });
@@ -362,6 +366,44 @@ pub fn get_process_icon(pid: u32) -> Option<String> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+/// Exe file name of the foreground window. Empty when there is no foreground window
+/// or its image name cannot be read. Never a path.
+pub fn foreground_exe_name() -> String {
+    let hwnd = unsafe { GetForegroundWindow() };
+    if hwnd.is_invalid() {
+        return String::new();
+    }
+    let mut pid = 0u32;
+    unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+    if pid == 0 {
+        return String::new();
+    }
+    exe_file_name(pid).unwrap_or_default()
+}
+
+fn exe_file_name(pid: u32) -> Option<String> {
+    // Limited query still works for an elevated foreground game.
+    let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+    let mut buf = vec![0u16; 1024];
+    let mut len = buf.len() as u32;
+    let result = unsafe {
+        QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            PWSTR::from_raw(buf.as_mut_ptr()),
+            &mut len,
+        )
+    };
+    let _ = unsafe { CloseHandle(handle) };
+    if result.is_err() {
+        return None;
+    }
+    let path = String::from_utf16_lossy(&buf[..len as usize]);
+    std::path::Path::new(&path)
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+}
+
 fn get_exe_path(pid: u32) -> Option<String> {
     let handle = open_process(pid)?;
 
@@ -670,4 +712,13 @@ fn open_process(pid: u32) -> Option<HANDLE> {
         return None;
     }
     unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid) }.ok()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn foreground_exe_name_is_not_a_path() {
+        let name = super::foreground_exe_name();
+        assert!(!name.contains('\\') && !name.contains('/'), "{name}");
+    }
 }

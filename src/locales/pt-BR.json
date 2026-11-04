@@ -73,7 +73,8 @@
   },
   "shortcut": {
     "notSet": "Não definido",
-    "keyNotSupported": "Esta tecla não pode ser usada como atalho"
+    "keyNotSupported": "Esta tecla não pode ser usada como atalho",
+    "inherited": "Herdado"
   },
   "settings": {
     "loading": "Carregando configurações…",
@@ -93,7 +94,28 @@
     "hideToTray": "Ocultar na bandeja",
     "language": "Idioma",
     "registerSuccess": "Atalho \"{{shortcut}}\" registrado",
-    "registerFail": "Falha ao registrar atalho \"{{shortcut}}\""
+    "registerFail": "Falha ao registrar atalho \"{{shortcut}}\"",
+    "profile": "Perfil",
+    "profileNew": "Novo",
+    "profileEdit": "Editar",
+    "profileDelete": "Excluir",
+    "profileProcesses": "Processos",
+    "profileWhenForeground": "Estes atalhos valem enquanto um processo correspondente estiver em primeiro plano",
+    "profileInheritNote": "O passo e o multiplicador seguem as opções globais",
+    "profileGlobal": "Global",
+    "profileOverridden": "Substituído em {{names}}",
+    "profileUsedBy": "Usado por {{name}}",
+    "profileName": "Nome",
+    "profileCreate": "Criar",
+    "profileSave": "Salvar",
+    "profileCancel": "Cancelar",
+    "profileDeleteTitle": "Excluir perfil",
+    "profileDeleteAsk": "Excluir \"{{name}}\"? Os atalhos próprios deste perfil serão removidos.",
+    "profileNameEmpty": "O nome é obrigatório",
+    "profileNameDuplicate": "Esse nome já está em uso",
+    "profileNameReserved": "Esse nome é reservado",
+    "profileNotRunning": "Não está em execução",
+    "profileSearch": "Pesquisar processo ou título da janela"
   },
   "about": {
     "title": "OpenSpeedy",

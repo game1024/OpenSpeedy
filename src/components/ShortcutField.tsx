@@ -37,6 +37,8 @@ interface ShortcutFieldProps {
     disable?: boolean;
     minWidth?: string;
     conflict?: boolean;
+    /** When set, an empty value shows this global shortcut faded, with an inherit caption. */
+    inheritFrom?: string;
 }
 
 /**
@@ -65,7 +67,7 @@ function displayKey(key: string): string {
     }
 }
 
-export default function ShortcutField({ value, onChange, disable = false, minWidth = '10rem', conflict = false }: ShortcutFieldProps) {
+export default function ShortcutField({ value, onChange, disable = false, minWidth = '10rem', conflict = false, inheritFrom }: ShortcutFieldProps) {
     const { t } = useTranslation();
     const [isRecording, setIsRecording] = useState(false);
     const [currentCombo, setCurrentCombo] = useState('');
@@ -307,21 +309,28 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                     )}
                 </Box>
             ) : (
-                value ? (
-                    <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                (value || inheritFrom !== undefined) ? (
+                    <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0.5, opacity: value ? 1 : 0.45 }}>
                         {conflict && (
                             <Typography variant="caption" sx={{ color: "error.main", fontWeight: 600, mr: 0.5 }}>
                                 ⚠
                             </Typography>
                         )}
-                        {value.split('+').map((key, index, array) => (
-                            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <KeyComboTag combo={displayKey(key)} />
-                                {index < array.length - 1 && (
-                                    <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>+</Typography>
-                                )}
-                            </Box>
-                        ))}
+                        {(value || inheritFrom) ? (
+                            (value || inheritFrom || "").split('+').map((key, index, array) => (
+                                <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <KeyComboTag combo={displayKey(key)} />
+                                    {index < array.length - 1 && (
+                                        <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>+</Typography>
+                                    )}
+                                </Box>
+                            ))
+                        ) : (
+                            <KeyComboTag combo={t("shortcut.notSet")} />
+                        )}
+                        {!value && inheritFrom !== undefined && (
+                            <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>
+                        )}
                     </Box>
                 ) : (
                     <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0.5 }}>

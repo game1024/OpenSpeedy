@@ -73,7 +73,8 @@
   },
   "shortcut": {
     "notSet": "Non défini",
-    "keyNotSupported": "Cette touche ne peut pas servir de raccourci"
+    "keyNotSupported": "Cette touche ne peut pas servir de raccourci",
+    "inherited": "Hérité"
   },
   "settings": {
     "loading": "Chargement des paramètres…",
@@ -95,7 +96,28 @@
     "hideToTray": "Réduire dans la zone de notification",
     "language": "Langue",
     "registerSuccess": "Raccourci \"{{shortcut}}\" enregistré",
-    "registerFail": "Échec de l'enregistrement de \"{{shortcut}}\""
+    "registerFail": "Échec de l'enregistrement de \"{{shortcut}}\"",
+    "profile": "Profil",
+    "profileNew": "Nouveau",
+    "profileEdit": "Modifier",
+    "profileDelete": "Supprimer",
+    "profileProcesses": "Processus",
+    "profileWhenForeground": "Ces raccourcis s’appliquent quand un processus correspondant est au premier plan",
+    "profileInheritNote": "Le pas et le multiplicateur suivent les réglages globaux",
+    "profileGlobal": "Global",
+    "profileOverridden": "Remplacé dans {{names}}",
+    "profileUsedBy": "Utilisé par {{name}}",
+    "profileName": "Nom",
+    "profileCreate": "Créer",
+    "profileSave": "Enregistrer",
+    "profileCancel": "Annuler",
+    "profileDeleteTitle": "Supprimer le profil",
+    "profileDeleteAsk": "Supprimer « {{name}} » ? Ses raccourcis propres seront retirés.",
+    "profileNameEmpty": "Le nom est obligatoire",
+    "profileNameDuplicate": "Ce nom est déjà utilisé",
+    "profileNameReserved": "Ce nom est réservé",
+    "profileNotRunning": "Pas en cours",
+    "profileSearch": "Rechercher un processus ou un titre de fenêtre"
   },
   "about": {
     "title": "OpenSpeedy",

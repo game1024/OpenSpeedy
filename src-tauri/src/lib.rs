@@ -124,6 +124,11 @@ fn shutdown_bridges() {
 }
 
 #[tauri::command(async)]
+async fn foreground_exe_name() -> String {
+    process_enumerator::foreground_exe_name()
+}
+
+#[tauri::command(async)]
 async fn get_process_list_fast() -> Vec<ProcessInfo> {
     process_enumerator::enumerate_processes_fast()
 }
@@ -257,6 +262,7 @@ pub fn run() -> Result<(), String> {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            foreground_exe_name,
             get_process_list,
             get_process_list_fast,
             get_process_icon,

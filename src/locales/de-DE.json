@@ -73,7 +73,8 @@
   },
   "shortcut": {
     "notSet": "Nicht gesetzt",
-    "keyNotSupported": "Diese Taste kann nicht als Tastenkürzel verwendet werden"
+    "keyNotSupported": "Diese Taste kann nicht als Tastenkürzel verwendet werden",
+    "inherited": "Geerbt"
   },
   "settings": {
     "loading": "Einstellungen laden…",
@@ -95,7 +96,28 @@
     "hideToTray": "In den Infobereich minimieren",
     "language": "Sprache",
     "registerSuccess": "Kürzel \"{{shortcut}}\" registriert",
-    "registerFail": "Kürzel \"{{shortcut}}\" fehlgeschlagen"
+    "registerFail": "Kürzel \"{{shortcut}}\" fehlgeschlagen",
+    "profile": "Profil",
+    "profileNew": "Neu",
+    "profileEdit": "Bearbeiten",
+    "profileDelete": "Löschen",
+    "profileProcesses": "Prozesse",
+    "profileWhenForeground": "Diese Tasten gelten, während ein passender Prozess im Vordergrund ist",
+    "profileInheritNote": "Schritt und Multiplikator folgen den globalen Werten",
+    "profileGlobal": "Global",
+    "profileOverridden": "Überschrieben in {{names}}",
+    "profileUsedBy": "Verwendet von {{name}}",
+    "profileName": "Name",
+    "profileCreate": "Erstellen",
+    "profileSave": "Speichern",
+    "profileCancel": "Abbrechen",
+    "profileDeleteTitle": "Profil löschen",
+    "profileDeleteAsk": "\"{{name}}\" löschen? Die Tastenbelegung dieses Profils wird entfernt.",
+    "profileNameEmpty": "Name erforderlich",
+    "profileNameDuplicate": "Name wird bereits verwendet",
+    "profileNameReserved": "Dieser Name ist reserviert",
+    "profileNotRunning": "Nicht aktiv",
+    "profileSearch": "Prozess oder Fenstertitel suchen"
   },
   "about": {
     "title": "OpenSpeedy",

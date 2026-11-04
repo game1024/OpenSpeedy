@@ -73,7 +73,8 @@
   },
   "shortcut": {
     "notSet": "सेट नहीं",
-    "keyNotSupported": "इस कुंजी को शॉर्टकट के रूप में उपयोग नहीं किया जा सकता"
+    "keyNotSupported": "इस कुंजी को शॉर्टकट के रूप में उपयोग नहीं किया जा सकता",
+    "inherited": "विरासत"
   },
   "settings": {
     "loading": "सेटिंग्स लोड हो रही हैं…",
@@ -93,7 +94,28 @@
     "hideToTray": "ट्रे में छिपाएँ",
     "language": "भाषा",
     "registerSuccess": "शॉर्टकट \"{{shortcut}}\" पंजीकृत",
-    "registerFail": "शॉर्टकट \"{{shortcut}}\" पंजीकरण विफल"
+    "registerFail": "शॉर्टकट \"{{shortcut}}\" पंजीकरण विफल",
+    "profile": "प्रोफ़ाइल",
+    "profileNew": "नया",
+    "profileEdit": "संपादित",
+    "profileDelete": "हटाएँ",
+    "profileProcesses": "प्रोसेस",
+    "profileWhenForeground": "मिलती प्रोसेस आगे होने पर ये शॉर्टकट लागू होते हैं",
+    "profileInheritNote": "चरण और गुणक वैश्विक सेटिंग से आते हैं",
+    "profileGlobal": "वैश्विक",
+    "profileOverridden": "{{names}} में बदला गया",
+    "profileUsedBy": "{{name}} में उपयोग",
+    "profileName": "नाम",
+    "profileCreate": "बनाएँ",
+    "profileSave": "सहेजें",
+    "profileCancel": "रद्द",
+    "profileDeleteTitle": "प्रोफ़ाइल हटाएँ",
+    "profileDeleteAsk": "\"{{name}}\" हटाएँ? इसके अपने शॉर्टकट हट जाएँगे।",
+    "profileNameEmpty": "नाम ज़रूरी है",
+    "profileNameDuplicate": "यह नाम पहले से है",
+    "profileNameReserved": "यह नाम आरक्षित है",
+    "profileNotRunning": "चल नहीं रहा",
+    "profileSearch": "प्रोसेस या विंडो शीर्षक खोजें"
   },
   "about": {
     "title": "OpenSpeedy",
