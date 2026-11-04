@@ -22,6 +22,10 @@ src-tauri/binaries/
 # Claude
 .claude/
 
+# WorkBuddy workspace data (local memory / session state — keep on disk)
+.workbuddy/
+workbuddy/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

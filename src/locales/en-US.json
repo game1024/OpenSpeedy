@@ -93,7 +93,10 @@
     "hideToTray": "Hide to tray",
     "language": "Language",
     "registerSuccess": "Shortcut \"{{shortcut}}\" registered",
-    "registerFail": "Shortcut \"{{shortcut}}\" registration failed"
+    "registerFail": "Shortcut \"{{shortcut}}\" registration failed",
+    "silentAutoStart": "Silent boot launch",
+    "silentAutoStartHint": "Starts with Windows with no main window, dialog or toast — tray icon only. Click the tray icon to restore the window. Mutually exclusive with \"Auto Start\" above.",
+    "bootModeFail": "Could not change the boot launch setting. Check the log."
   },
   "about": {
     "title": "OpenSpeedy",
@@ -110,5 +113,33 @@
     "copyInfoError": "Failed to copy system info. Please copy manually.",
     "copyInfo": "System Info",
     "openLog": "Open Log"
+  },
+  "autoAccel": {
+    "title": "Auto Acceleration",
+    "enable": "Enable auto acceleration",
+    "hint": "Bind a game process to a multiplier or gear. From then on, as soon as that process starts, the saved setting is applied automatically — no selecting or confirming again.",
+    "globalHint": "Note: the speed factor is global. If several bound games run at once, the most recently started one wins.",
+    "offWarning": "Master switch is off — bound rules are inactive",
+    "process": "Game process",
+    "speed": "Factor / gear",
+    "actions": "Actions",
+    "empty": "No games bound yet",
+    "selectProcess": "Select a running process",
+    "manual": "Enter a process name…",
+    "manualPlaceholder": "e.g. game.exe",
+    "custom": "Custom factor",
+    "customSpeed": "Factor",
+    "gearLabel": "Gear {{n}} ({{speed}}×)",
+    "bind": "Bind",
+    "edit": "Edit",
+    "remove": "Remove",
+    "saved": "Bound {{name}}",
+    "removed": "Removed {{name}}",
+    "saveFail": "Could not save. Check the log.",
+    "invalid": "Enter a process name and a factor between 0.001 and 1000",
+    "binding": "Auto acceleration",
+    "bindThis": "Bind with current factor",
+    "unbind": "Unbind",
+    "currentSpeed": "Current factor {{speed}}×"
   }
 }

@@ -93,7 +93,10 @@
     "hideToTray": "Ocultar en la bandeja",
     "language": "Idioma",
     "registerSuccess": "Atajo \"{{shortcut}}\" registrado",
-    "registerFail": "Error al registrar atajo \"{{shortcut}}\""
+    "registerFail": "Error al registrar atajo \"{{shortcut}}\"",
+    "silentAutoStart": "Inicio silencioso",
+    "silentAutoStartHint": "Arranca con Windows sin ventana, diálogo ni aviso: solo el icono de la bandeja. Pulsa ese icono para restaurar la ventana. Es incompatible con «Inicio automático» de arriba.",
+    "bootModeFail": "No se pudo cambiar el inicio automático. Consulta el registro."
   },
   "about": {
     "title": "OpenSpeedy",
@@ -110,5 +113,33 @@
     "copyInfoError": "Error al copiar. Copie manualmente.",
     "copyInfo": "Info del sistema",
     "openLog": "Abrir registro"
+  },
+  "autoAccel": {
+    "title": "Aceleración automática",
+    "enable": "Activar aceleración automática",
+    "hint": "Vincula un proceso de juego a un multiplicador o marcha. A partir de entonces, en cuanto ese proceso arranca se aplica el ajuste guardado sin volver a elegir ni confirmar.",
+    "globalHint": "Nota: el multiplicador es global. Si hay varios juevos vinculados a la vez, se aplica el del último en iniciarse.",
+    "offWarning": "El interruptor principal está apagado: las reglas no se aplican",
+    "process": "Proceso del juego",
+    "speed": "Multiplicador / marcha",
+    "actions": "Acciones",
+    "empty": "Aún no hay juegos vinculados",
+    "selectProcess": "Elegir un proceso en ejecución",
+    "manual": "Escribir el nombre del proceso…",
+    "manualPlaceholder": "p. ej. game.exe",
+    "custom": "Multiplicador personalizado",
+    "customSpeed": "Multiplicador",
+    "gearLabel": "Marcha {{n}} ({{speed}}×)",
+    "bind": "Vincular",
+    "edit": "Editar",
+    "remove": "Eliminar",
+    "saved": "{{name}} vinculado",
+    "removed": "{{name}} eliminado",
+    "saveFail": "No se pudo guardar. Consulta el registro.",
+    "invalid": "Indica un nombre de proceso y un multiplicador entre 0.001 y 1000",
+    "binding": "Aceleración automática",
+    "bindThis": "Vincular con el multiplicador actual",
+    "unbind": "Desvincular",
+    "currentSpeed": "Multiplicador actual {{speed}}×"
   }
 }

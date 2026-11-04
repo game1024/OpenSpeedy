@@ -91,7 +91,10 @@
     "hideToTray": "關閉至系統匣",
     "language": "語言",
     "registerSuccess": "快速鍵 \"{{shortcut}}\" 註冊成功",
-    "registerFail": "快速鍵 \"{{shortcut}}\" 註冊失敗"
+    "registerFail": "快速鍵 \"{{shortcut}}\" 註冊失敗",
+    "silentAutoStart": "開機靜默自啟動",
+    "silentAutoStartHint": "隨系統啟動且不顯示主視窗、彈窗或提示，僅駐留托盤；點擊托盤圖示可恢復視窗。與上方「開機自啟動」二選一。",
+    "bootModeFail": "無法修改開機啟動設定，請查看日誌"
   },
   "shortcut": {
     "notSet": "未設定",
@@ -112,5 +115,33 @@
     "copyInfoError": "複製軟體資訊失敗，請手動複製。",
     "copyInfo": "軟體資訊",
     "openLog": "開啟紀錄檔"
+  },
+  "autoAccel": {
+    "title": "自動加速",
+    "enable": "啟用自動加速",
+    "hint": "為遊戲綁定處理程序名稱及倍率或檔位；此後偵測到該處理程序啟動即自動注入並套用已儲存的設定，無需再次選擇或確認。",
+    "globalHint": "注意：加速倍率為全域值，多個綁定遊戲同時執行時以最後啟動的遊戲為準。",
+    "offWarning": "總開關已關閉，綁定規則暫不生效",
+    "process": "遊戲處理程序",
+    "speed": "倍率 / 檔位",
+    "actions": "操作",
+    "empty": "尚未綁定任何遊戲",
+    "selectProcess": "選擇執行中的處理程序",
+    "manual": "手動輸入處理程序名稱…",
+    "manualPlaceholder": "例如 game.exe",
+    "custom": "自訂倍率",
+    "customSpeed": "倍率",
+    "gearLabel": "檔位 {{n}}（{{speed}}×）",
+    "bind": "綁定",
+    "edit": "編輯",
+    "remove": "移除",
+    "saved": "已綁定 {{name}}",
+    "removed": "已移除 {{name}}",
+    "saveFail": "儲存失敗，請查看日誌",
+    "invalid": "請填寫處理程序名稱與 0.001–1000 之間的有效倍率",
+    "binding": "自動加速",
+    "bindThis": "以目前倍率綁定",
+    "unbind": "取消綁定",
+    "currentSpeed": "目前倍率 {{speed}}×"
   }
 }

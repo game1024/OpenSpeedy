@@ -95,7 +95,10 @@
     "hideToTray": "トレイに格納",
     "language": "言語",
     "registerSuccess": "ショートカット \"{{shortcut}}\" 登録成功",
-    "registerFail": "ショートカット \"{{shortcut}}\" 登録失敗"
+    "registerFail": "ショートカット \"{{shortcut}}\" 登録失敗",
+    "silentAutoStart": "起動時に静かに自動起動",
+    "silentAutoStartHint": "システム起動時にウィンドウ・ダイアログ・通知を表示せず、トレイに常駐します。トレイアイコンからウィンドウを復元できます。上の「自動起動」とは排他です。",
+    "bootModeFail": "自動起動の設定を変更できませんでした。ログを確認してください。"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -112,5 +115,33 @@
     "copyInfoError": "システム情報のコピーに失敗しました。手動でコピーしてください。",
     "copyInfo": "システム情報",
     "openLog": "ログを開く"
+  },
+  "autoAccel": {
+    "title": "自動加速",
+    "enable": "自動加速を有効にする",
+    "hint": "ゲームのプロセス名に倍率またはギアを紐付けます。以降はそのプロセスの起動を検出すると、保存した設定を自動的に適用します。再選択や確認は不要です。",
+    "globalHint": "注意：倍率は全体共通です。複数のゲームが同時に動作している場合は最後に起動したゲームの倍率が適用されます。",
+    "offWarning": "マスタースイッチがオフのため、紐付けは無効です",
+    "process": "ゲームプロセス",
+    "speed": "倍率 / ギア",
+    "actions": "操作",
+    "empty": "まだゲームが紐付けされていません",
+    "selectProcess": "実行中のプロセスを選択",
+    "manual": "プロセス名を入力…",
+    "manualPlaceholder": "例: game.exe",
+    "custom": "カスタム倍率",
+    "customSpeed": "倍率",
+    "gearLabel": "ギア {{n}}（{{speed}}×）",
+    "bind": "紐付け",
+    "edit": "編集",
+    "remove": "削除",
+    "saved": "{{name}} を紐付けました",
+    "removed": "{{name}} を削除しました",
+    "saveFail": "保存できませんでした。ログを確認してください。",
+    "invalid": "プロセス名と 0.001〜1000 の倍率を入力してください",
+    "binding": "自動加速",
+    "bindThis": "現在の倍率で紐付け",
+    "unbind": "紐付け解除",
+    "currentSpeed": "現在の倍率 {{speed}}×"
   }
 }

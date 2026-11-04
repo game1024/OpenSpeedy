@@ -17,6 +17,7 @@ import SpeedPanel from "./SpeedPanel";
 import ProcessDetail from "./ProcessDetail";
 import { useSettings, useSpeed } from "../hooks/useSettings";
 import { getAcceleratedNames, addAcceleratedName, removeAcceleratedName } from "../store/process";
+import { setAutoGearSpeeds } from "../store/autoAccel";
 
 // ── Types & constants ────────────────────────────────────────────────────
 
@@ -283,6 +284,16 @@ export default function ProcessManager() {
     ? [1, 2, 3, 4, 5].map(i => (settings[`gear${i}Speed` as keyof typeof settings] as number) || 1)
     : [1, 2, 5, 10, 100],
   [settings]);
+
+  // Gear-bound rules follow the current gear definitions, even when the
+  // settings panel is never opened during a silent boot.
+  const gearSync = useRef("");
+  useEffect(() => {
+    const key = gears.join(",");
+    if (gearSync.current === key) return;
+    gearSync.current = key;
+    void setAutoGearSpeeds(gears).catch(() => {});
+  }, [gears]);
 
   // Derive enabled set for UI
   const enabled = useMemo(() => {

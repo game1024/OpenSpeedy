@@ -89,6 +89,8 @@
 - Modern UI
 - Supports both x86 and x64 platform processes
 - No kernel intrusion — Ring-3 level hooking, does not tamper with the system kernel
+- Silent boot launch (no main window, dialog or notification — tray icon only)
+- Auto acceleration for bound games (persisted process + factor/gear, applied the moment the game starts)
 
 
 # 💾 Installation
@@ -129,6 +131,16 @@ Get it on the [Steam store](https://store.steampowered.com/app/5010920/OpenSpeed
 4. Takes effect immediately — see the comparison below
 
 <video src="https://github.com/user-attachments/assets/7c75e37d-bc7a-4639-89a0-a34a21676cba" width="70%"></video>
+
+## ⚙️ Two independent options
+
+Both switches live on the Settings page and can be enabled or disabled independently.
+
+**Silent boot launch** — starts with Windows with the main window hidden from creation: no window, dialog or notification, just the tray icon. Click the tray icon to restore the window at any time; the tray menu can quit the app. It shares the single OS autostart entry with the original "Auto Start" (which shows the window), so the two are mutually exclusive — enabling one switches the other off. The entry always carries `--autostart`, so only boot sessions stay hidden; opening the app manually still shows the window.
+
+**Auto acceleration** — bind a game's process name (Settings → Auto Acceleration, or "Bind with current factor" in the process detail) to a custom factor or one of the five gears. The binding (name, executable path, architecture, factor or gear) is persisted in `auto_accel.json`; gear bindings follow the multipliers defined in the Speed Gears section. From then on, a Rust background monitor polls the process table every 500 ms and injects + applies the saved factor as soon as the bound process appears, with no further selection or confirmation. Acceleration stops when the process exits, the rule is removed, or the master switch is turned off. Because the monitor lives in the Rust process, it keeps working while the window is hidden.
+
+> Note: the speed factor is global to each bridge process. If several bound games run at once, the most recently started one wins. Preferences are stored in `%APPDATA%/com.game1024.openspeedy/` as `boot_launch.json` and `auto_accel.json`.
 
 # 🔧 How It Works
 

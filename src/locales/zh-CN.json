@@ -93,7 +93,10 @@
     "hideToTray": "隐藏托盘",
     "language": "语言",
     "registerSuccess": "快捷键 \"{{shortcut}}\" 注册成功",
-    "registerFail": "快捷键 \"{{shortcut}}\" 注册失败"
+    "registerFail": "快捷键 \"{{shortcut}}\" 注册失败",
+    "silentAutoStart": "开机静默自启动",
+    "silentAutoStartHint": "随系统启动且不显示主界面、弹窗或提示，仅驻留托盘；点击托盘图标可恢复窗口。与上方「开机自启动」二选一。",
+    "bootModeFail": "无法修改开机启动设置，请查看日志"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -110,5 +113,33 @@
     "copyInfoError": "复制软件信息失败，请手动复制。",
     "copyInfo": "软件信息",
     "openLog": "打开日志"
+  },
+  "autoAccel": {
+    "title": "自动加速",
+    "enable": "启用自动加速",
+    "hint": "为游戏绑定进程名及倍率或档位；此后检测到该进程启动即自动注入并应用已保存的设置，无需再次选择或确认。",
+    "globalHint": "注意：加速倍率是全局值，多个绑定游戏同时运行时以最后启动的游戏为准。",
+    "offWarning": "总开关已关闭，绑定规则暂不生效",
+    "process": "游戏进程",
+    "speed": "倍率 / 档位",
+    "actions": "操作",
+    "empty": "尚未绑定任何游戏",
+    "selectProcess": "选择运行中的进程",
+    "manual": "手动输入进程名…",
+    "manualPlaceholder": "例如 game.exe",
+    "custom": "自定义倍率",
+    "customSpeed": "倍率",
+    "gearLabel": "档位 {{n}}（{{speed}}×）",
+    "bind": "绑定",
+    "edit": "编辑",
+    "remove": "移除",
+    "saved": "已绑定 {{name}}",
+    "removed": "已移除 {{name}}",
+    "saveFail": "保存失败，请查看日志",
+    "invalid": "请填写进程名与 0.001–1000 之间的有效倍率",
+    "binding": "自动加速",
+    "bindThis": "以当前倍率绑定",
+    "unbind": "取消绑定",
+    "currentSpeed": "当前倍率 {{speed}}×"
   }
 }

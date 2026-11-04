@@ -95,7 +95,10 @@
     "hideToTray": "트레이로 숨기기",
     "language": "언어",
     "registerSuccess": "단축키 \"{{shortcut}}\" 등록 성공",
-    "registerFail": "단축키 \"{{shortcut}}\" 등록 실패"
+    "registerFail": "단축키 \"{{shortcut}}\" 등록 실패",
+    "silentAutoStart": "부팅 시 조용히 자동 시작",
+    "silentAutoStartHint": "Windows 시작 시 창, 대화상자, 알림을 표시하지 않고 트레이에만 상주합니다. 트레이 아이콘으로 창을 다시 열 수 있습니다. 위의 \"자동 시작\"과 동시에 사용할 수 없습니다.",
+    "bootModeFail": "자동 시작 설정을 변경할 수 없습니다. 로그를 확인하세요."
   },
   "about": {
     "title": "OpenSpeedy",
@@ -112,5 +115,33 @@
     "copyInfoError": "시스템 정보 복사에 실패했습니다. 수동으로 복사하세요.",
     "copyInfo": "시스템 정보",
     "openLog": "로그 열기"
+  },
+  "autoAccel": {
+    "title": "자동 가속",
+    "enable": "자동 가속 사용",
+    "hint": "게임 프로세스에 배율 또는 기어를 연결합니다. 이후 해당 프로세스가 시작되면 저장된 설정이 즉시 자동 적용되며 다시 선택하거나 확인할 필요가 없습니다.",
+    "globalHint": "참고: 배율은 전역 값입니다. 여러 게임이 동시에 실행 중이면 가장 나중에 시작된 게임의 배율이 적용됩니다.",
+    "offWarning": "마스터 스위치가 꺼져 있어 연결된 규칙이 동작하지 않습니다",
+    "process": "게임 프로세스",
+    "speed": "배율 / 기어",
+    "actions": "동작",
+    "empty": "연결된 게임이 없습니다",
+    "selectProcess": "실행 중인 프로세스 선택",
+    "manual": "프로세스 이름 직접 입력…",
+    "manualPlaceholder": "예: game.exe",
+    "custom": "사용자 지정 배율",
+    "customSpeed": "배율",
+    "gearLabel": "기어 {{n}} ({{speed}}×)",
+    "bind": "연결",
+    "edit": "편집",
+    "remove": "제거",
+    "saved": "{{name}} 연결됨",
+    "removed": "{{name}} 제거됨",
+    "saveFail": "저장하지 못했습니다. 로그를 확인하세요.",
+    "invalid": "프로세스 이름과 0.001~1000 사이의 배율을 입력하세요",
+    "binding": "자동 가속",
+    "bindThis": "현재 배율로 연결",
+    "unbind": "연결 해제",
+    "currentSpeed": "현재 배율 {{speed}}×"
   }
 }

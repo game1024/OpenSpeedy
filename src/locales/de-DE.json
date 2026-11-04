@@ -95,7 +95,10 @@
     "hideToTray": "In den Infobereich minimieren",
     "language": "Sprache",
     "registerSuccess": "Kürzel \"{{shortcut}}\" registriert",
-    "registerFail": "Kürzel \"{{shortcut}}\" fehlgeschlagen"
+    "registerFail": "Kürzel \"{{shortcut}}\" fehlgeschlagen",
+    "silentAutoStart": "Stiller Autostart",
+    "silentAutoStartHint": "Startet mit Windows ohne Hauptfenster, Dialog oder Benachrichtigung – nur das Tray-Symbol. Ein Klick darauf öffnet das Fenster. Schließt „Autostart“ oben aus.",
+    "bootModeFail": "Autostart-Einstellung konnte nicht geändert werden. Siehe Protokoll."
   },
   "about": {
     "title": "OpenSpeedy",
@@ -112,5 +115,33 @@
     "copyInfoError": "Kopieren fehlgeschlagen. Bitte manuell kopieren.",
     "copyInfo": "Systeminfo",
     "openLog": "Protokoll öffnen"
+  },
+  "autoAccel": {
+    "title": "Automatische Beschleunigung",
+    "enable": "Automatische Beschleunigung aktivieren",
+    "hint": "Spielprozess mit Faktor oder Stufe verknüpfen. Sobald dieser Prozess startet, wird die gespeicherte Einstellung automatisch angewendet – ohne erneute Auswahl oder Bestätigung.",
+    "globalHint": "Hinweis: Der Faktor gilt global. Laufen mehrere verknüpfte Spiele, gilt der Faktor des zuletzt gestarteten.",
+    "offWarning": "Hauptschalter ist aus – Regeln sind inaktiv",
+    "process": "Spielprozess",
+    "speed": "Faktor / Stufe",
+    "actions": "Aktionen",
+    "empty": "Noch keine Spiele verknüpft",
+    "selectProcess": "Laufenden Prozess wählen",
+    "manual": "Prozessname eingeben…",
+    "manualPlaceholder": "z. B. game.exe",
+    "custom": "Eigener Faktor",
+    "customSpeed": "Faktor",
+    "gearLabel": "Stufe {{n}} ({{speed}}×)",
+    "bind": "Verknüpfen",
+    "edit": "Bearbeiten",
+    "remove": "Entfernen",
+    "saved": "{{name}} verknüpft",
+    "removed": "{{name}} entfernt",
+    "saveFail": "Speichern fehlgeschlagen. Siehe Protokoll.",
+    "invalid": "Prozessname und Faktor zwischen 0.001 und 1000 angeben",
+    "binding": "Automatische Beschleunigung",
+    "bindThis": "Mit aktuellem Faktor verknüpfen",
+    "unbind": "Verknüpfung lösen",
+    "currentSpeed": "Aktueller Faktor {{speed}}×"
   }
 }

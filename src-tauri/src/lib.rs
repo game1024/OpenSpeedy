@@ -1,13 +1,17 @@
 pub mod applog;
+mod auto_accel;
 mod bridge_client;
 mod bridge_job;
+mod prefs;
 mod process_enumerator;
+pub mod startup;
 mod system_stats;
 
 use process_enumerator::ProcessInfo;
 use process_enumerator::ModuleInfo;
 use std::process::Child;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use tauri::Manager;
 
 use windows::Win32::System::Console::SetConsoleCtrlHandler;
 use windows::Win32::Foundation::BOOL;
@@ -246,13 +250,58 @@ pub fn run() -> Result<(), String> {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_autostart::Builder::default().build())
+        // Every boot launch carries this marker. `startup::StartupState` then
+        // decides whether the window should stay hidden; a launch by the user
+        // never has the marker and always shows the window.
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .arg(startup::AUTOSTART_FLAG)
+                .build(),
+        )
         .plugin(tauri_plugin_shell::init())
-        .setup(|_app| {
+        .setup(|app| {
             applog::info("setup", "tauri setup callback entered");
+
+            // Preferences live next to the frontend store, but are read here so
+            // they are available even when the WebView is hidden or throttled.
+            let prefs_dir = match app.path().app_data_dir() {
+                Ok(dir) => dir,
+                Err(e) => {
+                    applog::warn("setup", format!("app data dir unavailable ({e}) — using temp dir"));
+                    std::env::temp_dir()
+                }
+            };
+
+            let startup_state = startup::StartupState::load(&prefs_dir);
+            app.manage(Arc::clone(&startup_state));
+
+            // The window is created hidden in tauri.conf.json. Showing it here
+            // for a normal launch means a silent boot can never flash a window,
+            // a dialog or a toast before React gets a chance to hide it.
+            let silent = startup::should_start_hidden(&startup_state);
+            match app.get_webview_window("main") {
+                Some(window) if silent => {
+                    let _ = window.hide();
+                    applog::info("startup", "silent boot — main window stays hidden, tray only");
+                }
+                Some(window) => {
+                    if let Err(e) = window.show() {
+                        applog::error("startup", format!("could not show the main window: {e}"));
+                    }
+                    let _ = window.set_focus();
+                }
+                None => applog::warn("startup", "main window not found — visibility unchanged"),
+            }
+
+            let accel_state = auto_accel::AutoAccelState::load(&prefs_dir);
+            app.manage(Arc::clone(&accel_state));
+
             ensure_bridges();
             // Register Ctrl+C handler so bridges are killed on console exit
             unsafe { let _ = SetConsoleCtrlHandler(Some(ctrlc_handler), true); }
+            // Started after the bridges are ready so the first detection can
+            // inject immediately rather than losing its first retry window.
+            auto_accel::spawn_monitor(accel_state);
             applog::info("setup", "startup complete");
             Ok(())
         })
@@ -273,6 +322,14 @@ pub fn run() -> Result<(), String> {
             set_always_on_top,
             get_log_path,
             report_frontend_error,
+            startup::get_boot_mode,
+            startup::set_boot_mode,
+            auto_accel::get_auto_accel_config,
+            auto_accel::set_auto_accel_enabled,
+            auto_accel::upsert_auto_rule,
+            auto_accel::remove_auto_rule,
+            auto_accel::set_auto_gear_speeds,
+            auto_accel::get_auto_accel_active_speed,
         ])
         .device_event_filter(tauri::DeviceEventFilter::Always)
         .build(tauri::generate_context!())
