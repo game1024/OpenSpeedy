@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "Niet ingesteld",
     "keyNotSupported": "Deze toets kan niet als sneltoets worden gebruikt",
-    "inherited": "Geërfd"
+    "inherited": "Geërfd",
+    "restoreInherit": "Globaal gebruiken"
   },
   "settings": {
     "loading": "Instellingen laden…",

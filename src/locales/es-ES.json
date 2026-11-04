@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "Sin definir",
     "keyNotSupported": "Esta tecla no se puede usar como atajo",
-    "inherited": "Heredado"
+    "inherited": "Heredado",
+    "restoreInherit": "Usar global"
   },
   "settings": {
     "loading": "Cargando ajustes…",

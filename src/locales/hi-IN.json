@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "सेट नहीं",
     "keyNotSupported": "इस कुंजी को शॉर्टकट के रूप में उपयोग नहीं किया जा सकता",
-    "inherited": "विरासत"
+    "inherited": "विरासत",
+    "restoreInherit": "वैश्विक उपयोग करें"
   },
   "settings": {
     "loading": "सेटिंग्स लोड हो रही हैं…",

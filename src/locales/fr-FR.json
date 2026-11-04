@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "Non défini",
     "keyNotSupported": "Cette touche ne peut pas servir de raccourci",
-    "inherited": "Hérité"
+    "inherited": "Hérité",
+    "restoreInherit": "Utiliser le global"
   },
   "settings": {
     "loading": "Chargement des paramètres…",

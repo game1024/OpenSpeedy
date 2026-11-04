@@ -69,6 +69,7 @@ let activeSig = "";
 let holdChord: string | null = null;
 let lastForeground = "";
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let suspended = 0;
 
 function runSlot(slot: ShortcutSlot, phase: "press" | "release") {
   if (slot === "increaseSpeedShortcut" && phase === "press") {
@@ -154,7 +155,15 @@ async function foregroundName(): Promise<string> {
 async function applyActive(force: boolean) {
   const foreground = await foregroundName();
   const foregroundChanged = foreground !== lastForeground;
-  if (primed && !force && !foregroundChanged) return;
+  if (primed && !force && !foregroundChanged && (suspended === 0 || active.length === 0)) return;
+
+  if (suspended > 0) {
+    for (const entry of active) await unregisterChord(entry.shortcut);
+    active = [];
+    activeSig = "";
+    lastForeground = foreground;
+    return;
+  }
 
   const [settings, profiles] = await Promise.all([loadSettings(), loadShortcutProfiles()]);
   activeOverrides = speedOverrides(profiles, foreground);
@@ -193,6 +202,17 @@ function enqueue(force: boolean): Promise<void> {
 
 /** Reload shortcuts for the current foreground window. */
 export function syncShortcuts(): Promise<void> {
+  return enqueue(true);
+}
+
+/** Drop hotkeys so a shortcut field can see a key that is already registered. */
+export function suspendShortcuts(): Promise<void> {
+  suspended++;
+  return enqueue(true);
+}
+
+export function resumeShortcuts(): Promise<void> {
+  if (suspended > 0) suspended--;
   return enqueue(true);
 }
 

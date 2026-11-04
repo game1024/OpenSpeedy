@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "Not set",
     "keyNotSupported": "This key cannot be used as a shortcut",
-    "inherited": "Inherited"
+    "inherited": "Inherited",
+    "restoreInherit": "Use global"
   },
   "settings": {
     "loading": "Loading settings…",

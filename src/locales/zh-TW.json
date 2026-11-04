@@ -121,7 +121,8 @@
   "shortcut": {
     "notSet": "未設定",
     "keyNotSupported": "不支援此按鍵作為快速鍵",
-    "inherited": "繼承"
+    "inherited": "繼承",
+    "restoreInherit": "恢復繼承"
   },
   "about": {
     "title": "OpenSpeedy",

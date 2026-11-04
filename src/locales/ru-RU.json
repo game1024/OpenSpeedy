@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "Не задано",
     "keyNotSupported": "Эту клавишу нельзя использовать как сочетание",
-    "inherited": "Унаследовано"
+    "inherited": "Унаследовано",
+    "restoreInherit": "Как в общем"
   },
   "settings": {
     "loading": "Загрузка настроек…",

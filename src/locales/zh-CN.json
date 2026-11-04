@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "未设置",
     "keyNotSupported": "不支持此按键作为快捷键",
-    "inherited": "继承"
+    "inherited": "继承",
+    "restoreInherit": "恢复继承"
   },
   "settings": {
     "loading": "加载设置中…",

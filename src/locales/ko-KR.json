@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "설정 안 됨",
     "keyNotSupported": "이 키는 단축키로 사용할 수 없습니다",
-    "inherited": "상속"
+    "inherited": "상속",
+    "restoreInherit": "전역으로"
   },
   "settings": {
     "loading": "설정 로딩 중…",

@@ -74,7 +74,8 @@
   "shortcut": {
     "notSet": "Nicht gesetzt",
     "keyNotSupported": "Diese Taste kann nicht als Tastenkürzel verwendet werden",
-    "inherited": "Geerbt"
+    "inherited": "Geerbt",
+    "restoreInherit": "Global verwenden"
   },
   "settings": {
     "loading": "Einstellungen laden…",
