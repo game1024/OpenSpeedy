@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use serde::Serialize;
-use windows::core::PWSTR;
+use windows::core::{Error, PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND, LPARAM};
 use windows::Win32::Graphics::Gdi::{
     CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO,
@@ -17,6 +17,9 @@ use windows::Win32::System::ProcessStatus::{
     MODULEINFO, PROCESS_MEMORY_COUNTERS, LIST_MODULES_32BIT, LIST_MODULES_64BIT,
 };
 use windows::Win32::Foundation::HMODULE;
+use windows::Win32::System::Memory::{
+    MapViewOfFile, OpenFileMappingW, UnmapViewOfFile, FILE_MAP_READ,
+};
 use windows::Win32::System::Threading::{
     IsWow64Process, OpenProcess, OpenProcessToken, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
     PROCESS_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
@@ -707,6 +710,56 @@ fn get_memory_kb(pid: u32) -> u64 {
     }
 }
 
+/// Same name the injected DLL publishes in `SP_Install` (`OpenSpeedy.<pid>`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AccelRead {
+    On,
+    Off,
+    Absent,
+    Unknown,
+}
+
+#[derive(Serialize)]
+pub struct AccelProbe {
+    pub pid: u32,
+    pub state: &'static str,
+}
+
+pub fn probe_acceleration(pids: &[u32]) -> Vec<AccelProbe> {
+    // ponytail: one OpenFileMapping per pid per poll. Upgrade path: push from inject/enable.
+    pids.iter().filter_map(|&pid| {
+        let state = match read_accel_flag(pid) {
+            AccelRead::On => "on",
+            AccelRead::Off => "off",
+            AccelRead::Absent => "absent",
+            AccelRead::Unknown => return None,
+        };
+        Some(AccelProbe { pid, state })
+    }).collect()
+}
+
+fn read_accel_flag(pid: u32) -> AccelRead {
+    let name: Vec<u16> = format!("OpenSpeedy.{pid}").encode_utf16().chain(std::iter::once(0)).collect();
+    let handle = match unsafe { OpenFileMappingW(FILE_MAP_READ.0, false, PCWSTR(name.as_ptr())) } {
+        Ok(handle) => handle,
+        Err(err) => return if win32_code(&err) == 2 { AccelRead::Absent } else { AccelRead::Unknown },
+    };
+    let view = unsafe { MapViewOfFile(handle, FILE_MAP_READ, 0, 0, 1) };
+    let flag = if view.Value.is_null() {
+        AccelRead::Unknown
+    } else {
+        let enabled = unsafe { *view.Value.cast::<u8>() } != 0;
+        let _ = unsafe { UnmapViewOfFile(view) };
+        if enabled { AccelRead::On } else { AccelRead::Off }
+    };
+    let _ = unsafe { CloseHandle(handle) };
+    flag
+}
+
+fn win32_code(err: &Error) -> u32 {
+    (err.code().0 as u32) & 0xFFFF
+}
+
 fn open_process(pid: u32) -> Option<HANDLE> {
     if pid == 0 {
         return None;
@@ -720,5 +773,10 @@ mod tests {
     fn foreground_exe_name_is_not_a_path() {
         let name = super::foreground_exe_name();
         assert!(!name.contains('\\') && !name.contains('/'), "{name}");
+    }
+
+    #[test]
+    fn unknown_pid_has_no_acceleration_mapping() {
+        assert_eq!(super::read_accel_flag(u32::MAX - 1), super::AccelRead::Absent);
     }
 }

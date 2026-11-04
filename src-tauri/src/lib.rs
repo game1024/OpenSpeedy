@@ -128,6 +128,13 @@ async fn foreground_exe_name() -> String {
     process_enumerator::foreground_exe_name()
 }
 
+/// Injected processes only. `on` / `off` is the DLL enable flag. `absent` means
+/// no mapping. Pids we cannot read are omitted so the UI keeps its last state.
+#[tauri::command(async)]
+async fn probe_acceleration(pids: Vec<u32>) -> Vec<process_enumerator::AccelProbe> {
+    process_enumerator::probe_acceleration(&pids)
+}
+
 #[tauri::command(async)]
 async fn get_process_list_fast() -> Vec<ProcessInfo> {
     process_enumerator::enumerate_processes_fast()
@@ -263,6 +270,7 @@ pub fn run() -> Result<(), String> {
         })
         .invoke_handler(tauri::generate_handler![
             foreground_exe_name,
+            probe_acceleration,
             get_process_list,
             get_process_list_fast,
             get_process_icon,
