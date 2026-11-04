@@ -119,7 +119,10 @@ const loaded = normalizeProfiles(store.shortcutProfiles);
 assert(loaded.length === 1, "one profile roundtrips");
 assert(loaded[0]?.name === "手柄游戏", "name trimmed");
 assert(loaded[0]?.shortcuts.increaseSpeedShortcut === "Pad:LB+Up", "filled slot roundtrips");
-assert(loaded[0]?.shortcuts.decreaseSpeedShortcut === undefined, "empty slot is not stored");
+assert(loaded[0]?.shortcuts.decreaseSpeedShortcut === "", "explicit clear is stored");
+const mutedHit = resolveShortcuts(globalKeys, loaded, "gameA.exe");
+assert(mutedHit.shortcuts.decreaseSpeedShortcut === "", "cleared slot does not inherit");
+assert(!registrationEntries(mutedHit).some(entry => entry.shortcut === "NUMPADSUB"), "cleared slot is not registered");
 assert(store.settings.increaseSpeedShortcut === "NUMPADADD", "global settings stay put");
 assert(deleteProfile(loaded, "p").length === 0, "delete removes the profile");
 

@@ -148,7 +148,8 @@ export default function SettingsManager() {
     if (profile) {
       const shortcuts = { ...profile.shortcuts };
       if (value) shortcuts[slot] = value;
-      else delete shortcuts[slot];
+      else if (shortcuts[slot]) delete shortcuts[slot];
+      else shortcuts[slot] = "";
       await persistProfiles(upsertProfile(profiles, { ...profile, shortcuts }), profile.id);
     } else {
       await set(slot, value);
@@ -164,8 +165,17 @@ export default function SettingsManager() {
     );
   }
 
+  function restoreSlot(slot: ShortcutSlot) {
+    if (!profile) return;
+    const shortcuts = { ...profile.shortcuts };
+    delete shortcuts[slot];
+    void persistProfiles(upsertProfile(profiles, { ...profile, shortcuts }), profile.id);
+  }
+
   function cell(slot: ShortcutSlot) {
-    const stored = profile ? (profile.shortcuts[slot] ?? "") : String(current[slot] ?? "");
+    const raw = profile ? profile.shortcuts[slot] : undefined;
+    const muted = raw === "";
+    const stored = profile ? (muted ? "" : (raw ?? "")) : String(current[slot] ?? "");
     const preview = previewShortcuts(globalShortcuts(current), profile ? profile.shortcuts : null);
     const effective = preview.shortcuts[slot];
     const overridden = profile ? [] : profilesOverriding(profiles, slot);
@@ -173,7 +183,9 @@ export default function SettingsManager() {
       <Box>
         <ShortcutField
           value={stored}
-          inheritFrom={profile ? String(current[slot] ?? "") : undefined}
+          inheritFrom={profile && raw === undefined ? String(current[slot] ?? "") : undefined}
+          muted={muted}
+          onRestore={muted ? () => restoreSlot(slot) : undefined}
           conflict={preview.conflicts.includes(slot) || shortcutStatus[effective] === false}
           onChange={v => { void saveSlot(slot, v); }}
         />

@@ -115,7 +115,10 @@ export function compactShortcuts(
   if (!input) return out;
   for (const slot of SHORTCUT_SLOTS) {
     const value = input[slot];
-    if (typeof value === "string" && value.trim()) out[slot] = value;
+    if (typeof value !== "string") continue;
+    // Empty string is an explicit clear: this profile does not respond on that slot.
+    if (!value.trim()) out[slot] = "";
+    else out[slot] = value;
   }
   return out;
 }
@@ -208,7 +211,7 @@ export function occupiedBy(
 }
 
 export function profilesOverriding(profiles: readonly ShortcutProfile[], slot: ShortcutSlot): string[] {
-  return profiles.filter(p => !!p.shortcuts[slot]).map(p => p.name);
+  return profiles.filter(p => p.shortcuts[slot] !== undefined).map(p => p.name);
 }
 
 export function profilesOverridingValue(profiles: readonly ShortcutProfile[], key: SpeedValueKey): string[] {
@@ -236,7 +239,7 @@ export function resolveShortcuts(
   const shortcuts = {} as GlobalShortcuts;
   for (const slot of SHORTCUT_SLOTS) {
     const override = profile?.shortcuts[slot];
-    shortcuts[slot] = override ? override : (global[slot] ?? "");
+    shortcuts[slot] = override !== undefined ? override : (global[slot] ?? "");
   }
   return { profileId: profile?.id ?? null, shortcuts, conflicts: conflictingSlots(shortcuts) };
 }
