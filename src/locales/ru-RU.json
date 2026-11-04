@@ -104,6 +104,7 @@
     "profileInheritNote": "Шаг и множитель берутся из общих настроек",
     "profileGlobal": "Общие",
     "profileOverridden": "Переопределено в {{names}}",
+    "profileOverriddenShort": "Переопределено",
     "profileUsedBy": "Занято профилем {{name}}",
     "profileName": "Имя",
     "profileCreate": "Создать",

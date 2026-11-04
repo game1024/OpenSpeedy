@@ -104,6 +104,7 @@
     "profileInheritNote": "步进和倍率沿用全局",
     "profileGlobal": "全局",
     "profileOverridden": "{{names}} 已覆盖",
+    "profileOverriddenShort": "已覆盖",
     "profileUsedBy": "已用于「{{name}}」",
     "profileName": "名称",
     "profileCreate": "创建",

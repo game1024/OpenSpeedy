@@ -104,6 +104,7 @@
     "profileInheritNote": "चरण और गुणक वैश्विक सेटिंग से आते हैं",
     "profileGlobal": "वैश्विक",
     "profileOverridden": "{{names}} में बदला गया",
+    "profileOverriddenShort": "बदला गया",
     "profileUsedBy": "{{name}} में उपयोग",
     "profileName": "नाम",
     "profileCreate": "बनाएँ",

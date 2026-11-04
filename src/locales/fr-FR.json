@@ -106,6 +106,7 @@
     "profileInheritNote": "Le pas et le multiplicateur suivent les réglages globaux",
     "profileGlobal": "Global",
     "profileOverridden": "Remplacé dans {{names}}",
+    "profileOverriddenShort": "Remplacé",
     "profileUsedBy": "Utilisé par {{name}}",
     "profileName": "Nom",
     "profileCreate": "Créer",

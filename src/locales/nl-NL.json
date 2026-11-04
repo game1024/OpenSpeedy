@@ -104,6 +104,7 @@
     "profileInheritNote": "Stap en vermenigvuldiger volgen de algemene instellingen",
     "profileGlobal": "Algemeen",
     "profileOverridden": "Overschreven in {{names}}",
+    "profileOverriddenShort": "Overschreven",
     "profileUsedBy": "Gebruikt door {{name}}",
     "profileName": "Naam",
     "profileCreate": "Maken",

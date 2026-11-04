@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import {
-  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Typography, TextField, Switch, Divider,
+  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Typography, TextField, Switch, Divider, Tooltip,
   Select, MenuItem, Table, TableBody, TableCell, TableHead, TableRow,
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -109,12 +109,19 @@ export default function SettingsManager() {
           )}
         </Box>
         {inheriting && <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>}
-        {names.length > 0 && (
-          <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3 }}>
-            {t("settings.profileOverridden", { names: names.join(profileNameSep) })}
-          </Typography>
-        )}
+        {overrideNote(names)}
       </Box>
+    );
+  }
+
+  function overrideNote(names: string[]) {
+    if (names.length === 0) return null;
+    return (
+      <Tooltip title={t("settings.profileOverridden", { names: names.join(profileNameSep) })}>
+        <Typography component="span" variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3, width: "fit-content" }}>
+          {t("settings.profileOverriddenShort")}
+        </Typography>
+      </Tooltip>
     );
   }
 
@@ -160,11 +167,7 @@ export default function SettingsManager() {
           conflict={preview.conflicts.includes(slot) || shortcutStatus[effective] === false}
           onChange={v => { void saveSlot(slot, v); }}
         />
-        {overridden.length > 0 && (
-          <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3 }}>
-            {t("settings.profileOverridden", { names: overridden.join(profileNameSep) })}
-          </Typography>
-        )}
+        {overrideNote(overridden)}
       </Box>
     );
   }

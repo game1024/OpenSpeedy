@@ -106,6 +106,7 @@
     "profileInheritNote": "Schritt und Multiplikator folgen den globalen Werten",
     "profileGlobal": "Global",
     "profileOverridden": "Überschrieben in {{names}}",
+    "profileOverriddenShort": "Überschrieben",
     "profileUsedBy": "Verwendet von {{name}}",
     "profileName": "Name",
     "profileCreate": "Erstellen",

@@ -106,6 +106,7 @@
     "profileInheritNote": "刻みと倍率は共通設定に従います",
     "profileGlobal": "共通",
     "profileOverridden": "{{names}} で上書き",
+    "profileOverriddenShort": "上書き",
     "profileUsedBy": "「{{name}}」で使用中",
     "profileName": "名前",
     "profileCreate": "作成",

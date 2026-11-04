@@ -104,6 +104,7 @@
     "profileInheritNote": "Step and multiplier follow the global settings",
     "profileGlobal": "Global",
     "profileOverridden": "Overridden in {{names}}",
+    "profileOverriddenShort": "Overridden",
     "profileUsedBy": "Used by {{name}}",
     "profileName": "Name",
     "profileCreate": "Create",

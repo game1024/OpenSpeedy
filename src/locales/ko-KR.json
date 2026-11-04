@@ -106,6 +106,7 @@
     "profileInheritNote": "간격과 배율은 전역 설정을 따릅니다",
     "profileGlobal": "전역",
     "profileOverridden": "{{names}}에서 덮어씀",
+    "profileOverriddenShort": "덮어씀",
     "profileUsedBy": "「{{name}}」에서 사용 중",
     "profileName": "이름",
     "profileCreate": "만들기",
