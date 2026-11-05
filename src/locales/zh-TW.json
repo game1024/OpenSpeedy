@@ -98,7 +98,6 @@
     "profileDelete": "刪除",
     "profileProcesses": "適用行程",
     "profileWhenForeground": "對應行程在前景時，按這一份清單回應",
-    "profileInheritNote": "步進和倍率沿用全域",
     "profileGlobal": "全域",
     "profileOverridden": "{{names}} 已覆蓋",
     "profileOverriddenShort": "已覆蓋",

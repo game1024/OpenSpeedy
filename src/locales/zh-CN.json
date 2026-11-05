@@ -102,7 +102,6 @@
     "profileDelete": "删除",
     "profileProcesses": "适用进程",
     "profileWhenForeground": "对应进程在前台时，按这一份列表响应",
-    "profileInheritNote": "步进和倍率沿用全局",
     "profileGlobal": "全局",
     "profileOverridden": "{{names}} 已覆盖",
     "profileOverriddenShort": "已覆盖",

@@ -102,7 +102,6 @@
     "profileDelete": "Eliminar",
     "profileProcesses": "Procesos",
     "profileWhenForeground": "Estos atajos se usan cuando un proceso coincidente está en primer plano",
-    "profileInheritNote": "El paso y el multiplicador siguen los ajustes globales",
     "profileGlobal": "Global",
     "profileOverridden": "Sustituido en {{names}}",
     "profileOverriddenShort": "Sustituido",

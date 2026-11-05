@@ -155,8 +155,9 @@ export default function SettingsManager() {
       await set(slot, value);
       await syncShortcuts();
     }
-    if (!value) return;
-    const ok = shortcutRegistered(value);
+    // A profile key is only registered while its process is in the foreground, so there is nothing to report yet.
+    const ok = value ? shortcutRegistered(value) : undefined;
+    if (ok === undefined) return;
     notify(
       ok === false
         ? t("settings.registerFail", { shortcut: value })
@@ -175,7 +176,7 @@ export default function SettingsManager() {
   function cell(slot: ShortcutSlot) {
     const raw = profile ? profile.shortcuts[slot] : undefined;
     const muted = raw === "";
-    const stored = profile ? (muted ? "" : (raw ?? "")) : String(current[slot] ?? "");
+    const stored = profile ? (raw ?? "") : String(current[slot] ?? "");
     const preview = previewShortcuts(globalShortcuts(current), profile ? profile.shortcuts : null);
     const effective = preview.shortcuts[slot];
     const overridden = profile ? [] : profilesOverriding(profiles, slot);

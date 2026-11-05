@@ -102,7 +102,6 @@
     "profileDelete": "Excluir",
     "profileProcesses": "Processos",
     "profileWhenForeground": "Estes atalhos valem enquanto um processo correspondente estiver em primeiro plano",
-    "profileInheritNote": "O passo e o multiplicador seguem as opções globais",
     "profileGlobal": "Global",
     "profileOverridden": "Substituído em {{names}}",
     "profileOverriddenShort": "Substituído",

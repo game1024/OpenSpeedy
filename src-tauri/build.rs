@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn profile_dir(manifest_dir: &PathBuf, profile: &str) -> PathBuf {
-    // Cargo sets this for build scripts. Falling back to manifest/target keeps
-    // a direct `rustc` invocation from writing next to a locked release folder.
+    // Inherited from the caller's environment; Cargo does not set it for build
+    // scripts. `--target-dir` on the command line is not seen here.
     let target = env::var("CARGO_TARGET_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| manifest_dir.join("target"));

@@ -104,7 +104,6 @@
     "profileDelete": "Löschen",
     "profileProcesses": "Prozesse",
     "profileWhenForeground": "Diese Tasten gelten, während ein passender Prozess im Vordergrund ist",
-    "profileInheritNote": "Schritt und Multiplikator folgen den globalen Werten",
     "profileGlobal": "Global",
     "profileOverridden": "Überschrieben in {{names}}",
     "profileOverriddenShort": "Überschrieben",

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import * as GlobalShortcut from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useSettings } from "./useSettings";
 import { loadSettings, loadShortcutProfiles, setSetting } from "../store/settings";
 import type { SettingsState } from "../store/settings";
@@ -68,7 +69,7 @@ let active: RegEntry[] = [];
 let activeSig = "";
 let holdChord: string | null = null;
 let lastForeground = "";
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let watching = false;
 let suspended = 0;
 
 function runSlot(slot: ShortcutSlot, phase: "press" | "release") {
@@ -122,9 +123,8 @@ function onChord(entry: RegEntry, state: "Pressed" | "Released") {
 }
 
 async function registerChord(entry: RegEntry) {
-  const handler = (state: "Pressed" | "Released") => onChord(entry, state);
   try {
-    await GlobalShortcut.register(entry.shortcut, (event: ShortcutTriggerState) => handler(event.state));
+    await GlobalShortcut.register(entry.shortcut, (event: ShortcutTriggerState) => onChord(entry, event.state));
     remember(entry.shortcut, true);
     console.log("[shortcut] register OK:", entry.shortcut);
   } catch (e) {
@@ -169,12 +169,14 @@ async function applyActive(force: boolean) {
   activeOverrides = speedOverrides(profiles, foreground);
   const next = registrationEntries(resolveShortcuts(globalShortcuts(settings), profiles, foreground));
   const nextSig = registrationSignature(next);
-  if (primed && nextSig === activeSig) {
+  // A chord another app holds fails to register. It is retried on the next sync or foreground change.
+  const failed = active.filter(entry => _statusCache[entry.shortcut] === false);
+  if (primed && nextSig === activeSig && failed.length === 0) {
     lastForeground = foreground;
     return;
   }
 
-  if (holdChord) {
+  if (holdChord && nextSig !== activeSig) {
     holdChord = null;
     invoke("bridge_set_speed", { factor: 1.0 });
     persistSpeed(1);
@@ -183,10 +185,10 @@ async function applyActive(force: boolean) {
     await GlobalShortcut.unregisterAll().catch(() => {});
     _statusCache = {};
     emit();
-    active = [];
     primed = true;
   }
-  const diff = diffRegistration(active, next);
+  for (const entry of failed) await unregisterChord(entry.shortcut);
+  const diff = diffRegistration(active.filter(entry => !failed.includes(entry)), next);
   for (const shortcut of diff.remove) await unregisterChord(shortcut);
   for (const entry of diff.add) await registerChord(entry);
   active = next;
@@ -216,15 +218,12 @@ export function resumeShortcuts(): Promise<void> {
   return enqueue(true);
 }
 
-function startPoll() {
-  if (pollTimer) return;
-  // ponytail: polls one window every 400ms. Upgrade path: EVENT_SYSTEM_FOREGROUND.
-  pollTimer = setInterval(() => { void enqueue(false); }, 400);
-  void enqueue(true);
-}
-
 export function initShortcuts() {
-  startPoll();
+  if (watching) return;
+  watching = true;
+  // Rust watches the foreground window. A webview timer stalls while the window sits in the tray.
+  void listen("foreground-changed", () => { void enqueue(false); });
+  void enqueue(true);
 }
 
 // ── Hook ────────────────────────────────────────────────────────────────────

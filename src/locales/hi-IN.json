@@ -102,7 +102,6 @@
     "profileDelete": "हटाएँ",
     "profileProcesses": "प्रोसेस",
     "profileWhenForeground": "मिलती प्रोसेस आगे होने पर ये शॉर्टकट लागू होते हैं",
-    "profileInheritNote": "चरण और गुणक वैश्विक सेटिंग से आते हैं",
     "profileGlobal": "वैश्विक",
     "profileOverridden": "{{names}} में बदला गया",
     "profileOverriddenShort": "बदला गया",

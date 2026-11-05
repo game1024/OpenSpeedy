@@ -104,7 +104,6 @@
     "profileDelete": "削除",
     "profileProcesses": "対象プロセス",
     "profileWhenForeground": "対応するプロセスが前面のとき、この一覧で応答します",
-    "profileInheritNote": "刻みと倍率は共通設定に従います",
     "profileGlobal": "共通",
     "profileOverridden": "{{names}} で上書き",
     "profileOverriddenShort": "上書き",

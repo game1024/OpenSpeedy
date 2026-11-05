@@ -104,7 +104,6 @@
     "profileDelete": "삭제",
     "profileProcesses": "적용 프로세스",
     "profileWhenForeground": "해당 프로세스가 앞에 있을 때 이 목록으로 동작합니다",
-    "profileInheritNote": "간격과 배율은 전역 설정을 따릅니다",
     "profileGlobal": "전역",
     "profileOverridden": "{{names}}에서 덮어씀",
     "profileOverriddenShort": "덮어씀",

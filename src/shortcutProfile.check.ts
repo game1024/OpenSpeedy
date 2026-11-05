@@ -10,14 +10,21 @@ import {
   registrationEntries,
   registrationSignature,
   resolveShortcuts,
-  resolveSpeedValues,
   newlyAddedExes,
+  speedOverrides,
   upsertProfile,
   validateProfileName,
   type GlobalShortcuts,
   type ShortcutProfile,
-  type SpeedValues,
+  type SpeedValueKey,
 } from "./shortcutProfile.ts";
+
+type SpeedValues = Record<SpeedValueKey, number>;
+
+/** Same lookup as useShortcut's speedOf: pinned value first, then the live global. */
+function resolveSpeedValues(global: SpeedValues, profiles: ShortcutProfile[], exe: string): SpeedValues {
+  return { ...global, ...speedOverrides(profiles, exe) };
+}
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -129,7 +136,9 @@ assert(deleteProfile(loaded, "p").length === 0, "delete removes the profile");
 const before = registrationEntries(resolveShortcuts(globalKeys, [], ""));
 const after = registrationEntries(resolved);
 const same = diffRegistration(before, before);
-assert(same.unchanged && same.remove.length === 0 && same.add.length === 0, "same list does not reregister");
+assert(same.remove.length === 0 && same.add.length === 0, "same list does not reregister");
+const retry = diffRegistration(before.filter(entry => entry.shortcut !== "NUMPADADD"), before);
+assert(retry.add.length === 1 && retry.add[0]?.shortcut === "NUMPADADD" && retry.remove.length === 0, "failed chord is retried alone");
 const changed = diffRegistration(before, after);
 assert(changed.remove.includes("NUMPADADD"), "replaced global key is removed");
 assert(changed.add.some(entry => entry.shortcut === "Pad:LB+Up"), "profile key is added");

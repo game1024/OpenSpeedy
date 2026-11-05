@@ -710,7 +710,6 @@ fn get_memory_kb(pid: u32) -> u64 {
     }
 }
 
-/// Same name the injected DLL publishes in `SP_Install` (`OpenSpeedy.<pid>`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum AccelRead {
     On,
@@ -738,6 +737,7 @@ pub fn probe_acceleration(pids: &[u32]) -> Vec<AccelProbe> {
     }).collect()
 }
 
+/// Same name the injected DLL publishes in `SP_Install` (`OpenSpeedy.<pid>`).
 fn read_accel_flag(pid: u32) -> AccelRead {
     let name: Vec<u16> = format!("OpenSpeedy.{pid}").encode_utf16().chain(std::iter::once(0)).collect();
     let handle = match unsafe { OpenFileMappingW(FILE_MAP_READ.0, false, PCWSTR(name.as_ptr())) } {

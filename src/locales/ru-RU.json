@@ -102,7 +102,6 @@
     "profileDelete": "Удалить",
     "profileProcesses": "Процессы",
     "profileWhenForeground": "Эти клавиши действуют, пока подходящий процесс на переднем плане",
-    "profileInheritNote": "Шаг и множитель берутся из общих настроек",
     "profileGlobal": "Общие",
     "profileOverridden": "Переопределено в {{names}}",
     "profileOverriddenShort": "Переопределено",

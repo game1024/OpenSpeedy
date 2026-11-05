@@ -28,7 +28,6 @@ export const SPEED_VALUE_BOUNDS = {
 } as const;
 
 export type SpeedValueKey = keyof typeof SPEED_VALUE_BOUNDS;
-export type SpeedValues = Record<SpeedValueKey, number>;
 
 const SPEED_VALUE_KEYS = Object.keys(SPEED_VALUE_BOUNDS) as SpeedValueKey[];
 
@@ -117,8 +116,7 @@ export function compactShortcuts(
     const value = input[slot];
     if (typeof value !== "string") continue;
     // Empty string is an explicit clear: this profile does not respond on that slot.
-    if (!value.trim()) out[slot] = "";
-    else out[slot] = value;
+    out[slot] = value.trim() ? value : "";
   }
   return out;
 }
@@ -244,17 +242,6 @@ export function resolveShortcuts(
   return { profileId: profile?.id ?? null, shortcuts, conflicts: conflictingSlots(shortcuts) };
 }
 
-export function resolveSpeedValues(
-  global: SpeedValues,
-  profiles: readonly ShortcutProfile[],
-  foregroundExe: string,
-): SpeedValues {
-  const overrides = profileForExe(profiles, foregroundExe)?.values;
-  const out = {} as SpeedValues;
-  for (const key of SPEED_VALUE_KEYS) out[key] = overrides?.[key] ?? global[key];
-  return out;
-}
-
 /** The hit profile's stored overrides. Empty when no profile matches, so callers can still read live globals. */
 export function speedOverrides(
   profiles: readonly ShortcutProfile[],
@@ -323,13 +310,9 @@ export function registrationSignature(entries: readonly RegEntry[]): string {
 }
 
 export function diffRegistration(current: readonly RegEntry[], next: readonly RegEntry[]): {
-  unchanged: boolean;
   remove: string[];
   add: RegEntry[];
 } {
-  if (registrationSignature(current) === registrationSignature(next)) {
-    return { unchanged: true, remove: [], add: [] };
-  }
   const role = (entry: RegEntry) => `${entry.slot}\0${entry.conflict ? "c" : entry.hold ? "h" : "p"}`;
   const curBy = new Map(current.map(entry => [entry.shortcut, entry]));
   const nextBy = new Map(next.map(entry => [entry.shortcut, entry]));
@@ -343,5 +326,5 @@ export function diffRegistration(current: readonly RegEntry[], next: readonly Re
     const previous = curBy.get(shortcut);
     if (!previous || role(previous) !== role(entry)) add.push(entry);
   }
-  return { unchanged: false, remove, add };
+  return { remove, add };
 }

@@ -102,7 +102,6 @@
     "profileDelete": "Delete",
     "profileProcesses": "Processes",
     "profileWhenForeground": "These shortcuts apply while a matching process is in the foreground",
-    "profileInheritNote": "Step and multiplier follow the global settings",
     "profileGlobal": "Global",
     "profileOverridden": "Overridden in {{names}}",
     "profileOverriddenShort": "Overridden",

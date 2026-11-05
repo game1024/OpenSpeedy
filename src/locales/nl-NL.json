@@ -102,7 +102,6 @@
     "profileDelete": "Verwijderen",
     "profileProcesses": "Processen",
     "profileWhenForeground": "Deze sneltoetsen gelden terwijl een passend proces op de voorgrond staat",
-    "profileInheritNote": "Stap en vermenigvuldiger volgen de algemene instellingen",
     "profileGlobal": "Algemeen",
     "profileOverridden": "Overschreven in {{names}}",
     "profileOverriddenShort": "Overschreven",

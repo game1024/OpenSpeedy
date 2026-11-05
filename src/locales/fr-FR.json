@@ -104,7 +104,6 @@
     "profileDelete": "Supprimer",
     "profileProcesses": "Processus",
     "profileWhenForeground": "Ces raccourcis s’appliquent quand un processus correspondant est au premier plan",
-    "profileInheritNote": "Le pas et le multiplicateur suivent les réglages globaux",
     "profileGlobal": "Global",
     "profileOverridden": "Remplacé dans {{names}}",
     "profileOverriddenShort": "Remplacé",
