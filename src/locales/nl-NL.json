@@ -69,7 +69,8 @@
       "moduleBase": "Basisadres",
       "moduleSize": "Grootte",
       "modulesCount": "{{count}} modules"
-    }
+    },
+    "nameToggleHint": "Gekoppeld aan automatische versnelling. Wijzig factor/stand via «Instellingen → Automatische versnelling»."
   },
   "shortcut": {
     "notSet": "Niet ingesteld",

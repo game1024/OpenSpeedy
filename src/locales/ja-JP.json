@@ -69,7 +69,8 @@
       "moduleBase": "ベースアドレス",
       "moduleSize": "サイズ",
       "modulesCount": "{{count}} モジュール"
-    }
+    },
+    "nameToggleHint": "自動加速に紐付け済みかどうかを示します。倍率・ギアは「設定 → 自動加速」で変更できます"
   },
   "shortcut": {
     "notSet": "未設定",

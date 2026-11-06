@@ -69,7 +69,8 @@
       "moduleBase": "基址",
       "moduleSize": "大小",
       "modulesCount": "{{count}} 个模块"
-    }
+    },
+    "nameToggleHint": "开关表示是否已绑定自动加速；倍率与档位在「设置 → 自动加速」中修改"
   },
   "shortcut": {
     "notSet": "未设置",

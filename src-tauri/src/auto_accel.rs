@@ -29,6 +29,9 @@ use windows::Win32::System::Threading::{
 
 const PREFS_FILE: &str = "auto_accel.json";
 const SETTINGS_FILE: &str = "settings.json";
+/// Pre-existing "remembered process names" list. Read once and folded into the
+/// rules below, so there is only ever one source of truth.
+const LEGACY_FILE: &str = "process.json";
 const POLL_MS: u64 = 500;
 const MAX_INJECT_ATTEMPTS: u8 = 10;
 const MIN_SPEED: f64 = 0.001;
@@ -95,6 +98,9 @@ struct Inner {
     /// Factor the monitor currently applies because a bound game is running.
     /// The frontend reads this so its startup restore does not overwrite it.
     active_speed: Option<f64>,
+    /// PIDs the monitor injected, and whether they are 32-bit. The UI mirrors
+    /// this instead of keeping a second, easily divergent "enabled" map.
+    applied: HashMap<u32, bool>,
     /// Bumped on every config change so the monitor re-evaluates immediately.
     generation: u64,
 }
@@ -118,10 +124,21 @@ impl AutoAccelState {
         if config.gear_speeds.len() != 5 {
             config.gear_speeds = default_gear_speeds();
         }
+
+        // Fold in the old `process.json` name list once. It had no master
+        // switch, so migrating anything means the user was relying on it.
+        if migrate_legacy_names(dir, &mut config) {
+            config.enabled = true;
+            if let Err(e) = crate::prefs::write(&path, &config) {
+                crate::applog::warn("auto", format!("could not save migrated rules: {e}"));
+            }
+        }
+
         Arc::new(Self {
             inner: Mutex::new(Inner {
                 config,
                 active_speed: None,
+                applied: HashMap::new(),
                 generation: 0,
             }),
             path,
@@ -151,6 +168,26 @@ impl AutoAccelState {
         if inner.active_speed != speed {
             inner.active_speed = speed;
         }
+    }
+
+    /// Publish the monitor's injection set for the UI to mirror.
+    fn set_applied(&self, applied: &HashMap<u32, Applied>) {
+        let mut inner = self.guard();
+        inner.applied = applied
+            .iter()
+            .map(|(pid, info)| (*pid, info.is32))
+            .collect();
+    }
+
+    fn applied_pids(&self) -> Vec<(u32, bool)> {
+        let mut pids: Vec<(u32, bool)> = self
+            .guard()
+            .applied
+            .iter()
+            .map(|(pid, is32)| (*pid, *is32))
+            .collect();
+        pids.sort_unstable_by_key(|(pid, _)| *pid);
+        pids
     }
 
     /// Mutate + persist. Persisting before releasing the lock means two quick
@@ -195,6 +232,75 @@ fn read_gear_speeds(path: &Path) -> Option<Vec<f64>> {
         speeds.push(if valid_speed(factor) { factor } else { 1.0 });
     }
     Some(speeds)
+}
+
+/// Fold the old `process.json` name list into the rules, once. The legacy list
+/// carried no per-game factor — it always used the global speed — so migrated
+/// rules inherit that factor. The old list is emptied afterwards so no stale
+/// reader can inject a process a second time.
+fn migrate_legacy_names(dir: &Path, cfg: &mut AutoAccelConfig) -> bool {
+    let path = crate::prefs::file(dir, LEGACY_FILE);
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return false;
+    };
+    let Some(names) = value.get("names").and_then(|v| v.as_array()) else {
+        return false;
+    };
+    if names.is_empty() {
+        return false;
+    }
+
+    let speed = read_global_speed(&crate::prefs::file(dir, SETTINGS_FILE));
+    let mut added = 0;
+    for name in names.iter().filter_map(|v| v.as_str()) {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 260 {
+            continue;
+        }
+        if cfg.rules.iter().any(|r| r.name.eq_ignore_ascii_case(name)) {
+            continue;
+        }
+        cfg.rules.push(AutoRule {
+            name: name.to_string(),
+            exe_path: None,
+            arch: None,
+            speed,
+            gear: None,
+        });
+        added += 1;
+    }
+
+    // Idempotent: next start sees an empty array and does nothing.
+    if let Err(e) = std::fs::write(&path, "{\"names\":[]}") {
+        crate::applog::warn(
+            "auto",
+            format!("could not clear the legacy process list: {e}"),
+        );
+    }
+    if added > 0 {
+        crate::applog::info(
+            "auto",
+            format!("migrated {added} remembered game(s) into auto_accel.json at {speed}×"),
+        );
+    }
+    added > 0
+}
+
+fn read_global_speed(path: &Path) -> f64 {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .and_then(|v| {
+            v.get("settings")
+                .unwrap_or(&v)
+                .get("speed")
+                .and_then(|s| s.as_f64())
+        })
+        .filter(|f| valid_speed(*f))
+        .unwrap_or(1.0)
 }
 
 fn valid_speed(v: f64) -> bool {
@@ -305,6 +411,13 @@ pub fn set_auto_gear_speeds(
 #[tauri::command]
 pub fn get_auto_accel_active_speed(state: State<'_, Arc<AutoAccelState>>) -> Option<f64> {
     state.inner().active_speed()
+}
+
+/// `[pid, is32]` pairs the monitor has injected. The UI mirrors these instead
+/// of maintaining its own idea of which process is accelerated.
+#[tauri::command]
+pub fn get_auto_accel_applied_pids(state: State<'_, Arc<AutoAccelState>>) -> Vec<(u32, bool)> {
+    state.inner().applied_pids()
 }
 
 // ── Process monitor ──────────────────────────────────────────────────────
@@ -530,6 +643,8 @@ fn monitor_loop(state: Arc<AutoAccelState>) {
             last_factor = None;
         }
 
+        // Publish once per tick, after both branches have settled.
+        state.set_applied(&applied);
         std::thread::sleep(Duration::from_millis(POLL_MS));
     }
 }

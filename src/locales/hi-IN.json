@@ -69,7 +69,8 @@
       "moduleBase": "बेस एड्रेस",
       "moduleSize": "आकार",
       "modulesCount": "{{count}} मॉड्यूल"
-    }
+    },
+    "nameToggleHint": "स्वचालित त्वरण से बाउंड है। गुणक/गियर «सेटिंग → स्वचालित त्वरण» में बदलें"
   },
   "shortcut": {
     "notSet": "सेट नहीं",

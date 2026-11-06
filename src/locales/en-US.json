@@ -69,7 +69,8 @@
       "moduleBase": "Base Address",
       "moduleSize": "Size",
       "modulesCount": "{{count}} modules"
-    }
+    },
+    "nameToggleHint": "Bound for auto acceleration. Edit the factor or gear in Settings → Auto Acceleration."
   },
   "shortcut": {
     "notSet": "Not set",

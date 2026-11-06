@@ -330,6 +330,7 @@ pub fn run() -> Result<(), String> {
             auto_accel::remove_auto_rule,
             auto_accel::set_auto_gear_speeds,
             auto_accel::get_auto_accel_active_speed,
+            auto_accel::get_auto_accel_applied_pids,
         ])
         .device_event_filter(tauri::DeviceEventFilter::Always)
         .build(tauri::generate_context!())

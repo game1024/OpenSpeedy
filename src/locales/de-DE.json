@@ -69,7 +69,8 @@
       "moduleBase": "Basisadresse",
       "moduleSize": "Größe",
       "modulesCount": "{{count}} Module"
-    }
+    },
+    "nameToggleHint": "Für automatische Beschleunigung verknüpft. Faktor/Stufe unter „Einstellungen → Automatische Beschleunigung\" ändern."
   },
   "shortcut": {
     "notSet": "Nicht gesetzt",

@@ -69,7 +69,8 @@
       "moduleBase": "기본 주소",
       "moduleSize": "크기",
       "modulesCount": "{{count}}개 모듈"
-    }
+    },
+    "nameToggleHint": "자동 가속에 연결되었는지를 나타냅니다. 배율/기어는 «설정 → 자동 가속»에서 변경하세요"
   },
   "shortcut": {
     "notSet": "설정 안 됨",

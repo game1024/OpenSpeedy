@@ -69,7 +69,8 @@
       "moduleBase": "Adresse de Base",
       "moduleSize": "Taille",
       "modulesCount": "{{count}} modules"
-    }
+    },
+    "nameToggleHint": "Associé à l'accélération automatique. Modifiez le facteur/palier dans « Paramètres → Accélération automatique »."
   },
   "shortcut": {
     "notSet": "Non défini",

@@ -69,7 +69,8 @@
       "moduleBase": "Endereço Base",
       "moduleSize": "Tamanho",
       "modulesCount": "{{count}} módulos"
-    }
+    },
+    "nameToggleHint": "Vinculado à aceleração automática. Ajuste o fator/marcha em «Configurações → Aceleração automática»."
   },
   "shortcut": {
     "notSet": "Não definido",

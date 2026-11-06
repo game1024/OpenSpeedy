@@ -69,7 +69,8 @@
       "moduleBase": "基址",
       "moduleSize": "大小",
       "modulesCount": "{{count}} 個模組"
-    }
+    },
+    "nameToggleHint": "開關表示是否已綁定自動加速；倍率與檔位在「設定 → 自動加速」中修改"
   },
   "settings": {
     "loading": "載入設定中...",

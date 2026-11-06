@@ -88,6 +88,15 @@ export async function getActiveAutoSpeed(): Promise<number | null> {
   }
 }
 
+/** `[pid, is32]` pairs the Rust monitor has injected. */
+export async function getAppliedPids(): Promise<[number, boolean][]> {
+  try {
+    return await invoke<[number, boolean][]>("get_auto_accel_applied_pids");
+  } catch {
+    return [];
+  }
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────────
 
 export function useAutoAccel() {
