@@ -1,5 +1,4 @@
 pub mod applog;
-mod auto_accel;
 mod bridge_client;
 mod bridge_job;
 mod prefs;
@@ -293,15 +292,9 @@ pub fn run() -> Result<(), String> {
                 None => applog::warn("startup", "main window not found — visibility unchanged"),
             }
 
-            let accel_state = auto_accel::AutoAccelState::load(&prefs_dir);
-            app.manage(Arc::clone(&accel_state));
-
             ensure_bridges();
             // Register Ctrl+C handler so bridges are killed on console exit
             unsafe { let _ = SetConsoleCtrlHandler(Some(ctrlc_handler), true); }
-            // Started after the bridges are ready so the first detection can
-            // inject immediately rather than losing its first retry window.
-            auto_accel::spawn_monitor(accel_state);
             applog::info("setup", "startup complete");
             Ok(())
         })
@@ -324,13 +317,6 @@ pub fn run() -> Result<(), String> {
             report_frontend_error,
             startup::get_boot_mode,
             startup::set_boot_mode,
-            auto_accel::get_auto_accel_config,
-            auto_accel::set_auto_accel_enabled,
-            auto_accel::upsert_auto_rule,
-            auto_accel::remove_auto_rule,
-            auto_accel::set_auto_gear_speeds,
-            auto_accel::get_auto_accel_active_speed,
-            auto_accel::get_auto_accel_applied_pids,
         ])
         .device_event_filter(tauri::DeviceEventFilter::Always)
         .build(tauri::generate_context!())

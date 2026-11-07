@@ -69,8 +69,7 @@
       "moduleBase": "Adresse de Base",
       "moduleSize": "Taille",
       "modulesCount": "{{count}} modules"
-    },
-    "nameToggleHint": "Associé à l'accélération automatique. Modifiez le facteur/palier dans « Paramètres → Accélération automatique »."
+    }
   },
   "shortcut": {
     "notSet": "Non défini",
@@ -116,33 +115,5 @@
     "copyInfoError": "Échec de la copie. Veuillez copier manuellement.",
     "copyInfo": "Infos système",
     "openLog": "Ouvrir le journal"
-  },
-  "autoAccel": {
-    "title": "Accélération automatique",
-    "enable": "Activer l'accélération automatique",
-    "hint": "Associez un processus de jeu à un facteur ou un palier. Dès que ce processus démarre, le réglage enregistré est appliqué automatiquement, sans nouvelle sélection ni confirmation.",
-    "globalHint": "Remarque : le facteur est global. Si plusieurs jeux associés tournent ensemble, le dernier démarré fait foi.",
-    "offWarning": "Interrupteur principal désactivé — les règles sont inactives",
-    "process": "Processus du jeu",
-    "speed": "Facteur / palier",
-    "actions": "Actions",
-    "empty": "Aucun jeu associé",
-    "selectProcess": "Choisir un processus en cours",
-    "manual": "Saisir un nom de processus…",
-    "manualPlaceholder": "ex. game.exe",
-    "custom": "Facteur personnalisé",
-    "customSpeed": "Facteur",
-    "gearLabel": "Palier {{n}} ({{speed}}×)",
-    "bind": "Associer",
-    "edit": "Modifier",
-    "remove": "Supprimer",
-    "saved": "{{name}} associé",
-    "removed": "{{name}} supprimé",
-    "saveFail": "Échec de l'enregistrement. Consultez le journal.",
-    "invalid": "Indiquez un nom de processus et un facteur entre 0.001 et 1000",
-    "binding": "Accélération automatique",
-    "bindThis": "Associer avec le facteur actuel",
-    "unbind": "Dissocier",
-    "currentSpeed": "Facteur actuel {{speed}}×"
   }
 }

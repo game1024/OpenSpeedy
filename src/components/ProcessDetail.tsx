@@ -3,15 +3,12 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  Box, Paper, Typography, Avatar, Chip, Divider, Button,
+  Box, Paper, Typography, Avatar, Chip, Divider,
   Table, TableCell, TableHead, TableRow,
 } from "@mui/material";
 import WindowIcon from "@mui/icons-material/Window";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ExtensionIcon from "@mui/icons-material/Extension";
-import { useAutoAccel, upsertAutoRule, removeAutoRule, setAutoAccelEnabled } from "../store/autoAccel";
-import { useSettings } from "../hooks/useSettings";
-import { useSnackbar } from "../contexts/SnackbarContext";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -110,44 +107,6 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { config } = useAutoAccel();
-  const { settings } = useSettings();
-  const { notify } = useSnackbar();
-
-  const bound = process
-    ? config.rules.find(r => r.name.toLowerCase() === process.name.toLowerCase())
-    : undefined;
-  const currentSpeed = (settings?.speed as number) || 1.0;
-  const boundSpeed = bound?.gear
-    ? (config.gear_speeds?.[bound.gear - 1] ?? bound.speed)
-    : (bound?.speed ?? currentSpeed);
-
-  async function bindCurrent() {
-    if (!process) return;
-    try {
-      await upsertAutoRule({
-        name: process.name,
-        exe_path: process.exe_path,
-        arch: process.arch,
-        speed: currentSpeed,
-        gear: null,
-      });
-      if (!config.enabled) await setAutoAccelEnabled(true);
-      notify(t("autoAccel.saved", { name: process.name }), "success");
-    } catch {
-      notify(t("autoAccel.saveFail"), "error");
-    }
-  }
-
-  async function unbindCurrent() {
-    if (!bound) return;
-    try {
-      await removeAutoRule(bound.name);
-      notify(t("autoAccel.removed", { name: bound.name }), "success");
-    } catch {
-      notify(t("autoAccel.saveFail"), "error");
-    }
-  }
 
   const sortedModules = useMemo(() => {
     if (!sortDir) return modules;
@@ -254,31 +213,6 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
           <Typography variant="body2">
             {speedState?.injected ? t("process.detail.yes") : t("process.detail.no")}
           </Typography>
-        } />
-
-        {/* Bind this process for future launches — no confirmation needed then. */}
-        <DetailRow label={t("autoAccel.binding")} value={
-          bound ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-              <Chip
-                label={bound.gear ? t("autoAccel.gearLabel", { n: bound.gear, speed: boundSpeed }) : `${boundSpeed.toFixed(3)}×`}
-                size="small"
-                sx={{ fontWeight: 600, fontSize: "0.7rem", bgcolor: "success.main", color: "#fff" }}
-              />
-              <Button size="small" onClick={() => void unbindCurrent()} sx={{ textTransform: "none" }}>
-                {t("autoAccel.unbind")}
-              </Button>
-            </Box>
-          ) : (
-            <Box>
-              <Button size="small" variant="outlined" onClick={() => void bindCurrent()} sx={{ textTransform: "none" }}>
-                {t("autoAccel.bindThis")}
-              </Button>
-              <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
-                {t("autoAccel.currentSpeed", { speed: currentSpeed.toFixed(3) })}
-              </Typography>
-            </Box>
-          )
         } />
       </Box>
 

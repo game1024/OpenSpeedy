@@ -69,8 +69,7 @@
       "moduleBase": "Basisadres",
       "moduleSize": "Grootte",
       "modulesCount": "{{count}} modules"
-    },
-    "nameToggleHint": "Gekoppeld aan automatische versnelling. Wijzig factor/stand via «Instellingen → Automatische versnelling»."
+    }
   },
   "shortcut": {
     "notSet": "Niet ingesteld",
@@ -114,33 +113,5 @@
     "copyInfoError": "Kopiëren mislukt. Kopieer handmatig.",
     "copyInfo": "Systeeminfo",
     "openLog": "Log openen"
-  },
-  "autoAccel": {
-    "title": "Automatische versnelling",
-    "enable": "Automatische versnelling inschakelen",
-    "hint": "Koppel een spelproces aan een factor of stand. Zodra dat proces start, wordt de opgeslagen instelling automatisch toegepast zonder opnieuw te kiezen of te bevestigen.",
-    "globalHint": "Let op: de factor is globaal. Bij meerdere gekoppelde spellen geldt de factor van het laatst gestarte spel.",
-    "offWarning": "Hoofdschakelaar staat uit — regels zijn inactief",
-    "process": "Spelproces",
-    "speed": "Factor / stand",
-    "actions": "Acties",
-    "empty": "Nog geen spellen gekoppeld",
-    "selectProcess": "Kies een actief proces",
-    "manual": "Procesnaam invoeren…",
-    "manualPlaceholder": "bijv. game.exe",
-    "custom": "Aangepaste factor",
-    "customSpeed": "Factor",
-    "gearLabel": "Stand {{n}} ({{speed}}×)",
-    "bind": "Koppelen",
-    "edit": "Bewerken",
-    "remove": "Verwijderen",
-    "saved": "{{name}} gekoppeld",
-    "removed": "{{name}} verwijderd",
-    "saveFail": "Opslaan mislukt. Bekijk het logboek.",
-    "invalid": "Geef een procesnaam en een factor tussen 0.001 en 1000 op",
-    "binding": "Automatische versnelling",
-    "bindThis": "Koppelen met huidige factor",
-    "unbind": "Ontkoppelen",
-    "currentSpeed": "Huidige factor {{speed}}×"
   }
 }

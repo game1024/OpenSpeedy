@@ -69,8 +69,7 @@
       "moduleBase": "Endereço Base",
       "moduleSize": "Tamanho",
       "modulesCount": "{{count}} módulos"
-    },
-    "nameToggleHint": "Vinculado à aceleração automática. Ajuste o fator/marcha em «Configurações → Aceleração automática»."
+    }
   },
   "shortcut": {
     "notSet": "Não definido",
@@ -114,33 +113,5 @@
     "copyInfoError": "Falha ao copiar. Copie manualmente.",
     "copyInfo": "Info do sistema",
     "openLog": "Abrir log"
-  },
-  "autoAccel": {
-    "title": "Aceleração automática",
-    "enable": "Ativar aceleração automática",
-    "hint": "Vincule um processo de jogo a um multiplicador ou marcha. A partir daí, assim que o processo iniciar, a configuração salva é aplicada automaticamente, sem selecionar ou confirmar novamente.",
-    "globalHint": "Observação: o multiplicador é global. Com vários jogos vinculados ativos, vale o do último iniciado.",
-    "offWarning": "Interruptor principal desligado — as regras estão inativas",
-    "process": "Processo do jogo",
-    "speed": "Multiplicador / marcha",
-    "actions": "Ações",
-    "empty": "Nenhum jogo vinculado",
-    "selectProcess": "Selecionar processo em execução",
-    "manual": "Digitar o nome do processo…",
-    "manualPlaceholder": "ex.: game.exe",
-    "custom": "Multiplicador personalizado",
-    "customSpeed": "Multiplicador",
-    "gearLabel": "Marcha {{n}} ({{speed}}×)",
-    "bind": "Vincular",
-    "edit": "Editar",
-    "remove": "Remover",
-    "saved": "{{name}} vinculado",
-    "removed": "{{name}} removido",
-    "saveFail": "Falha ao salvar. Verifique o log.",
-    "invalid": "Informe o nome do processo e um multiplicador entre 0.001 e 1000",
-    "binding": "Aceleração automática",
-    "bindThis": "Vincular com o multiplicador atual",
-    "unbind": "Desvincular",
-    "currentSpeed": "Multiplicador atual {{speed}}×"
   }
 }

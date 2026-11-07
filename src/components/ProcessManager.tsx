@@ -16,10 +16,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import SpeedPanel from "./SpeedPanel";
 import ProcessDetail from "./ProcessDetail";
 import { useSettings, useSpeed } from "../hooks/useSettings";
-import {
-  useAutoAccel, upsertAutoRule, removeAutoRule, setAutoAccelEnabled,
-  setAutoGearSpeeds, getAppliedPids,
-} from "../store/autoAccel";
+import { getAcceleratedNames, addAcceleratedName, removeAcceleratedName } from "../store/process";
 
 // ── Types & constants ────────────────────────────────────────────────────
 
@@ -31,15 +28,6 @@ interface ProcessInfo {
   memory_kb: number;
   exe_path: string | null;
   admin: boolean;
-}
-
-/** `bound` = has a saved auto-acceleration rule; `anyEnabled` = currently accelerated. */
-interface NameGroup {
-  count: number;
-  arch: string;
-  pids: number[];
-  anyEnabled: boolean;
-  bound: boolean;
 }
 
 const ROW_H = 36;
@@ -116,8 +104,8 @@ const ProcessTable = function ProcessTable({
   selectedPid: number | null;
   onToggle: (pid: number, arch: string) => void;
   onSelect: (pid: number) => void;
-  nameGroups: Map<string, NameGroup>;
-  nameFiltered: [string, NameGroup][];
+  nameGroups: Map<string, { count: number; arch: string; pids: number[]; anyEnabled: boolean }>;
+  nameFiltered: [string, { count: number; arch: string; pids: number[]; anyEnabled: boolean }][];
   onToggleName: (name: string) => void;
   tab: number;
   onTabChange: (v: number) => void;
@@ -159,8 +147,8 @@ const ProcessTable = function ProcessTable({
           case "enabled": cmp = (enabled.has(pa.pid) ? 1 : 0) - (enabled.has(pb.pid) ? 1 : 0); break;
         }
       } else {
-        const ga = a as [string, NameGroup];
-        const gb = b as [string, NameGroup];
+        const ga = a as [string, { count: number; arch: string; pids: number[]; anyEnabled: boolean }];
+        const gb = b as [string, { count: number; arch: string; pids: number[]; anyEnabled: boolean }];
         switch (sortCol) {
           case "count": cmp = ga[1].count - gb[1].count; break;
           case "name": cmp = ga[0].localeCompare(gb[0]); break;
@@ -234,7 +222,7 @@ const ProcessTable = function ProcessTable({
                 return <ProcessRow key={p.pid} p={p} on={enabled.has(p.pid)} icons={icons} start={vr.start} selected={selectedPid === p.pid} showMem={true} onToggle={onToggle} onSelect={onSelect} />;
               })
             : vz.getVirtualItems().map(vr => {
-                const [name, group] = (sorted as [string, NameGroup][])[vr.index];
+                const [name, group] = (sorted as [string, { count: number; arch: string; pids: number[]; anyEnabled: boolean }][])[vr.index];
                 return (
                   <Box
                     key={name}
@@ -254,11 +242,7 @@ const ProcessTable = function ProcessTable({
                         <Typography variant="body2" noWrap sx={{ fontWeight: 500, fontSize: "0.8rem" }}>{name}</Typography>
                       </Box>
                     </Box>
-                    <Box sx={{ textAlign: "right", pr: 1 }}>
-                      <Tooltip title={t("process.nameToggleHint")}>
-                        <Switch size="small" checked={group.bound} onChange={() => onToggleName(name)} />
-                      </Tooltip>
-                    </Box>
+                    <Box sx={{ textAlign: "right", pr: 1 }}><Switch size="small" checked={group.anyEnabled} onChange={() => onToggleName(name)} /></Box>
                   </Box>
                 );
               })}
@@ -280,9 +264,6 @@ interface SpeedState {
   injected: boolean;
   enabled: boolean;
   arch: string;
-  /** "auto" entries are owned by the Rust monitor; "manual" ones by the user's
-   *  PID switch and must never be overwritten by the monitor's status sync. */
-  source?: "auto" | "manual";
 }
 
 export default function ProcessManager() {
@@ -297,22 +278,11 @@ export default function ProcessManager() {
   const [showSystem, setShowSystem] = useState(false);
   const { settings } = useSettings();
   const { speed, setSpeed, commitSpeed } = useSpeed();
-  const { config } = useAutoAccel();
 
   const gears = useMemo(() => settings
     ? [1, 2, 3, 4, 5].map(i => (settings[`gear${i}Speed` as keyof typeof settings] as number) || 1)
     : [1, 2, 5, 10, 100],
   [settings]);
-
-  // Gear-bound rules follow the current gear definitions, even when the
-  // settings panel is never opened during a silent boot.
-  const gearSync = useRef("");
-  useEffect(() => {
-    const key = gears.join(",");
-    if (gearSync.current === key) return;
-    gearSync.current = key;
-    void setAutoGearSpeeds(gears).catch(() => {});
-  }, [gears]);
 
   // Derive enabled set for UI
   const enabled = useMemo(() => {
@@ -326,49 +296,47 @@ export default function ProcessManager() {
     const wasOn = speedMap.get(pid)?.enabled ?? false;
 
     if (!wasOn) {
-      setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch, source: "manual" }); return n; });
+      setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch }); return n; });
       invoke<boolean>("bridge_inject", { pid, arch })
         .catch((e) => { console.error("[toggle] bridge_inject error:", e); });
     } else {
-      setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { ...prev.get(pid)!, enabled: false, source: "manual" }); return n; });
+      setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { ...prev.get(pid)!, enabled: false }); return n; });
       invoke<boolean>("bridge_disable", { pid, arch })
         .catch(() => {});
     }
   }
 
-  // Data fetch + mirror the Rust monitor's injection set. Injection is now
-  // exclusively the monitor's job: the UI reflects it, never performs it.
-  // A PID the user toggled by hand is marked "manual" and is deliberately not
-  // overwritten by this sync, so the PID switch can still turn a bound game
-  // off for the current process instance.
-  const appliedSignature = useRef("");
-  useEffect(() => {
-    invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {});
-  }, []);
-  useInterval(async () => {
-    try {
-      setProcesses(await invoke<ProcessInfo[]>("get_process_list_fast"));
-    } catch { /* keep the last known list */ }
+  // Data fetch
+  useEffect(() => { invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {}); }, []);
+  useEffect(() => { if (search.trim()) { invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {}); } }, [search]);
+  useInterval(async () => { try { setProcesses(await invoke<ProcessInfo[]>("get_process_list_fast")); } catch {} }, 1000);
 
-    const applied = await getAppliedPids();
-    const signature = applied.map(([pid, is32]) => `${pid}:${is32 ? 1 : 0}`).join(",");
-    if (signature === appliedSignature.current) return;
-    appliedSignature.current = signature;
-    const active = new Set(applied.map(([pid]) => pid));
-    setSpeedMap(prev => {
-      const n = new Map(prev);
-      for (const [pid, st] of n) {
-        if (!active.has(pid) && st.source !== "manual") n.delete(pid);
+  // Periodically inject saved process names
+  useInterval(async () => {
+    if (processes.length === 0) return;
+    const names = await getAcceleratedNames();
+    for (const name of names) {
+      const procs = processes.filter(p =>
+        p.name.toLowerCase() === name.toLowerCase() && !speedMap.get(p.pid)?.enabled
+      );
+      if (procs.length === 0) continue;
+      const arch = procs[0].arch;
+      setSpeedMap(prev => {
+        const n = new Map(prev);
+        for (const p of procs) {
+          n.set(p.pid, { injected: true, enabled: true, arch });
+        }
+        return n;
+      });
+      for (const p of procs) {
+        invoke<boolean>("bridge_inject", { pid: p.pid, arch }).catch(() => {});
       }
-      for (const [pid, is32] of applied) {
-        if (n.get(pid)?.source === "manual") continue;
-        n.set(pid, { injected: true, enabled: true, arch: is32 ? "x86" : "x64", source: "auto" });
-      }
-      return n;
-    });
+    }
   }, 1000);
 
-  // Hide protected system processes (memory 0 = handle could not be opened)
+  // Hide protected system processes (memory 0 = handle could not be opened).
+  // A real game can also be unreadable when it just started or runs elevated,
+  // so a visible window title is enough to keep it in the list instead.
   const visibleProcesses = useMemo(
     () => (showSystem ? processes : processes.filter(p => p.memory_kb > 0)),
     [processes, showSystem],
@@ -381,25 +349,19 @@ export default function ProcessManager() {
     return visibleProcesses.filter(p => p.name.toLowerCase().includes(q) || p.pid.toString().includes(q) || (p.window_title && p.window_title.toLowerCase().includes(q)));
   }, [visibleProcesses, search]);
 
-  // `bound` comes from the same rules the Settings page edits; `anyEnabled`
-  // comes from the Rust monitor's live state. One list, two different facts.
-  const boundNames = useMemo(
-    () => new Set(config.rules.map(r => r.name.toLowerCase())),
-    [config.rules],
-  );
-
+  // Name grouping (for name-based toggle)
   const nameGroups = useMemo(() => {
-    const map = new Map<string, NameGroup>();
+    const map = new Map<string, { count: number; arch: string; pids: number[]; anyEnabled: boolean }>();
     for (const p of visibleProcesses) {
       const key = p.name.toLowerCase();
-      const cur = map.get(key) || { count: 0, arch: p.arch, pids: [], anyEnabled: false, bound: boundNames.has(key) };
+      const cur = map.get(key) || { count: 0, arch: p.arch, pids: [], anyEnabled: false };
       cur.count++;
       cur.pids.push(p.pid);
       if (speedMap.get(p.pid)?.enabled) cur.anyEnabled = true;
       map.set(key, cur);
     }
     return map;
-  }, [visibleProcesses, speedMap, boundNames]);
+  }, [visibleProcesses, speedMap]);
 
   const nameFiltered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -407,40 +369,24 @@ export default function ProcessManager() {
     return Array.from(nameGroups.entries()).filter(([name]) => name.includes(q));
   }, [nameGroups, search]);
 
-  /** The name-view switch is now just a shortcut for add/remove rule. */
   async function toggleName(name: string) {
-    const key = name.toLowerCase();
-    const group = nameGroups.get(key);
+    const group = nameGroups.get(name.toLowerCase());
     if (!group) return;
-
-    if (!group.bound) {
-      const p = processes.find(pr => pr.name.toLowerCase() === key);
-      try {
-        await upsertAutoRule({
-          name: p?.name ?? name,
-          exe_path: p?.exe_path ?? null,
-          arch: p?.arch ?? group.arch,
-          speed: (settings?.speed as number) || 1.0,
-          gear: null,
-        });
-        // Binding a game is the request to enable auto acceleration; the
-        // master switch remains independently available afterwards.
-        if (!config.enabled) await setAutoAccelEnabled(true);
-      } catch (e) {
-        console.error("[toggleName] upsert_auto_rule failed:", e);
+    if (!group.anyEnabled) {
+      addAcceleratedName(name);
+      for (const pid of group.pids) {
+        setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch: group.arch }); return n; });
+      }
+      for (const pid of group.pids) {
+        invoke<boolean>("bridge_inject", { pid, arch: group.arch }).catch(() => {});
       }
     } else {
-      try {
-        await removeAutoRule(key);
-        // The monitor disables these PIDs on its next tick. Clear the local
-        // markers so the status sync can show the real state.
-        setSpeedMap(prev => {
-          const n = new Map(prev);
-          for (const pid of group.pids) n.delete(pid);
-          return n;
-        });
-      } catch (e) {
-        console.error("[toggleName] remove_auto_rule failed:", e);
+      removeAcceleratedName(name);
+      for (const pid of group.pids) {
+        setSpeedMap(prev => { const n = new Map(prev); const cur = n.get(pid); if (cur) n.set(pid, { ...cur, enabled: false }); return n; });
+      }
+      for (const pid of group.pids) {
+        invoke<boolean>("bridge_disable", { pid, arch: group.arch }).catch(() => {});
       }
     }
   }
@@ -466,9 +412,9 @@ export default function ProcessManager() {
     invoke<boolean | null>("bridge_get_status", { pid: p.pid, arch: p.arch })
       .then(status => {
         if (status === true) {
-          setSpeedMap(prev => { const n = new Map(prev); const cur = n.get(p.pid); if (cur?.source === "manual") return prev; n.set(p.pid, { injected: true, enabled: true, arch: p.arch, source: "auto" }); return n; });
+          setSpeedMap(prev => { const n = new Map(prev); n.set(p.pid, { injected: true, enabled: true, arch: p.arch }); return n; });
         } else if (status === false) {
-          setSpeedMap(prev => { const n = new Map(prev); const cur = n.get(p.pid); if (cur?.source === "manual") return prev; n.set(p.pid, { injected: true, enabled: false, arch: p.arch }); return n; });
+          setSpeedMap(prev => { const n = new Map(prev); n.set(p.pid, { injected: true, enabled: false, arch: p.arch }); return n; });
         }
         // status === null means not injected — don't set anything
       })

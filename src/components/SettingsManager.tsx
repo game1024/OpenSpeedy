@@ -14,7 +14,6 @@ import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import AutoAccelManager from "./AutoAccelManager";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "../hooks/useSettings";
 import { useShortcut } from "../hooks/useShortcut";
@@ -299,11 +298,6 @@ export default function SettingsManager() {
           </Select>
         </Row>
 
-      </Paper>
-
-      {/* ── 自动加速：独立开关 + 已绑定游戏及其倍率/档位 ── */}
-      <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
-        <AutoAccelManager />
       </Paper>
     </Box>
   );

@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
-import { useInterval } from "ahooks";
+import { useState, useCallback, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { type SettingsState } from "../store/settings";
 import { loadSettings, setSetting } from "../store/settings";
-import { getActiveAutoSpeed } from "../store/autoAccel";
 
 // ── Module-level store (useSyncExternalStore compatible) ────────────────────
 
@@ -73,61 +72,28 @@ export function useSpeed() {
   const { set } = useSettings();
   const [speed, setSpeed] = useState(1.0);
   const persistedSpeed = useSettingsValue("speed");
-  // While a bound game is running the background monitor owns the global
-  // factor; do not let the persisted manual speed overwrite it.
-  const autoOwnsSpeed = useRef(false);
-  const lastAutoFactor = useRef<number | null>(null);
 
   // Sync persisted → local (initial load + cross-component changes)
   useEffect(() => {
-    if (persistedSpeed !== undefined && !autoOwnsSpeed.current) {
-      setSpeed(persistedSpeed as number);
-    }
+    if (persistedSpeed !== undefined) setSpeed(persistedSpeed as number);
   }, [persistedSpeed]);
 
-  // Sync saved speed to bridge on startup, unless auto acceleration already
-  // applied a factor before this WebView finished loading (silent boot case).
+  // Sync saved speed to bridge on startup
   useEffect(() => {
-    (async () => {
-      const active = await getActiveAutoSpeed();
-      if (active !== null && Number.isFinite(active)) {
-        autoOwnsSpeed.current = true;
-        lastAutoFactor.current = active;
-        setSpeed(active);
-        return;
-      }
-      try {
-        const current = await invoke<number | null>("bridge_get_speed");
-        const s = await loadSettings();
+    invoke<number | null>("bridge_get_speed").then(current => {
+      loadSettings().then(s => {
         if (s.speed && current !== s.speed) {
-          await invoke("bridge_set_speed", { factor: s.speed });
+          invoke("bridge_set_speed", { factor: s.speed });
         }
-      } catch { /* bridge not ready yet — the next poll will pick it up */ }
-    })();
+      });
+    });
   }, []);
 
-  // Follow factors applied later (a bound game starting while the app is open).
-  // Only a *change* of the active factor moves the slider, so a manual override
-  // is never fought by the monitor.
-  useInterval(async () => {
-    const active = await getActiveAutoSpeed();
-    if (active === lastAutoFactor.current) return;
-    lastAutoFactor.current = active;
-    if (active !== null && Number.isFinite(active)) {
-      autoOwnsSpeed.current = true;
-      setSpeed(active);
-    } else {
-      autoOwnsSpeed.current = false;
-    }
-  }, 1000);
-
   const updateSpeed = useCallback((s: number) => {
-    autoOwnsSpeed.current = false;
     setSpeed(s);
   }, []);
 
   const commitSpeed = useCallback(async (s: number) => {
-    autoOwnsSpeed.current = false;
     setSpeed(s);
     await invoke("bridge_set_speed", { factor: s });
     await set("speed", s);
