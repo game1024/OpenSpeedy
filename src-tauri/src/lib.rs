@@ -125,6 +125,36 @@ fn shutdown_bridges() {
 }
 
 #[tauri::command(async)]
+async fn foreground_exe_name() -> String {
+    process_enumerator::foreground_exe_name()
+}
+
+/// Emits `foreground-changed` when the foreground exe changes. A native thread keeps
+/// running while the webview is hidden and its timers are throttled.
+fn watch_foreground(app: tauri::AppHandle) {
+    use tauri::Emitter;
+    std::thread::spawn(move || {
+        let mut last = String::new();
+        loop {
+            // ponytail: polls one window every 300ms. Upgrade path: SetWinEventHook(EVENT_SYSTEM_FOREGROUND).
+            let name = process_enumerator::foreground_exe_name();
+            if name != last {
+                let _ = app.emit("foreground-changed", &name);
+                last = name;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(300));
+        }
+    });
+}
+
+/// Injected processes only. `on` / `off` is the DLL enable flag. `absent` means
+/// no mapping. Pids we cannot read are omitted so the UI keeps its last state.
+#[tauri::command(async)]
+async fn probe_acceleration(pids: Vec<u32>) -> Vec<process_enumerator::AccelProbe> {
+    process_enumerator::probe_acceleration(&pids)
+}
+
+#[tauri::command(async)]
 async fn get_process_list_fast() -> Vec<ProcessInfo> {
     process_enumerator::enumerate_processes_fast()
 }
@@ -253,12 +283,15 @@ pub fn run() -> Result<(), String> {
             applog::info("setup", "tauri setup callback entered");
             ensure_bridges();
             gamepad::start(app.handle().clone());
+            watch_foreground(app.handle().clone());
             // Register Ctrl+C handler so bridges are killed on console exit
             unsafe { let _ = SetConsoleCtrlHandler(Some(ctrlc_handler), true); }
             applog::info("setup", "startup complete");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            foreground_exe_name,
+            probe_acceleration,
             get_process_list,
             get_process_list_fast,
             get_process_icon,
