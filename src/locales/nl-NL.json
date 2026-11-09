@@ -73,9 +73,7 @@
   },
   "shortcut": {
     "notSet": "Niet ingesteld",
-    "keyNotSupported": "Deze toets kan niet als sneltoets worden gebruikt",
-    "inherited": "Geërfd",
-    "restoreInherit": "Globaal gebruiken"
+    "keyNotSupported": "Deze toets kan niet als sneltoets worden gebruikt"
   },
   "settings": {
     "loading": "Instellingen laden…",
@@ -95,31 +93,7 @@
     "hideToTray": "Verbergen in systeemvak",
     "language": "Taal",
     "registerSuccess": "Sneltoets \"{{shortcut}}\" geregistreerd",
-    "registerFail": "Sneltoets \"{{shortcut}}\" registratie mislukt",
-    "profile": "Profiel",
-    "profileNew": "Nieuw",
-    "profileEdit": "Bewerken",
-    "profileDelete": "Verwijderen",
-    "profileProcesses": "Processen",
-    "profileWhenForeground": "Deze sneltoetsen gelden terwijl een passend proces op de voorgrond staat",
-    "profileGlobal": "Algemeen",
-    "profileOverridden": "Overschreven in {{names}}",
-    "profileOverriddenShort": "Overschreven",
-    "profileUsedBy": "Gebruikt door {{name}}",
-    "profileName": "Naam",
-    "profileCreate": "Maken",
-    "profileSave": "Opslaan",
-    "profileCancel": "Annuleren",
-    "profileDeleteTitle": "Profiel verwijderen",
-    "profileDeleteAsk": "\"{{name}}\" verwijderen? Sneltoets- en waarde-overschrijvingen worden verwijderd.",
-    "profileNameEmpty": "Naam is verplicht",
-    "profileNameTooLong": "Maximaal {{max}} tekens",
-    "profileNameDuplicate": "Naam is al in gebruik",
-    "profileNameReserved": "De naam \"{{name}}\" is gereserveerd",
-    "profileDefaultName": "Profiel {{n}}",
-    "profileNameSeparator": ", ",
-    "profileNotRunning": "Niet actief",
-    "profileSearch": "Zoek op proces of venstertitel"
+    "registerFail": "Sneltoets \"{{shortcut}}\" registratie mislukt"
   },
   "about": {
     "title": "OpenSpeedy",

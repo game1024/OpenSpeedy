@@ -25,15 +25,16 @@ export async function addAcceleratedName(name: string) {
   }
 }
 
-/** Remove a process name from the acceleration list. Comparison ignores case. */
+/** Remove a process name from the acceleration list. */
 export async function removeAcceleratedName(name: string) {
   const store = await getStore();
   const names = await getAcceleratedNames();
-  const key = name.trim().toLowerCase();
-  const next = names.filter(item => item.trim().toLowerCase() !== key);
-  if (next.length === names.length) return;
-  await store.set("names", next);
-  await store.save();
+  const idx = names.indexOf(name);
+  if (idx >= 0) {
+    names.splice(idx, 1);
+    await store.set("names", names);
+    await store.save();
+  }
 }
 
 /** Check if a process name is in the acceleration list. */
