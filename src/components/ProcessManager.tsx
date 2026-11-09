@@ -266,11 +266,45 @@ interface SpeedState {
   arch: string;
 }
 
+type AccelProbe = { pid: number; state: "on" | "off" | "absent" };
+
+function applyAccelProbes(
+  prev: Map<number, SpeedState>,
+  processes: ProcessInfo[],
+  probes: AccelProbe[],
+  inflight: Set<number>,
+): Map<number, SpeedState> {
+  const archOf = new Map(processes.map(p => [p.pid, p.arch]));
+  const next = new Map(prev);
+  let changed = false;
+  for (const pid of next.keys()) {
+    if (!archOf.has(pid) && !inflight.has(pid)) {
+      next.delete(pid);
+      changed = true;
+    }
+  }
+  for (const row of probes) {
+    if (inflight.has(row.pid)) continue;
+    const arch = archOf.get(row.pid) ?? next.get(row.pid)?.arch ?? "";
+    if (row.state === "absent") {
+      if (next.delete(row.pid)) changed = true;
+      continue;
+    }
+    const enabled = row.state === "on";
+    const cur = next.get(row.pid);
+    if (cur?.injected === true && cur.enabled === enabled && cur.arch === arch) continue;
+    next.set(row.pid, { injected: true, enabled, arch });
+    changed = true;
+  }
+  return changed ? next : prev;
+}
+
 export default function ProcessManager() {
   const [processes, setProcesses] = useState<ProcessInfo[]>([]);
   const [search, setSearch] = useState("");
   const [icons, setIcons] = useState<Record<number, string>>({});
   const [speedMap, setSpeedMap] = useState<Map<number, SpeedState>>(new Map());
+  const inflight = useRef(new Set<number>());
   const [selectedPid, setSelectedPid] = useState<number | null>(null);
   const [tab, setTab] = useState(0);
   // Off by default — protected system processes report 0 memory because their
@@ -294,15 +328,19 @@ export default function ProcessManager() {
   // Toggle — optimistic: set state immediately, fire backend call in background
   async function toggle(pid: number, arch: string) {
     const wasOn = speedMap.get(pid)?.enabled ?? false;
-
+    inflight.current.add(pid);
     if (!wasOn) {
       setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch }); return n; });
       invoke<boolean>("bridge_inject", { pid, arch })
-        .catch((e) => { console.error("[toggle] bridge_inject error:", e); });
+        .catch((e) => { console.error("[toggle] bridge_inject error:", e); })
+        .finally(() => { inflight.current.delete(pid); });
     } else {
+      const procName = processes.find(p => p.pid === pid)?.name;
+      if (procName) await removeAcceleratedName(procName);
       setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { ...prev.get(pid)!, enabled: false }); return n; });
       invoke<boolean>("bridge_disable", { pid, arch })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => { inflight.current.delete(pid); });
     }
   }
 
@@ -317,7 +355,9 @@ export default function ProcessManager() {
     const names = await getAcceleratedNames();
     for (const name of names) {
       const procs = processes.filter(p =>
-        p.name.toLowerCase() === name.toLowerCase() && !speedMap.get(p.pid)?.enabled
+        p.name.toLowerCase() === name.toLowerCase()
+        && !speedMap.get(p.pid)?.enabled
+        && !inflight.current.has(p.pid)
       );
       if (procs.length === 0) continue;
       const arch = procs[0].arch;
@@ -329,7 +369,10 @@ export default function ProcessManager() {
         return n;
       });
       for (const p of procs) {
-        invoke<boolean>("bridge_inject", { pid: p.pid, arch }).catch(() => {});
+        inflight.current.add(p.pid);
+        invoke<boolean>("bridge_inject", { pid: p.pid, arch })
+          .catch(() => {})
+          .finally(() => { inflight.current.delete(p.pid); });
       }
     }
   }, 1000);
@@ -372,19 +415,25 @@ export default function ProcessManager() {
     if (!group) return;
     if (!group.anyEnabled) {
       addAcceleratedName(name);
+      for (const pid of group.pids) inflight.current.add(pid);
       for (const pid of group.pids) {
         setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch: group.arch }); return n; });
       }
       for (const pid of group.pids) {
-        invoke<boolean>("bridge_inject", { pid, arch: group.arch }).catch(() => {});
+        invoke<boolean>("bridge_inject", { pid, arch: group.arch })
+          .catch(() => {})
+          .finally(() => { inflight.current.delete(pid); });
       }
     } else {
-      removeAcceleratedName(name);
+      for (const pid of group.pids) inflight.current.add(pid);
+      await removeAcceleratedName(name);
       for (const pid of group.pids) {
         setSpeedMap(prev => { const n = new Map(prev); const cur = n.get(pid); if (cur) n.set(pid, { ...cur, enabled: false }); return n; });
       }
       for (const pid of group.pids) {
-        invoke<boolean>("bridge_disable", { pid, arch: group.arch }).catch(() => {});
+        invoke<boolean>("bridge_disable", { pid, arch: group.arch })
+          .catch(() => {})
+          .finally(() => { inflight.current.delete(pid); });
       }
     }
   }
@@ -403,21 +452,18 @@ export default function ProcessManager() {
   [processes, selectedPid]);
   const selectedSpeedState = selectedPid ? speedMap.get(selectedPid) : undefined;
 
-  // Query real injection status from bridge when selecting a process
+  // The list switch follows the DLL flag, including processes injected before this window opened.
   useEffect(() => {
-    const p = selectedProcess;
-    if (!p) return;
-    invoke<boolean | null>("bridge_get_status", { pid: p.pid, arch: p.arch })
-      .then(status => {
-        if (status === true) {
-          setSpeedMap(prev => { const n = new Map(prev); n.set(p.pid, { injected: true, enabled: true, arch: p.arch }); return n; });
-        } else if (status === false) {
-          setSpeedMap(prev => { const n = new Map(prev); n.set(p.pid, { injected: true, enabled: false, arch: p.arch }); return n; });
-        }
-        // status === null means not injected — don't set anything
+    if (processes.length === 0) return;
+    let dead = false;
+    invoke<AccelProbe[]>("probe_acceleration", { pids: processes.map(p => p.pid) })
+      .then(probes => {
+        if (dead) return;
+        setSpeedMap(prev => applyAccelProbes(prev, processes, probes, inflight.current));
       })
       .catch(() => {});
-  }, [selectedPid]);
+    return () => { dead = true; };
+  }, [processes]);
 
   return (
     <Box sx={{ height: "calc(100vh - 48px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
