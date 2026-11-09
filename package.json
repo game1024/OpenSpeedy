@@ -1,7 +1,7 @@
 {
   "name": "openspeedy",
   "private": true,
-  "version": "3.3.17",
+  "version": "3.3.18",
   "type": "module",
   "scripts": {
     "dev": "vite",
