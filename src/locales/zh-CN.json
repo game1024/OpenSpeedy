@@ -93,7 +93,10 @@
     "hideToTray": "隐藏托盘",
     "language": "语言",
     "registerSuccess": "快捷键 \"{{shortcut}}\" 注册成功",
-    "registerFail": "快捷键 \"{{shortcut}}\" 注册失败"
+    "registerFail": "快捷键 \"{{shortcut}}\" 注册失败",
+    "silentAutoStart": "开机静默自启动",
+    "silentAutoStartHint": "随系统启动且不显示主界面、弹窗或提示，仅驻留托盘；点击托盘图标可恢复窗口。与上方「开机自启动」二选一。",
+    "bootModeFail": "无法修改开机启动设置，请查看日志"
   },
   "about": {
     "title": "OpenSpeedy",

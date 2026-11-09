@@ -95,7 +95,10 @@
     "hideToTray": "Réduire dans la zone de notification",
     "language": "Langue",
     "registerSuccess": "Raccourci \"{{shortcut}}\" enregistré",
-    "registerFail": "Échec de l'enregistrement de \"{{shortcut}}\""
+    "registerFail": "Échec de l'enregistrement de \"{{shortcut}}\"",
+    "silentAutoStart": "Démarrage silencieux",
+    "silentAutoStartHint": "Démarre avec Windows sans fenêtre, dialogue ni notification — icône dans la barre d'état uniquement. Cliquez dessus pour rouvrir la fenêtre. Incompatible avec « Démarrage automatique » ci-dessus.",
+    "bootModeFail": "Impossible de modifier le démarrage automatique. Consultez le journal."
   },
   "about": {
     "title": "OpenSpeedy",

@@ -93,7 +93,10 @@
     "hideToTray": "Ocultar na bandeja",
     "language": "Idioma",
     "registerSuccess": "Atalho \"{{shortcut}}\" registrado",
-    "registerFail": "Falha ao registrar atalho \"{{shortcut}}\""
+    "registerFail": "Falha ao registrar atalho \"{{shortcut}}\"",
+    "silentAutoStart": "Inicialização silenciosa",
+    "silentAutoStartHint": "Inicia com o Windows sem janela, diálogo ou notificação — apenas o ícone na bandeja. Clique nele para restaurar a janela. Exclusivo com «Iniciar com o Windows» acima.",
+    "bootModeFail": "Não foi possível alterar a inicialização. Verifique o log."
   },
   "about": {
     "title": "OpenSpeedy",

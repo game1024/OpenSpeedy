@@ -95,7 +95,10 @@
     "hideToTray": "In den Infobereich minimieren",
     "language": "Sprache",
     "registerSuccess": "Kürzel \"{{shortcut}}\" registriert",
-    "registerFail": "Kürzel \"{{shortcut}}\" fehlgeschlagen"
+    "registerFail": "Kürzel \"{{shortcut}}\" fehlgeschlagen",
+    "silentAutoStart": "Stiller Autostart",
+    "silentAutoStartHint": "Startet mit Windows ohne Hauptfenster, Dialog oder Benachrichtigung – nur das Tray-Symbol. Ein Klick darauf öffnet das Fenster. Schließt „Autostart“ oben aus.",
+    "bootModeFail": "Autostart-Einstellung konnte nicht geändert werden. Siehe Protokoll."
   },
   "about": {
     "title": "OpenSpeedy",

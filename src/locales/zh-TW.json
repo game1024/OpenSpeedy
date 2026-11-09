@@ -91,7 +91,10 @@
     "hideToTray": "關閉至系統匣",
     "language": "語言",
     "registerSuccess": "快速鍵 \"{{shortcut}}\" 註冊成功",
-    "registerFail": "快速鍵 \"{{shortcut}}\" 註冊失敗"
+    "registerFail": "快速鍵 \"{{shortcut}}\" 註冊失敗",
+    "silentAutoStart": "開機靜默自啟動",
+    "silentAutoStartHint": "隨系統啟動且不顯示主視窗、彈窗或提示，僅駐留托盤；點擊托盤圖示可恢復視窗。與上方「開機自啟動」二選一。",
+    "bootModeFail": "無法修改開機啟動設定，請查看日誌"
   },
   "shortcut": {
     "notSet": "未設定",

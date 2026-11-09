@@ -89,6 +89,7 @@
 - Modern UI
 - Supports both x86 and x64 platform processes
 - No kernel intrusion — Ring-3 level hooking, does not tamper with the system kernel
+- Silent boot launch (no main window, dialog or notification — tray icon only)
 
 
 # 💾 Installation
@@ -129,6 +130,14 @@ Get it on the [Steam store](https://store.steampowered.com/app/5010920/OpenSpeed
 4. Takes effect immediately — see the comparison below
 
 <video src="https://github.com/user-attachments/assets/7c75e37d-bc7a-4639-89a0-a34a21676cba" width="70%"></video>
+
+## ⚙️ Silent boot launch
+
+The switch lives on the Settings page and can be enabled or disabled at any time.
+
+It starts with Windows with the main window hidden from creation: no window, dialog or notification, just the tray icon. Click the tray icon to restore the window at any time; the tray menu can quit the app. It shares the single OS autostart entry with the original "Auto Start" (which shows the window), so the two are mutually exclusive — enabling one switches the other off. The entry always carries `--autostart`, so only boot sessions stay hidden; opening the app manually still shows the window. The choice is stored in `%APPDATA%/com.game1024.openspeedy/boot_launch.json`.
+
+Speed is always changed by hand — the slider, the gear buttons, or the configured shortcuts. Nothing in the background alters the multiplier without the user doing so.
 
 # 🔧 How It Works
 

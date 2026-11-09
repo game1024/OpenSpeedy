@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import {
@@ -13,8 +13,8 @@ import LanguageIcon from "@mui/icons-material/Language";
 import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { invoke } from "@tauri-apps/api/core";
-import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useSettings } from "../hooks/useSettings";
 import { shortcutLabel, useShortcut } from "../hooks/useShortcut";
 import { useSnackbar } from "../contexts/SnackbarContext";
@@ -32,6 +32,8 @@ function Row({ label, children }: { label: React.ReactNode; children: React.Reac
   );
 }
 
+type BootMode = "off" | "visible" | "silent";
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function SettingsManager() {
@@ -40,14 +42,27 @@ export default function SettingsManager() {
   const { register, registerHold, unregister, shortcutStatus } = useShortcut();
   const { notify } = useSnackbar();
 
-  // Sync auto-start state from system on mount. Reported rather than swallowed:
-  // these three calls are gated by the capability file, so a missing permission
-  // fails here and the only symptom is a switch that does nothing.
+  // One OS autostart entry, three modes. The backend owns both the registry
+  // entry and the persisted silent flag, so the switches never disagree with
+  // what actually happens at the next boot.
+  const [bootMode, setBootMode] = useState<BootMode>("off");
   useEffect(() => {
-    isEnabled()
-      .then(v => set("autoStart", v))
-      .catch(e => void reportError("autostart", "isEnabled failed", String(e)));
+    invoke<string>("get_boot_mode")
+      .then(v => setBootMode((["off", "visible", "silent"].includes(v) ? v : "off") as BootMode))
+      .catch(e => void reportError("autostart", "get_boot_mode failed", String(e)));
   }, []);
+
+  async function changeBootMode(mode: BootMode) {
+    try {
+      await invoke<string>("set_boot_mode", { mode });
+      setBootMode(mode);
+      // Keep the legacy key in step for anything that still reads it.
+      await set("autoStart", mode === "visible");
+    } catch (e) {
+      void reportError("autostart", `set_boot_mode(${mode}) failed`, String(e));
+      notify(t("settings.bootModeFail"), "error");
+    }
+  }
 
   async function changeShortcut(key: keyof SettingsState, oldVal: string, newVal: string, cb: () => void) {
     if (oldVal) await unregister(oldVal).catch(() => { });
@@ -247,17 +262,14 @@ export default function SettingsManager() {
 
         {/* ── 通用设置 ── */}
         <Row label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5}}><PowerSettingsNewIcon sx={{ fontSize: 16, color: "text.secondary" }} />{t("settings.autoStart")}</Box>}>
-          <Switch checked={settings.autoStart} onChange={async (_, v) => {
-            try {
-              if (v) await enable(); else await disable();
-              set("autoStart", v);
-            } catch (e) {
-              // Leave the setting alone so the switch keeps showing what the
-              // system actually has, and say which call failed.
-              void reportError("autostart", v ? "enable failed" : "disable failed", String(e));
-            }
-          }} />
+          <Switch checked={bootMode === "visible"} onChange={(_, v) => void changeBootMode(v ? "visible" : "off")} />
         </Row>
+        <Row label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><VisibilityOffIcon sx={{ fontSize: 16, color: "text.secondary" }} />{t("settings.silentAutoStart")}</Box>}>
+          <Switch checked={bootMode === "silent"} onChange={(_, v) => void changeBootMode(v ? "silent" : "off")} />
+        </Row>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", px: 1, mb: 1 }}>
+          {t("settings.silentAutoStartHint")}
+        </Typography>
         <Row label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><PushPinIcon sx={{ fontSize: 16, color: "text.secondary" }} />{t("settings.alwaysOnTop")}</Box>}>
           <Switch checked={settings.alwaysOnTop as boolean} onChange={(_, v) => {
             set("alwaysOnTop", v);

@@ -93,7 +93,10 @@
     "hideToTray": "Ocultar en la bandeja",
     "language": "Idioma",
     "registerSuccess": "Atajo \"{{shortcut}}\" registrado",
-    "registerFail": "Error al registrar atajo \"{{shortcut}}\""
+    "registerFail": "Error al registrar atajo \"{{shortcut}}\"",
+    "silentAutoStart": "Inicio silencioso",
+    "silentAutoStartHint": "Arranca con Windows sin ventana, diálogo ni aviso: solo el icono de la bandeja. Pulsa ese icono para restaurar la ventana. Es incompatible con «Inicio automático» de arriba.",
+    "bootModeFail": "No se pudo cambiar el inicio automático. Consulta el registro."
   },
   "about": {
     "title": "OpenSpeedy",

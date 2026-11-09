@@ -95,7 +95,10 @@
     "hideToTray": "トレイに格納",
     "language": "言語",
     "registerSuccess": "ショートカット \"{{shortcut}}\" 登録成功",
-    "registerFail": "ショートカット \"{{shortcut}}\" 登録失敗"
+    "registerFail": "ショートカット \"{{shortcut}}\" 登録失敗",
+    "silentAutoStart": "起動時に静かに自動起動",
+    "silentAutoStartHint": "システム起動時にウィンドウ・ダイアログ・通知を表示せず、トレイに常駐します。トレイアイコンからウィンドウを復元できます。上の「自動起動」とは排他です。",
+    "bootModeFail": "自動起動の設定を変更できませんでした。ログを確認してください。"
   },
   "about": {
     "title": "OpenSpeedy",

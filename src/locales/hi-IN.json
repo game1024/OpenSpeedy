@@ -93,7 +93,10 @@
     "hideToTray": "ट्रे में छिपाएँ",
     "language": "भाषा",
     "registerSuccess": "शॉर्टकट \"{{shortcut}}\" पंजीकृत",
-    "registerFail": "शॉर्टकट \"{{shortcut}}\" पंजीकरण विफल"
+    "registerFail": "शॉर्टकट \"{{shortcut}}\" पंजीकरण विफल",
+    "silentAutoStart": "साइलेंट ऑटो-स्टार्ट",
+    "silentAutoStartHint": "Windows के साथ बिना विंडो, डायलॉग या सूचना के चलता है — केवल ट्रे आइकन। विंडो वापस लाने के लिए उस पर क्लिक करें। ऊपर के \"ऑटो स्टार्ट\" के साथ एक साथ नहीं चल सकता।",
+    "bootModeFail": "ऑटो-स्टार्ट सेटिंग बदली नहीं जा सकी। लॉग देखें।"
   },
   "about": {
     "title": "OpenSpeedy",

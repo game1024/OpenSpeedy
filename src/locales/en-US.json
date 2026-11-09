@@ -93,7 +93,10 @@
     "hideToTray": "Hide to tray",
     "language": "Language",
     "registerSuccess": "Shortcut \"{{shortcut}}\" registered",
-    "registerFail": "Shortcut \"{{shortcut}}\" registration failed"
+    "registerFail": "Shortcut \"{{shortcut}}\" registration failed",
+    "silentAutoStart": "Silent boot launch",
+    "silentAutoStartHint": "Starts with Windows with no main window, dialog or toast — tray icon only. Click the tray icon to restore the window. Mutually exclusive with \"Auto Start\" above.",
+    "bootModeFail": "Could not change the boot launch setting. Check the log."
   },
   "about": {
     "title": "OpenSpeedy",

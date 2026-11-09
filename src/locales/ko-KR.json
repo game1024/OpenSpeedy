@@ -95,7 +95,10 @@
     "hideToTray": "트레이로 숨기기",
     "language": "언어",
     "registerSuccess": "단축키 \"{{shortcut}}\" 등록 성공",
-    "registerFail": "단축키 \"{{shortcut}}\" 등록 실패"
+    "registerFail": "단축키 \"{{shortcut}}\" 등록 실패",
+    "silentAutoStart": "부팅 시 조용히 자동 시작",
+    "silentAutoStartHint": "Windows 시작 시 창, 대화상자, 알림을 표시하지 않고 트레이에만 상주합니다. 트레이 아이콘으로 창을 다시 열 수 있습니다. 위의 \"자동 시작\"과 동시에 사용할 수 없습니다.",
+    "bootModeFail": "자동 시작 설정을 변경할 수 없습니다. 로그를 확인하세요."
   },
   "about": {
     "title": "OpenSpeedy",
