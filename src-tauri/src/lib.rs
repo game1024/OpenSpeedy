@@ -3,6 +3,7 @@ mod bridge_client;
 mod bridge_job;
 mod gamepad;
 mod process_enumerator;
+pub mod startup;
 mod system_stats;
 
 use process_enumerator::ProcessInfo;
@@ -277,10 +278,19 @@ pub fn run() -> Result<(), String> {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_autostart::Builder::default().build())
+        // The flag travels only on the boot registration; a user launch has
+        // no arguments, which is what makes the two cases distinguishable.
+        .plugin(
+            tauri_plugin_autostart::Builder::default()
+                .arg(startup::AUTOSTART_FLAG)
+                .build(),
+        )
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             applog::info("setup", "tauri setup callback entered");
+            // Before the bridge health checks, which can block for seconds:
+            // the window is created hidden and is only revealed here.
+            startup::apply_initial_window_visibility(app.handle());
             ensure_bridges();
             gamepad::start(app.handle().clone());
             watch_foreground(app.handle().clone());

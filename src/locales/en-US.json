@@ -91,6 +91,8 @@
     "multiplier": "Multiplier",
     "general": "General",
     "autoStart": "Auto Start",
+    "silentAutostart": "Silent Start",
+    "silentAutostartHint": "When Windows starts the app, keep the main window hidden and run in the tray only.",
     "alwaysOnTop": "Always on Top",
     "hideToTray": "Hide to tray",
     "language": "Language",

@@ -87,6 +87,8 @@
     "multiplier": "變速倍率",
     "general": "一般設定",
     "autoStart": "登入電腦時啟動",
+    "silentAutostart": "靜默啟動",
+    "silentAutostartHint": "開機自動啟動時不顯示主視窗，僅在工作列通知區域中執行。",
     "alwaysOnTop": "視窗最上層",
     "hideToTray": "關閉至系統匣",
     "language": "語言",

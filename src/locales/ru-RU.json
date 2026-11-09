@@ -91,6 +91,8 @@
     "multiplier": "Множитель",
     "general": "Общие",
     "autoStart": "Автозапуск",
+    "silentAutostart": "Тихий запуск",
+    "silentAutostartHint": "При запуске с Windows главное окно остаётся скрытым — приложение работает только в трее.",
     "alwaysOnTop": "Поверх всех окон",
     "hideToTray": "Скрывать в трей",
     "language": "Язык",

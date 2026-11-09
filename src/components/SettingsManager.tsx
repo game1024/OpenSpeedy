@@ -15,6 +15,8 @@ import LanguageIcon from "@mui/icons-material/Language";
 import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useSettings } from "../hooks/useSettings";
@@ -345,6 +347,34 @@ export default function SettingsManager() {
               void reportError("autostart", v ? "enable failed" : "disable failed", String(e));
             }
           }} />
+        </Row>
+        {/* Only meaningful while the app is registered to start with Windows,
+            so it is disabled otherwise. */}
+        <Row label={
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <VisibilityOffIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+            {t("settings.silentAutostart")}
+            <Tooltip title={t("settings.silentAutostartHint")} arrow>
+              <InfoOutlinedIcon sx={{ fontSize: 15, color: "text.disabled", cursor: "help" }} />
+            </Tooltip>
+          </Box>
+        }>
+          <Switch
+            checked={!!settings.silentAutostart}
+            disabled={!settings.autoStart}
+            onChange={async (_, v) => {
+              try {
+                // Re-registering rewrites the autostart command line, which is
+                // how an entry created by an older build picks up the launch
+                // flag the backend keys on.
+                if (v) await enable();
+                set("silentAutostart", v);
+              } catch (e) {
+                // Keep the switch on the persisted value and say what failed.
+                void reportError("autostart", "enable failed while enabling silent start", String(e));
+              }
+            }}
+          />
         </Row>
         <Row label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><PushPinIcon sx={{ fontSize: 16, color: "text.secondary" }} />{t("settings.alwaysOnTop")}</Box>}>
           <Switch checked={settings.alwaysOnTop as boolean} onChange={(_, v) => {

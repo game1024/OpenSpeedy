@@ -91,6 +91,8 @@
     "multiplier": "Multiplicador",
     "general": "Geral",
     "autoStart": "Iniciar com o Sistema",
+    "silentAutostart": "Início silencioso",
+    "silentAutostartHint": "Ao iniciar com o Windows, a janela principal permanece oculta e o aplicativo é executado apenas na bandeja do sistema.",
     "alwaysOnTop": "Sempre no Topo",
     "hideToTray": "Ocultar na bandeja",
     "language": "Idioma",

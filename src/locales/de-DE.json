@@ -93,6 +93,8 @@
     "multiplier": "Multiplikator",
     "general": "Allgemein",
     "autoStart": "Autostart",
+    "silentAutostart": "Stiller Start",
+    "silentAutostartHint": "Beim Start mit Windows bleibt das Hauptfenster verborgen; die App läuft nur im Infobereich.",
     "alwaysOnTop": "Immer im Vordergrund",
     "hideToTray": "In den Infobereich minimieren",
     "language": "Sprache",

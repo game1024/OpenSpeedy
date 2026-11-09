@@ -29,10 +29,15 @@ fn main() {
 
     if let Err(e) = openspeedy_lib::run() {
         openspeedy_lib::applog::error("fatal", format!("{e}"));
-        openspeedy_lib::applog::fatal_dialog(&format!(
-            "OpenSpeedy failed to start.\n\n{e}\n\nA log was written to:\n{}",
-            openspeedy_lib::applog::log_path_string()
-        ));
+        // A boot launch must stay silent even when it fails — the user did not
+        // ask for this window and is probably not at the machine. The log still
+        // records the failure.
+        if !openspeedy_lib::startup::is_autostart_launch() {
+            openspeedy_lib::applog::fatal_dialog(&format!(
+                "OpenSpeedy failed to start.\n\n{e}\n\nA log was written to:\n{}",
+                openspeedy_lib::applog::log_path_string()
+            ));
+        }
         std::process::exit(1);
     }
 

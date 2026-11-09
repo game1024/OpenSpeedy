@@ -91,6 +91,8 @@
     "multiplier": "Vermenigvuldiger",
     "general": "Algemeen",
     "autoStart": "Automatisch starten",
+    "silentAutostart": "Stille start",
+    "silentAutostartHint": "Bij het opstarten met Windows blijft het hoofdvenster verborgen en draait de app alleen in het systeemvak.",
     "alwaysOnTop": "Altijd op voorgrond",
     "hideToTray": "Verbergen in systeemvak",
     "language": "Taal",

@@ -93,6 +93,8 @@
     "multiplier": "倍率",
     "general": "一般設定",
     "autoStart": "自動起動",
+    "silentAutostart": "サイレント起動",
+    "silentAutostartHint": "Windows 起動時にメインウィンドウを表示せず、タスクトレイのみで実行します。",
     "alwaysOnTop": "常に最前面",
     "hideToTray": "トレイに格納",
     "language": "言語",

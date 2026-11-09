@@ -25,6 +25,7 @@ export interface SettingsState {
 
   theme: "light" | "dark";
   autoStart: boolean;
+  silentAutostart: boolean;
   alwaysOnTop: boolean;
   hideToTray: boolean;
   language: "zh-CN" | "zh-TW" | "ja-JP" | "ko-KR" | "de-DE" | "fr-FR" | "en-US" | "ru-RU" | "hi-IN" | "nl-NL" | "pt-BR" | "es-ES";
@@ -56,6 +57,9 @@ export const DEFAULTS: SettingsState = {
 
   theme: "light" as const,
   autoStart: false,
+  // Boot launches stay in the tray instead of opening the window. Off unless
+  // asked for: a window nobody expected is worse than one nobody wanted.
+  silentAutostart: false,
   alwaysOnTop: false,
   // Closing the window tucks the app away in the tray. On by default, which is
   // how the app has always behaved; turn it off to make the close button exit.
