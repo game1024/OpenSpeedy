@@ -73,7 +73,9 @@
   },
   "shortcut": {
     "notSet": "Не задано",
-    "keyNotSupported": "Эту клавишу нельзя использовать как сочетание"
+    "keyNotSupported": "Эту клавишу нельзя использовать как сочетание",
+    "inherited": "Унаследовано",
+    "restoreInherit": "Как в общем"
   },
   "settings": {
     "loading": "Загрузка настроек…",
@@ -93,7 +95,31 @@
     "hideToTray": "Скрывать в трей",
     "language": "Язык",
     "registerSuccess": "Сочетание \"{{shortcut}}\" зарегистрировано",
-    "registerFail": "Ошибка регистрации \"{{shortcut}}\""
+    "registerFail": "Ошибка регистрации \"{{shortcut}}\"",
+    "profile": "Профиль",
+    "profileNew": "Создать",
+    "profileEdit": "Изменить",
+    "profileDelete": "Удалить",
+    "profileProcesses": "Процессы",
+    "profileWhenForeground": "Эти клавиши действуют, пока подходящий процесс на переднем плане",
+    "profileGlobal": "Общие",
+    "profileOverridden": "Переопределено в {{names}}",
+    "profileOverriddenShort": "Переопределено",
+    "profileUsedBy": "Занято профилем {{name}}",
+    "profileName": "Имя",
+    "profileCreate": "Создать",
+    "profileSave": "Сохранить",
+    "profileCancel": "Отмена",
+    "profileDeleteTitle": "Удалить профиль",
+    "profileDeleteAsk": "Удалить «{{name}}»? Будут убраны переопределения клавиш и значений скорости.",
+    "profileNameEmpty": "Нужно имя",
+    "profileNameTooLong": "Не больше {{max}} символов",
+    "profileNameDuplicate": "Такое имя уже есть",
+    "profileNameReserved": "Имя «{{name}}» зарезервировано",
+    "profileDefaultName": "Профиль {{n}}",
+    "profileNameSeparator": ", ",
+    "profileNotRunning": "Не запущен",
+    "profileSearch": "Поиск по процессу или заголовку окна"
   },
   "about": {
     "title": "OpenSpeedy",

@@ -73,7 +73,9 @@
   },
   "shortcut": {
     "notSet": "Não definido",
-    "keyNotSupported": "Esta tecla não pode ser usada como atalho"
+    "keyNotSupported": "Esta tecla não pode ser usada como atalho",
+    "inherited": "Herdado",
+    "restoreInherit": "Usar global"
   },
   "settings": {
     "loading": "Carregando configurações…",
@@ -93,7 +95,31 @@
     "hideToTray": "Ocultar na bandeja",
     "language": "Idioma",
     "registerSuccess": "Atalho \"{{shortcut}}\" registrado",
-    "registerFail": "Falha ao registrar atalho \"{{shortcut}}\""
+    "registerFail": "Falha ao registrar atalho \"{{shortcut}}\"",
+    "profile": "Perfil",
+    "profileNew": "Novo",
+    "profileEdit": "Editar",
+    "profileDelete": "Excluir",
+    "profileProcesses": "Processos",
+    "profileWhenForeground": "Estes atalhos valem enquanto um processo correspondente estiver em primeiro plano",
+    "profileGlobal": "Global",
+    "profileOverridden": "Substituído em {{names}}",
+    "profileOverriddenShort": "Substituído",
+    "profileUsedBy": "Usado por {{name}}",
+    "profileName": "Nome",
+    "profileCreate": "Criar",
+    "profileSave": "Salvar",
+    "profileCancel": "Cancelar",
+    "profileDeleteTitle": "Excluir perfil",
+    "profileDeleteAsk": "Excluir \"{{name}}\"? Atalhos e valores de velocidade personalizados serão removidos.",
+    "profileNameEmpty": "O nome é obrigatório",
+    "profileNameTooLong": "No máximo {{max}} caracteres",
+    "profileNameDuplicate": "Esse nome já está em uso",
+    "profileNameReserved": "O nome \"{{name}}\" é reservado",
+    "profileDefaultName": "Perfil {{n}}",
+    "profileNameSeparator": ", ",
+    "profileNotRunning": "Não está em execução",
+    "profileSearch": "Pesquisar processo ou título da janela"
   },
   "about": {
     "title": "OpenSpeedy",

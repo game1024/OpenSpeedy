@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import {
-  Box, Paper, Typography, TextField, Switch, Divider,
+  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Typography, TextField, Switch, Divider, Tooltip,
   Select, MenuItem, Table, TableBody, TableCell, TableHead, TableRow,
 } from "@mui/material";
+import ClearIcon from "@mui/icons-material/Clear";
 import ShortcutField from "./ShortcutField";
+import ShortcutProfileDialog from "./ShortcutProfileDialog";
 import SpeedIcon from "@mui/icons-material/Speed";
 import TuneIcon from "@mui/icons-material/Tune";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -16,10 +18,17 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useSettings } from "../hooks/useSettings";
+import { shortcutRegistered, syncShortcuts, useShortcut } from "../hooks/useShortcut";
 import { shortcutLabel, useShortcut } from "../hooks/useShortcut";
 import { useSnackbar } from "../contexts/SnackbarContext";
 import { reportError } from "../utils/frontendLog";
 import type { SettingsState } from "../store/settings";
+import { loadShortcutProfiles, saveShortcutProfiles } from "../store/settings";
+import {
+  deleteProfile, exeKey, globalShortcuts, newlyAddedExes, previewShortcuts, profilesOverriding, profilesOverridingValue,
+  SPEED_VALUE_BOUNDS, upsertProfile,
+  type ShortcutProfile, type ShortcutSlot, type SpeedValueKey,
+} from "../shortcutProfile";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -36,9 +45,14 @@ function Row({ label, children }: { label: React.ReactNode; children: React.Reac
 
 export default function SettingsManager() {
   const { t } = useTranslation();
-  const { settings, get, set } = useSettings();
-  const { register, registerHold, unregister, shortcutStatus } = useShortcut();
+  const profileNameSep = t("settings.profileNameSeparator");
+  const { settings, set } = useSettings();
+  const { shortcutStatus } = useShortcut();
   const { notify } = useSnackbar();
+  const [profiles, setProfiles] = useState<ShortcutProfile[]>([]);
+  const [selectedId, setSelectedId] = useState("global");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Sync auto-start state from system on mount. Reported rather than swallowed:
   // these three calls are gated by the capability file, so a missing permission
@@ -47,8 +61,87 @@ export default function SettingsManager() {
     isEnabled()
       .then(v => set("autoStart", v))
       .catch(e => void reportError("autostart", "isEnabled failed", String(e)));
+    loadShortcutProfiles().then(setProfiles).catch(e => void reportError("settings", "load profiles failed", String(e)));
   }, []);
 
+  if (!settings) {
+    return <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Typography color="text.disabled">{t("settings.loading")}</Typography>
+    </Box>;
+  }
+
+  const current = settings;
+  const profile = profiles.find(item => item.id === selectedId) ?? null;
+
+  function numberCell(key: SpeedValueKey, fallback: number) {
+    const [min, max] = SPEED_VALUE_BOUNDS[key];
+    const pinned = profile?.values?.[key];
+    const inheriting = !!profile && pinned === undefined;
+    const raw = profile ? (pinned ?? current[key]) : current[key];
+    const shown = typeof raw === "number" ? raw : fallback;
+    const names = profile ? [] : profilesOverridingValue(profiles, key);
+    return (
+      <Box>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <TextField type="number" size="small" value={shown}
+            onChange={e => {
+              const n = Number(e.target.value);
+              if (!profile) {
+                void set(key, n || fallback);
+                return;
+              }
+              if (!Number.isFinite(n) || n < min || n > max) return;
+              void persistProfiles(
+                upsertProfile(profiles, { ...profile, values: { ...profile.values, [key]: n } }),
+                profile.id,
+              );
+            }}
+            sx={{ width: 80, ...(inheriting ? { "& .MuiInputBase-input": { color: "text.disabled" } } : {}) }}
+            slotProps={{ htmlInput: { min, max, step: 0.1 } }} />
+          {profile && pinned !== undefined && (
+            <IconButton size="small" onClick={() => {
+              const values = { ...profile.values };
+              delete values[key];
+              void persistProfiles(upsertProfile(profiles, { ...profile, values }), profile.id);
+            }}>
+              <ClearIcon sx={{ fontSize: "1rem", color: "text.secondary" }} />
+            </IconButton>
+          )}
+        </Box>
+        {inheriting && <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>}
+        {overrideNote(names)}
+      </Box>
+    );
+  }
+
+  function overrideNote(names: string[]) {
+    if (names.length === 0) return null;
+    return (
+      <Tooltip title={t("settings.profileOverridden", { names: names.join(profileNameSep) })}>
+        <Typography component="span" variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3, width: "fit-content" }}>
+          {t("settings.profileOverriddenShort")}
+        </Typography>
+      </Tooltip>
+    );
+  }
+
+  async function persistProfiles(next: ShortcutProfile[], select: string) {
+    const added = newlyAddedExes(profiles, next);
+    setProfiles(next);
+    setSelectedId(select);
+    await saveShortcutProfiles(next);
+    await syncShortcuts();
+    await enableRunning(added);
+  }
+
+  /** Turn matching processes on once. Does not remember the name, so the switch can be turned off later. */
+  async function enableRunning(names: string[]) {
+    if (names.length === 0) return;
+    const wanted = new Set(names.map(exeKey));
+    const list = await invoke<{ pid: number; name: string; arch: string }[]>("get_process_list_fast").catch(() => []);
+    for (const proc of list) {
+      if (!wanted.has(exeKey(proc.name))) continue;
+      invoke("bridge_inject", { pid: proc.pid, arch: proc.arch }).catch(() => {});
   async function changeShortcut(key: keyof SettingsState, oldVal: string, newVal: string, cb: () => void) {
     if (oldVal) await unregister(oldVal).catch(() => { });
     if (newVal) {
@@ -59,9 +152,18 @@ export default function SettingsManager() {
         notify(t("settings.registerFail", { shortcut: shortcutLabel(newVal) }), "error");
       }
     }
-    await set(key as keyof SettingsState, newVal);
   }
 
+  async function saveSlot(slot: ShortcutSlot, value: string) {
+    if (profile) {
+      const shortcuts = { ...profile.shortcuts };
+      if (value) shortcuts[slot] = value;
+      else if (shortcuts[slot]) delete shortcuts[slot];
+      else shortcuts[slot] = "";
+      await persistProfiles(upsertProfile(profiles, { ...profile, shortcuts }), profile.id);
+    } else {
+      await set(slot, value);
+      await syncShortcuts();
   async function changeHoldShortcut(oldVal: string, newVal: string, onPress: () => void, onRelease: () => void) {
     if (oldVal) await unregister(oldVal).catch(() => { });
     if (newVal) {
@@ -72,18 +174,86 @@ export default function SettingsManager() {
         notify(t("settings.registerFail", { shortcut: shortcutLabel(newVal) }), "error");
       }
     }
-    await set("holdShortcut", newVal);
+    // A profile key is only registered while its process is in the foreground, so there is nothing to report yet.
+    const ok = value ? shortcutRegistered(value) : undefined;
+    if (ok === undefined) return;
+    notify(
+      ok === false
+        ? t("settings.registerFail", { shortcut: value })
+        : t("settings.registerSuccess", { shortcut: value }),
+      ok === false ? "error" : "success",
+    );
   }
 
-  if (!settings) {
-    return <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Typography color="text.disabled">{t("settings.loading")}</Typography>
-    </Box>;
+  function restoreSlot(slot: ShortcutSlot) {
+    if (!profile) return;
+    const shortcuts = { ...profile.shortcuts };
+    delete shortcuts[slot];
+    void persistProfiles(upsertProfile(profiles, { ...profile, shortcuts }), profile.id);
+  }
+
+  function cell(slot: ShortcutSlot) {
+    const raw = profile ? profile.shortcuts[slot] : undefined;
+    const muted = raw === "";
+    const stored = profile ? (raw ?? "") : String(current[slot] ?? "");
+    const preview = previewShortcuts(globalShortcuts(current), profile ? profile.shortcuts : null);
+    const effective = preview.shortcuts[slot];
+    const overridden = profile ? [] : profilesOverriding(profiles, slot);
+    return (
+      <Box>
+        <ShortcutField
+          value={stored}
+          inheritFrom={profile && raw === undefined ? String(current[slot] ?? "") : undefined}
+          muted={muted}
+          onRestore={muted ? () => restoreSlot(slot) : undefined}
+          conflict={preview.conflicts.includes(slot) || shortcutStatus[effective] === false}
+          onChange={v => { void saveSlot(slot, v); }}
+        />
+        {overrideNote(overridden)}
+      </Box>
+    );
   }
 
   return (
     <Box sx={{ height: "calc(100vh - 48px)", overflow: "auto", px: 1.5, pb: 2 }}>
       <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
+        <Row label={t("settings.profile")}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Select
+              size="small"
+              value={profile ? profile.id : "global"}
+              onChange={e => setSelectedId(e.target.value)}
+              sx={{
+                minWidth: 140,
+                maxWidth: 240,
+                "& .MuiSelect-select": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" },
+              }}
+            >
+              <MenuItem value="global">{t("settings.profileGlobal")}</MenuItem>
+              {profiles.map(item => (
+                <MenuItem key={item.id} value={item.id} sx={{ maxWidth: 320 }}>
+                  <Typography noWrap sx={{ fontSize: "inherit" }}>{item.name}</Typography>
+                </MenuItem>
+              ))}
+            </Select>
+            {profile ? (
+              <>
+                <Button size="small" onClick={() => setDialogOpen(true)}>{t("settings.profileEdit")}</Button>
+                <Button size="small" color="error" onClick={() => setConfirmDelete(true)}>{t("settings.profileDelete")}</Button>
+              </>
+            ) : (
+              <Button size="small" onClick={() => setDialogOpen(true)}>{t("settings.profileNew")}</Button>
+            )}
+          </Box>
+        </Row>
+        {profile && (
+          <Box sx={{ px: 1, pb: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t("settings.profileProcesses")}　{profile.processes.join(profileNameSep)}
+            </Typography>
+            <Typography variant="caption" color="text.disabled" sx={{ display: "block" }}>{t("settings.profileWhenForeground")}</Typography>
+          </Box>
+        )}
 
         {/* ── 速度快捷键 ── */}
         <Divider sx={{ my: 2 }}>
@@ -98,7 +268,7 @@ export default function SettingsManager() {
           <colgroup>
             <col />
             <col width={240} />
-            <col width={80} />
+            <col width={120} />
           </colgroup>
           <TableHead>
             <TableRow>
@@ -110,40 +280,17 @@ export default function SettingsManager() {
           <TableBody>
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.increase")}</TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <ShortcutField value={settings.increaseSpeedShortcut} conflict={shortcutStatus[settings.increaseSpeedShortcut] === false} onChange={v => changeShortcut("increaseSpeedShortcut", settings.increaseSpeedShortcut, v, () => {
-                  invoke<number | null>("bridge_get_speed").then(c => { const n = (c ?? 1) + ((get("increaseSpeedStep") as number) || 0.5); invoke("bridge_set_speed", { factor: n }); set("speed", n); });
-                })} />
-              </TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <TextField type="number" size="small"
-                  value={settings.increaseSpeedStep}
-                  onChange={e => set("increaseSpeedStep", Number(e.target.value) || 0.1)}
-                  slotProps={{ htmlInput: { min: 0.1, max: 10, step: 0.1 } }} />
-              </TableCell>
+              <TableCell sx={{ border: "none" }}>{cell("increaseSpeedShortcut")}</TableCell>
+              <TableCell sx={{ border: "none" }}>{numberCell("increaseSpeedStep", 0.1)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.decrease")}</TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <ShortcutField value={settings.decreaseSpeedShortcut} conflict={shortcutStatus[settings.decreaseSpeedShortcut] === false} onChange={v => changeShortcut("decreaseSpeedShortcut", settings.decreaseSpeedShortcut, v, () => {
-                  invoke<number | null>("bridge_get_speed").then(c => { const n = Math.max(0.01, (c ?? 1) - ((get("decreaseSpeedStep") as number) || 0.5)); invoke("bridge_set_speed", { factor: n }); set("speed", n); });
-                })} />
-              </TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <TextField type="number" size="small"
-                  value={settings.decreaseSpeedStep}
-                  onChange={e => set("decreaseSpeedStep", Number(e.target.value) || 0.1)}
-                  sx={{ width: 80 }}
-                  slotProps={{ htmlInput: { min: 0.1, max: 100, step: 0.1 } }} />
-              </TableCell>
+              <TableCell sx={{ border: "none" }}>{cell("decreaseSpeedShortcut")}</TableCell>
+              <TableCell sx={{ border: "none" }}>{numberCell("decreaseSpeedStep", 0.1)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.reset")}</TableCell>
-              <TableCell sx={{ border: "none" }} colSpan={1}>
-                <ShortcutField value={settings.resetSpeedShortcut} conflict={shortcutStatus[settings.resetSpeedShortcut] === false} onChange={v => changeShortcut("resetSpeedShortcut", settings.resetSpeedShortcut, v, () => {
-                  invoke("bridge_set_speed", { factor: 1.0 }); set("speed", 1.0);
-                })} />
-              </TableCell>
+              <TableCell sx={{ border: "none" }} colSpan={1}>{cell("resetSpeedShortcut")}</TableCell>
               <TableCell sx={{ border: "none" }}></TableCell>
             </TableRow>
           </TableBody>
@@ -163,7 +310,7 @@ export default function SettingsManager() {
             <colgroup>
               <col />
               <col width={240} />
-              <col width={80} />
+              <col width={120} />
             </colgroup>
             <TableHead>
               <TableRow>
@@ -180,62 +327,21 @@ export default function SettingsManager() {
             {[1, 2, 3, 4, 5].map(gear => (
               <TableRow key={gear}>
                 <TableCell sx={{ border: "none" }}>{t("settings.gear")} {gear}</TableCell>
-                <TableCell sx={{ border: "none" }}>
-                  <ShortcutField
-                    value={settings?.[`gear${gear}Shortcut` as keyof SettingsState] as string}
-                    conflict={shortcutStatus[settings?.[`gear${gear}Shortcut` as keyof SettingsState] as string] === false}
-                    onChange={v => changeShortcut(`gear${gear}Shortcut` as keyof SettingsState, settings?.[`gear${gear}Shortcut` as keyof SettingsState] as string, v, () => {
-                      const gs = (get(`gear${gear}Speed` as keyof SettingsState) as number) || 1;
-                      invoke("bridge_set_speed", { factor: gs });
-                      // Keep this in step with the startup registration in
-                      // useShortcut.init(): without it the shortcut still drives
-                      // the bridge, but the speed shown in the UI never moves,
-                      // which reads as "the shortcut did nothing" until a
-                      // restart re-registers it with the other callback.
-                      set("speed", gs);
-                    })}
-                  />
-                </TableCell>
-                <TableCell sx={{ border: "none" }}>
-                  <TextField type="number" size="small"
-                    value={settings?.[`gear${gear}Speed` as keyof SettingsState]}
-                    onChange={e => set(`gear${gear}Speed` as keyof SettingsState, Number(e.target.value) || 1)}
-                    sx={{ width: 80 }}
-                    slotProps={{ htmlInput: { min: 0.01, max: 100, step: 0.1 } }} />
-                </TableCell>
+                <TableCell sx={{ border: "none" }}>{cell(`gear${gear}Shortcut` as ShortcutSlot)}</TableCell>
+                <TableCell sx={{ border: "none" }}>{numberCell(`gear${gear}Speed` as SpeedValueKey, 1)}</TableCell>
               </TableRow>
             ))}
             {/* Hold shortcut — press to activate, release to reset */}
             <TableRow>
               <TableCell sx={{ border: "none" }}>{t("settings.hold")}</TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <ShortcutField
-                  value={settings?.holdShortcut as string}
-                  conflict={shortcutStatus[settings?.holdShortcut as string] === false}
-                  onChange={v => {
-                    const old = settings?.holdShortcut as string;
-                    changeHoldShortcut(old, v, () => {
-                      const hs = (get("holdSpeed") as number) || 2.0;
-                      invoke("bridge_set_speed", { factor: hs });
-                      set("speed", hs);
-                    }, () => {
-                      invoke("bridge_set_speed", { factor: 1.0 });
-                      set("speed", 1.0);
-                    });
-                  }}
-                />
-              </TableCell>
-              <TableCell sx={{ border: "none" }}>
-                <TextField type="number" size="small"
-                  value={settings?.holdSpeed as number}
-                  onChange={e => set("holdSpeed", Number(e.target.value) || 2)}
-                  sx={{ width: 80 }}
-                  slotProps={{ htmlInput: { min: 0.01, max: 100, step: 0.1 } }} />
-              </TableCell>
+              <TableCell sx={{ border: "none" }}>{cell("holdShortcut")}</TableCell>
+              <TableCell sx={{ border: "none" }}>{numberCell("holdSpeed", 2)}</TableCell>
             </TableRow>
           </TableBody>
         </Table>
 
+        {!profile && (
+          <>
         <Divider sx={{ my: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <SettingsIcon sx={{ color: "text.secondary", fontSize: 18 }} />
@@ -285,6 +391,33 @@ export default function SettingsManager() {
             <MenuItem value="hi-IN">हिन्दी</MenuItem>
           </Select>
         </Row>
+          </>
+        )}
+
+        <ShortcutProfileDialog
+          open={dialogOpen}
+          profiles={profiles}
+          initial={profile}
+          onCancel={() => setDialogOpen(false)}
+          onSave={next => {
+            setDialogOpen(false);
+            void persistProfiles(upsertProfile(profiles, next), next.id);
+          }}
+        />
+        <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
+          <DialogTitle>{t("settings.profileDeleteTitle")}</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" sx={{ wordBreak: "break-all" }}>{t("settings.profileDeleteAsk", { name: profile?.name ?? "" })}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmDelete(false)}>{t("settings.profileCancel")}</Button>
+            <Button color="error" onClick={() => {
+              if (!profile) return;
+              setConfirmDelete(false);
+              void persistProfiles(deleteProfile(profiles, profile.id), "global");
+            }}>{t("settings.profileDelete")}</Button>
+          </DialogActions>
+        </Dialog>
 
       </Paper>
     </Box>

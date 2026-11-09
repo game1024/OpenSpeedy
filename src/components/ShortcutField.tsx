@@ -31,6 +31,7 @@ import { KeyComboTag } from "@blueprintjs/core";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import { platform } from '@tauri-apps/plugin-os';
 import { useSnackbar } from "../contexts/SnackbarContext";
+import { resumeShortcuts, suspendShortcuts } from "../hooks/useShortcut";
 import ClearIcon from '@mui/icons-material/Clear';
 
 interface ShortcutFieldProps {
@@ -39,6 +40,11 @@ interface ShortcutFieldProps {
     disable?: boolean;
     minWidth?: string;
     conflict?: boolean;
+    /** When set, an empty value shows this global shortcut faded, with an inherit caption. */
+    inheritFrom?: string;
+    /** Profile slot saved as "no shortcut", so the global key is not used. */
+    muted?: boolean;
+    onRestore?: () => void;
 }
 
 /**
@@ -67,7 +73,7 @@ function displayKey(key: string): string {
     }
 }
 
-export default function ShortcutField({ value, onChange, disable = false, minWidth = '10rem', conflict = false }: ShortcutFieldProps) {
+export default function ShortcutField({ value, onChange, disable = false, minWidth = '10rem', conflict = false, inheritFrom, muted = false, onRestore }: ShortcutFieldProps) {
     const { t } = useTranslation();
     const [isRecording, setIsRecording] = useState(false);
     const [currentCombo, setCurrentCombo] = useState('');
@@ -75,12 +81,28 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
     const { notify } = useSnackbar();
     const inputRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<string>("");
+    const suspendedRef = useRef(false);
     const onChangeRef = useRef(onChange);
     const padCaptured = useRef(false);
     onChangeRef.current = onChange;
 
-    // Load platform once
-    useEffect(() => { osRef.current = platform(); }, []);
+    function suspendForRecording() {
+        if (suspendedRef.current) return;
+        suspendedRef.current = true;
+        void suspendShortcuts();
+    }
+
+    function resumeAfterRecording() {
+        if (!suspendedRef.current) return;
+        suspendedRef.current = false;
+        void resumeShortcuts();
+    }
+
+    // Load platform once. If the field unmounts mid-recording, put the hotkeys back.
+    useEffect(() => {
+        osRef.current = platform();
+        return () => { resumeAfterRecording(); };
+    }, []);
 
     // 处理快捷键输入
     const handleShortcutKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -193,6 +215,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
         // 只有在按下非修饰键时才保存
         if (!isModifierKey) {
             onChange(combo);
+            resumeAfterRecording();
             setIsRecording(false);
             setCurrentCombo('');
         }
@@ -232,6 +255,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
     // 处理录制开始
     const handleStartRecording = () => {
         if (disable) return;
+        suspendForRecording();
         padCaptured.current = false;
         setIsRecording(true);
         setCurrentCombo('');
@@ -297,6 +321,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
             }
         }
 
+        resumeAfterRecording();
         setIsRecording(false);
         setCurrentCombo('');
     };
@@ -351,11 +376,39 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                     )}
                 </Box>
             ) : (
-                value ? (
-                    <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                (value || inheritFrom !== undefined || muted) ? (
+                    <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0.5, opacity: value || muted ? 1 : 0.45 }}>
                         {conflict && (
                             <Typography variant="caption" sx={{ color: "error.main", fontWeight: 600, mr: 0.5 }}>
                                 ⚠
+                            </Typography>
+                        )}
+                        {muted ? (
+                            <KeyComboTag combo={t("shortcut.notSet")} />
+                        ) : (value || inheritFrom) ? (
+                            (value || inheritFrom || "").split('+').map((key, index, array) => (
+                                <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <KeyComboTag combo={displayKey(key)} />
+                                    {index < array.length - 1 && (
+                                        <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>+</Typography>
+                                    )}
+                                </Box>
+                            ))
+                        ) : (
+                            <KeyComboTag combo={t("shortcut.notSet")} />
+                        )}
+                        {!value && inheritFrom !== undefined && (
+                            <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>
+                        )}
+                        {muted && onRestore && (
+                            <Typography
+                                component="button"
+                                variant="caption"
+                                color="text.disabled"
+                                onClick={event => { event.stopPropagation(); onRestore(); }}
+                                sx={{ border: 0, bgcolor: "transparent", cursor: "pointer", p: 0 }}
+                            >
+                                {t("shortcut.restoreInherit")}
                             </Typography>
                         )}
                         {shortcutLabel(value).split('+').map((key, index, array) => (
@@ -375,7 +428,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                     </Box>
                 )
             )}
-            {!isRecording && value && isHovered && (
+            {!isRecording && isHovered && (value || (inheritFrom && inheritFrom.length > 0)) && (
                 <IconButton
                     size="small"
                     onClick={handleClear}
