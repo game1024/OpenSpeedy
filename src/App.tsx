@@ -16,6 +16,7 @@ import appIcon from "../src-tauri/icons/icon.png";
 import githubIcon from "./assets/github.svg";
 import bmcIcon from "./assets/bmc.svg";
 import steamIcon from "./assets/steam.svg";
+import bilibiliIcon from "./assets/bilibili.svg";
 import ProcessManager from "./components/ProcessManager";
 import SettingsManager from "./components/SettingsManager";
 import { useShortcut } from "./hooks/useShortcut";
@@ -267,6 +268,19 @@ function App() {
                       }}
                     >
                       <Box component="img" src={steamIcon} sx={{ width: 22, height: 22 }} />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => open("https://space.bilibili.com/426988409")}
+                      title={t("about.socialBilibili")}
+                      aria-label={t("about.socialBilibili")}
+                      sx={{
+                        width: 44, height: 44,
+                        border: 1, borderColor: "divider",
+                        bgcolor: darkMode ? "rgba(255,255,255,0.92)" : "background.paper",
+                        "&:hover": { bgcolor: darkMode ? "rgba(255,255,255,0.76)" : "action.hover", borderColor: "primary.main" },
+                      }}
+                    >
+                      <Box component="img" src={bilibiliIcon} sx={{ width: 22, height: 22 }} />
                     </IconButton>
                     <IconButton
                       onClick={() => open("https://github.com/game1024")}
