@@ -120,6 +120,10 @@
     "profileNameReserved": "El nombre \"{{name}}\" está reservado",
     "profileDefaultName": "Perfil {{n}}",
     "profileNameSeparator": ", ",
+    "profileLiveStatus": "Primer plano: {{exe}} → activo: {{name}}",
+    "profileAppliesTo": "Se aplica a:",
+    "profileGlobalHint": "Se usa si ningún perfil coincide",
+    "profileActiveNow": "Activo",
     "profileNotRunning": "No está en ejecución",
     "profileSearch": "Buscar proceso o título de ventana"
   },

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { keyframes } from "@emotion/react";
 import i18n from "../i18n";
 import {
-  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Typography, TextField, Switch, Divider, Tooltip,
-  Select, MenuItem, Table, TableBody, TableCell, TableHead, TableRow,
+  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Typography, TextField, Switch, Divider, Tooltip,
+  Select, MenuItem, Table, TableBody, TableCell, TableHead, TableRow, useMediaQuery,
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import ShortcutField from "./ShortcutField";
@@ -17,7 +18,10 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PublicIcon from "@mui/icons-material/Public";
+import WindowIcon from "@mui/icons-material/Window";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useSettings } from "../hooks/useSettings";
 import { shortcutLabel, shortcutRegistered, syncShortcuts, useShortcut } from "../hooks/useShortcut";
@@ -26,10 +30,17 @@ import { reportError } from "../utils/frontendLog";
 import type { SettingsState } from "../store/settings";
 import { loadShortcutProfiles, saveShortcutProfiles } from "../store/settings";
 import {
-  deleteProfile, exeKey, globalShortcuts, newlyAddedExes, previewShortcuts, profilesOverriding, profilesOverridingValue,
+  deleteProfile, exeBase, exeKey, globalShortcuts, newlyAddedExes, previewShortcuts, profilesOverriding, profilesOverridingValue,
   SPEED_VALUE_BOUNDS, upsertProfile,
   type ShortcutProfile, type ShortcutSlot, type SpeedValueKey,
 } from "../shortcutProfile";
+
+// Ripple for the “active” chip, so an in-effect profile is visible at a
+// glance. Stops entirely under prefers-reduced-motion.
+const activePulse = keyframes`
+  0%, 100% { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.75); }
+  50% { box-shadow: 0 0 0 7px rgba(102, 187, 106, 0); }
+`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -54,6 +65,9 @@ export default function SettingsManager() {
   const [selectedId, setSelectedId] = useState("global");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Rust reports which exe owns the foreground window; used to show which
+  // configuration is actually in effect right now.
+  const [foreground, setForeground] = useState("");
 
   // Sync auto-start state from system on mount. Reported rather than swallowed:
   // these three calls are gated by the capability file, so a missing permission
@@ -63,6 +77,16 @@ export default function SettingsManager() {
       .then(v => set("autoStart", v))
       .catch(e => void reportError("autostart", "isEnabled failed", String(e)));
     loadShortcutProfiles().then(setProfiles).catch(e => void reportError("settings", "load profiles failed", String(e)));
+    invoke<string>("foreground_exe_name").then(setForeground).catch(() => {});
+    let stop: (() => void) | undefined;
+    let dead = false;
+    listen<string>("foreground-changed", event => {
+      if (typeof event.payload === "string") setForeground(event.payload);
+    }).then(unlisten => {
+      if (dead) unlisten();
+      else stop = unlisten;
+    }).catch(e => void reportError("settings", "foreground listener failed", String(e)));
+    return () => { dead = true; stop?.(); };
   }, []);
 
   if (!settings) {
@@ -73,6 +97,71 @@ export default function SettingsManager() {
 
   const current = settings;
   const profile = profiles.find(item => item.id === selectedId) ?? null;
+  const foregroundKey = exeKey(foreground);
+  const activeProfile = foregroundKey
+    ? profiles.find(item => item.processes.some(proc => exeKey(proc) === foregroundKey)) ?? null
+    : null;
+  // Below this width the sidebar would leave too little room for the tables.
+  const wide = useMediaQuery("(min-width: 720px)");
+
+  function profileItem({ key, icon, label, selected, active, onClick }: {
+    key?: string;
+    icon?: React.ReactNode;
+    label: string;
+    selected: boolean;
+    active: boolean;
+    onClick: () => void;
+  }) {
+    return (
+      <Box key={key} onClick={onClick} sx={{
+        px: 1.5, py: 0.9, cursor: "pointer",
+        borderLeft: 3,
+        borderColor: selected ? "secondary.main" : "transparent",
+        bgcolor: selected ? "action.selected" : "transparent",
+        "&:hover": { bgcolor: selected ? "action.selected" : "action.hover" },
+      }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          {icon}
+          <Typography variant="body2" noWrap sx={{ flex: 1, fontSize: "0.92rem", fontWeight: selected ? 700 : 600 }}>{label}</Typography>
+          {active && (
+            <Chip
+              size="small"
+              color="success"
+              label={t("settings.profileActiveNow")}
+              sx={{
+                height: 18,
+                fontSize: "0.62rem",
+                flexShrink: 0,
+                "& .MuiChip-label": { px: 0.75 },
+                animation: `${activePulse} 1.6s ease-in-out infinite`,
+                "@media (prefers-reduced-motion: reduce)": { animation: "none" },
+              }}
+            />
+          )}
+        </Box>
+      </Box>
+    );
+  }
+
+  const profileSelect = (
+    <Select
+      size="small"
+      value={profile ? profile.id : "global"}
+      onChange={e => setSelectedId(e.target.value)}
+      sx={{
+        minWidth: 140,
+        maxWidth: 240,
+        "& .MuiSelect-select": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" },
+      }}
+    >
+      <MenuItem value="global">{t("settings.profileGlobal")}</MenuItem>
+      {profiles.map(item => (
+        <MenuItem key={item.id} value={item.id} sx={{ maxWidth: 320 }}>
+          <Typography noWrap sx={{ fontSize: "inherit" }}>{item.name}</Typography>
+        </MenuItem>
+      ))}
+    </Select>
+  );
 
   function numberCell(key: SpeedValueKey, fallback: number) {
     const [min, max] = SPEED_VALUE_BOUNDS[key];
@@ -80,49 +169,72 @@ export default function SettingsManager() {
     const inheriting = !!profile && pinned === undefined;
     const raw = profile ? (pinned ?? current[key]) : current[key];
     const shown = typeof raw === "number" ? raw : fallback;
-    const names = profile ? [] : profilesOverridingValue(profiles, key);
+    const input = (
+      <TextField type="number" size="small" value={shown}
+        onChange={e => {
+          const n = Number(e.target.value);
+          if (!profile) {
+            void set(key, n || fallback);
+            return;
+          }
+          if (!Number.isFinite(n) || n < min || n > max) return;
+          void persistProfiles(
+            upsertProfile(profiles, { ...profile, values: { ...profile.values, [key]: n } }),
+            profile.id,
+          );
+        }}
+        sx={{ width: 80, ...(inheriting ? { "& .MuiInputBase-input": { color: "text.disabled" } } : {}) }}
+        slotProps={{ htmlInput: { min, max, step: 0.1 } }} />
+    );
     return (
-      <Box>
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <TextField type="number" size="small" value={shown}
-            onChange={e => {
-              const n = Number(e.target.value);
-              if (!profile) {
-                void set(key, n || fallback);
-                return;
-              }
-              if (!Number.isFinite(n) || n < min || n > max) return;
-              void persistProfiles(
-                upsertProfile(profiles, { ...profile, values: { ...profile.values, [key]: n } }),
-                profile.id,
-              );
-            }}
-            sx={{ width: 80, ...(inheriting ? { "& .MuiInputBase-input": { color: "text.disabled" } } : {}) }}
-            slotProps={{ htmlInput: { min, max, step: 0.1 } }} />
-          {profile && pinned !== undefined && (
-            <IconButton size="small" onClick={() => {
-              const values = { ...profile.values };
-              delete values[key];
-              void persistProfiles(upsertProfile(profiles, { ...profile, values }), profile.id);
-            }}>
-              <ClearIcon sx={{ fontSize: "1rem", color: "text.secondary" }} />
-            </IconButton>
-          )}
-        </Box>
-        {inheriting && <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>}
-        {overrideNote(names)}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        {input}
+        {profile && pinned !== undefined && (
+          <IconButton size="small" onClick={() => {
+            const values = { ...profile.values };
+            delete values[key];
+            void persistProfiles(upsertProfile(profiles, { ...profile, values }), profile.id);
+          }}>
+            <ClearIcon sx={{ fontSize: "1rem", color: "text.secondary" }} />
+          </IconButton>
+        )}
+        {inheriting && (
+          <Typography variant="caption" color="text.disabled" sx={{ whiteSpace: "nowrap" }}>
+            {t("shortcut.inherited")}
+          </Typography>
+        )}
       </Box>
     );
   }
 
-  function overrideNote(names: string[]) {
-    if (names.length === 0) return null;
+  /** Profile names overriding any of the given slots/values, in the global view only. */
+  function overridesFor(slots: ShortcutSlot[], values: SpeedValueKey[] = []): string[] {
+    if (profile) return [];
+    return [
+      ...slots.flatMap(slot => profilesOverriding(profiles, slot)),
+      ...values.flatMap(key => profilesOverridingValue(profiles, key)),
+    ];
+  }
+
+  // The hint lives on the row label: hovering the setting's name explains
+  // which profiles override it, without taking space from the control.
+  function labelCell(label: React.ReactNode, names: string[]) {
+    const unique = [...new Set(names)];
     return (
-      <Tooltip title={t("settings.profileOverridden", { names: names.join(profileNameSep) })}>
-        <Typography component="span" variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.3, width: "fit-content" }}>
-          {t("settings.profileOverriddenShort")}
-        </Typography>
-      </Tooltip>
+      <TableCell sx={{ border: "none" }}>
+        {unique.length === 0 ? label : (
+          <Tooltip title={t("settings.profileOverridden", { names: unique.join(profileNameSep) })}>
+            <Box component="span" sx={{
+              cursor: "help",
+              textDecoration: "underline dotted",
+              textDecorationColor: "text.disabled",
+              textUnderlineOffset: 2,
+            }}>
+              {label}
+            </Box>
+          </Tooltip>
+        )}
+      </TableCell>
     );
   }
 
@@ -182,62 +294,83 @@ export default function SettingsManager() {
     const stored = profile ? (raw ?? "") : String(current[slot] ?? "");
     const preview = previewShortcuts(globalShortcuts(current), profile ? profile.shortcuts : null);
     const effective = preview.shortcuts[slot];
-    const overridden = profile ? [] : profilesOverriding(profiles, slot);
     return (
-      <Box>
-        <ShortcutField
-          value={stored}
-          inheritFrom={profile && raw === undefined ? String(current[slot] ?? "") : undefined}
-          muted={muted}
-          onRestore={muted ? () => restoreSlot(slot) : undefined}
-          conflict={preview.conflicts.includes(slot) || shortcutStatus[effective] === false}
-          onChange={v => { void saveSlot(slot, v); }}
-        />
-        {overrideNote(overridden)}
-      </Box>
+      <ShortcutField
+        value={stored}
+        inheritFrom={profile && raw === undefined ? String(current[slot] ?? "") : undefined}
+        muted={muted}
+        onRestore={muted ? () => restoreSlot(slot) : undefined}
+        conflict={preview.conflicts.includes(slot) || shortcutStatus[effective] === false}
+        onChange={v => { void saveSlot(slot, v); }}
+      />
     );
   }
 
   return (
-    <Box sx={{ height: "calc(100vh - 48px)", overflow: "auto", px: 1.5, pb: 2 }}>
-      <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
-        <Row label={t("settings.profile")}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Select
-              size="small"
-              value={profile ? profile.id : "global"}
-              onChange={e => setSelectedId(e.target.value)}
-              sx={{
-                minWidth: 140,
-                maxWidth: 240,
-                "& .MuiSelect-select": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" },
-              }}
-            >
-              <MenuItem value="global">{t("settings.profileGlobal")}</MenuItem>
-              {profiles.map(item => (
-                <MenuItem key={item.id} value={item.id} sx={{ maxWidth: 320 }}>
-                  <Typography noWrap sx={{ fontSize: "inherit" }}>{item.name}</Typography>
-                </MenuItem>
+    <Box sx={{ height: "calc(100vh - 48px)", display: "flex", gap: 1.5, px: 1.5, pb: 2 }}>
+      {wide && (
+        <Paper elevation={0} sx={{
+          mt: 2, width: 176, flexShrink: 0, display: "flex", flexDirection: "column",
+          border: 1, borderColor: "divider", overflow: "hidden",
+        }}>
+          <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", py: 0.5 }}>
+            {profileItem({
+              icon: <PublicIcon sx={{ fontSize: 17, color: "text.secondary", flexShrink: 0 }} />,
+              label: t("settings.profileGlobal"),
+              selected: !profile,
+              active: !activeProfile,
+              onClick: () => setSelectedId("global"),
+            })}
+            {profiles.length > 0 && <Divider sx={{ mx: 1.5, my: 0.5 }} />}
+            {profiles.map(item => profileItem({
+              key: item.id,
+              icon: <WindowIcon sx={{ fontSize: 17, color: "text.disabled", flexShrink: 0 }} />,
+              label: item.name,
+              selected: profile?.id === item.id,
+              active: activeProfile?.id === item.id,
+              onClick: () => setSelectedId(item.id),
+            }))}
+          </Box>
+          <Box sx={{ p: 1, borderTop: 1, borderColor: "divider" }}>
+            <Button size="small" fullWidth variant="outlined" onClick={() => setDialogOpen(true)}>
+              {t("settings.profileNew")}
+            </Button>
+          </Box>
+        </Paper>
+      )}
+      <Box sx={{ flex: 1, minWidth: 0, overflow: "auto" }}>
+        <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
+          {!wide && (
+            <Row label={t("settings.profile")}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                {profileSelect}
+                <Button size="small" onClick={() => setDialogOpen(true)}>
+                  {profile ? t("settings.profileEdit") : t("settings.profileNew")}
+                </Button>
+                {profile && (
+                  <Button size="small" color="error" onClick={() => setConfirmDelete(true)}>{t("settings.profileDelete")}</Button>
+                )}
+              </Box>
+            </Row>
+          )}
+          {profile && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mb: 1, minHeight: 24 }}>
+              <Typography variant="caption" color="text.disabled">{t("settings.profileAppliesTo")}</Typography>
+              {profile.processes.map(name => (
+                <Chip key={name} size="small" label={exeBase(name)} sx={{ height: 20, fontSize: "0.72rem" }} />
               ))}
-            </Select>
-            {profile ? (
-              <>
-                <Button size="small" onClick={() => setDialogOpen(true)}>{t("settings.profileEdit")}</Button>
-                <Button size="small" color="error" onClick={() => setConfirmDelete(true)}>{t("settings.profileDelete")}</Button>
-              </>
-            ) : (
-              <Button size="small" onClick={() => setDialogOpen(true)}>{t("settings.profileNew")}</Button>
-            )}
-          </Box>
-        </Row>
-        {profile && (
-          <Box sx={{ px: 1, pb: 0.5 }}>
-            <Typography variant="body2" color="text.secondary">
-              {t("settings.profileProcesses")}　{profile.processes.join(profileNameSep)}
-            </Typography>
-            <Typography variant="caption" color="text.disabled" sx={{ display: "block" }}>{t("settings.profileWhenForeground")}</Typography>
-          </Box>
-        )}
+              <Tooltip title={t("settings.profileWhenForeground")} arrow>
+                <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.disabled", cursor: "help" }} />
+              </Tooltip>
+              <Box sx={{ flex: 1 }} />
+              {wide && (
+                <>
+                  <Button size="small" onClick={() => setDialogOpen(true)}>{t("settings.profileEdit")}</Button>
+                  <Button size="small" color="error" onClick={() => setConfirmDelete(true)}>{t("settings.profileDelete")}</Button>
+                </>
+              )}
+            </Box>
+          )}
 
         {/* ── 速度快捷键 ── */}
         <Divider sx={{ my: 2 }}>
@@ -263,17 +396,17 @@ export default function SettingsManager() {
           </TableHead>
           <TableBody>
             <TableRow>
-              <TableCell sx={{ border: "none" }}>{t("settings.increase")}</TableCell>
+              {labelCell(t("settings.increase"), overridesFor(["increaseSpeedShortcut"], ["increaseSpeedStep"]))}
               <TableCell sx={{ border: "none" }}>{cell("increaseSpeedShortcut")}</TableCell>
               <TableCell sx={{ border: "none" }}>{numberCell("increaseSpeedStep", 0.1)}</TableCell>
             </TableRow>
             <TableRow>
-              <TableCell sx={{ border: "none" }}>{t("settings.decrease")}</TableCell>
+              {labelCell(t("settings.decrease"), overridesFor(["decreaseSpeedShortcut"], ["decreaseSpeedStep"]))}
               <TableCell sx={{ border: "none" }}>{cell("decreaseSpeedShortcut")}</TableCell>
               <TableCell sx={{ border: "none" }}>{numberCell("decreaseSpeedStep", 0.1)}</TableCell>
             </TableRow>
             <TableRow>
-              <TableCell sx={{ border: "none" }}>{t("settings.reset")}</TableCell>
+              {labelCell(t("settings.reset"), overridesFor(["resetSpeedShortcut"]))}
               <TableCell sx={{ border: "none" }} colSpan={1}>{cell("resetSpeedShortcut")}</TableCell>
               <TableCell sx={{ border: "none" }}></TableCell>
             </TableRow>
@@ -310,14 +443,17 @@ export default function SettingsManager() {
           <TableBody>
             {[1, 2, 3, 4, 5].map(gear => (
               <TableRow key={gear}>
-                <TableCell sx={{ border: "none" }}>{t("settings.gear")} {gear}</TableCell>
+                {labelCell(
+                  <>{t("settings.gear")} {gear}</>,
+                  overridesFor([`gear${gear}Shortcut` as ShortcutSlot], [`gear${gear}Speed` as SpeedValueKey]),
+                )}
                 <TableCell sx={{ border: "none" }}>{cell(`gear${gear}Shortcut` as ShortcutSlot)}</TableCell>
                 <TableCell sx={{ border: "none" }}>{numberCell(`gear${gear}Speed` as SpeedValueKey, 1)}</TableCell>
               </TableRow>
             ))}
             {/* Hold shortcut — press to activate, release to reset */}
             <TableRow>
-              <TableCell sx={{ border: "none" }}>{t("settings.hold")}</TableCell>
+              {labelCell(t("settings.hold"), overridesFor(["holdShortcut"], ["holdSpeed"]))}
               <TableCell sx={{ border: "none" }}>{cell("holdShortcut")}</TableCell>
               <TableCell sx={{ border: "none" }}>{numberCell("holdSpeed", 2)}</TableCell>
             </TableRow>
@@ -431,7 +567,8 @@ export default function SettingsManager() {
           </DialogActions>
         </Dialog>
 
-      </Paper>
+        </Paper>
+      </Box>
     </Box>
   );
 }

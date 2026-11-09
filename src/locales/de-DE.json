@@ -122,6 +122,10 @@
     "profileNameReserved": "Der Name \"{{name}}\" ist reserviert",
     "profileDefaultName": "Profil {{n}}",
     "profileNameSeparator": ", ",
+    "profileLiveStatus": "Vordergrund: {{exe}} → aktiv: {{name}}",
+    "profileAppliesTo": "Gilt für:",
+    "profileGlobalHint": "Gilt, wenn kein Profil passt",
+    "profileActiveNow": "Aktiv",
     "profileNotRunning": "Nicht aktiv",
     "profileSearch": "Prozess oder Fenstertitel suchen"
   },

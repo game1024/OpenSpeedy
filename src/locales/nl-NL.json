@@ -120,6 +120,10 @@
     "profileNameReserved": "De naam \"{{name}}\" is gereserveerd",
     "profileDefaultName": "Profiel {{n}}",
     "profileNameSeparator": ", ",
+    "profileLiveStatus": "Voorgrond: {{exe}} → actief: {{name}}",
+    "profileAppliesTo": "Van toepassing op:",
+    "profileGlobalHint": "Wordt gebruikt als geen profiel past",
+    "profileActiveNow": "Actief",
     "profileNotRunning": "Niet actief",
     "profileSearch": "Zoek op proces of venstertitel"
   },

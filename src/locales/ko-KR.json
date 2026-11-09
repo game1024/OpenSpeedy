@@ -122,6 +122,10 @@
     "profileNameReserved": "「{{name}}」 이름은 사용할 수 없습니다",
     "profileDefaultName": "프로필 {{n}}",
     "profileNameSeparator": ", ",
+    "profileLiveStatus": "현재 포그라운드: {{exe}} → 적용 중: {{name}}",
+    "profileAppliesTo": "적용 프로세스:",
+    "profileGlobalHint": "일치하는 프로필이 없을 때 적용",
+    "profileActiveNow": "적용 중",
     "profileNotRunning": "실행 중이 아님",
     "profileSearch": "프로세스 또는 창 제목 검색"
   },

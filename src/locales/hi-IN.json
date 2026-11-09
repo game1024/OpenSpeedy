@@ -120,6 +120,10 @@
     "profileNameReserved": "नाम \"{{name}}\" आरक्षित है",
     "profileDefaultName": "प्रोफ़ाइल {{n}}",
     "profileNameSeparator": ", ",
+    "profileLiveStatus": "फ़ोरग्राउंड: {{exe}} → सक्रिय: {{name}}",
+    "profileAppliesTo": "लागू होता है:",
+    "profileGlobalHint": "कोई प्रोफ़ाइल मेल न खाने पर लागू",
+    "profileActiveNow": "सक्रिय",
     "profileNotRunning": "चल नहीं रहा",
     "profileSearch": "प्रोसेस या विंडो शीर्षक खोजें"
   },

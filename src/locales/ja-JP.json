@@ -122,6 +122,10 @@
     "profileNameReserved": "「{{name}}」という名前は使えません",
     "profileDefaultName": "プロファイル {{n}}",
     "profileNameSeparator": "、",
+    "profileLiveStatus": "前面のプロセス：{{exe}} → 適用中：{{name}}",
+    "profileAppliesTo": "対象プロセス：",
+    "profileGlobalHint": "一致する設定がない場合に適用",
+    "profileActiveNow": "適用中",
     "profileNotRunning": "実行中ではありません",
     "profileSearch": "プロセス名またはウィンドウタイトルで検索"
   },

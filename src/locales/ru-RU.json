@@ -120,6 +120,10 @@
     "profileNameReserved": "Имя «{{name}}» зарезервировано",
     "profileDefaultName": "Профиль {{n}}",
     "profileNameSeparator": ", ",
+    "profileLiveStatus": "На переднем плане: {{exe}} → активно: {{name}}",
+    "profileAppliesTo": "Применяется к:",
+    "profileGlobalHint": "Используется, если нет подходящего профиля",
+    "profileActiveNow": "Активно",
     "profileNotRunning": "Не запущен",
     "profileSearch": "Поиск по процессу или заголовку окна"
   },
