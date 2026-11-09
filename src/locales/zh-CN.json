@@ -73,9 +73,7 @@
   },
   "shortcut": {
     "notSet": "未设置",
-    "keyNotSupported": "不支持此按键作为快捷键",
-    "inherited": "继承",
-    "restoreInherit": "恢复继承"
+    "keyNotSupported": "不支持此按键作为快捷键"
   },
   "settings": {
     "loading": "加载设置中…",
@@ -95,31 +93,7 @@
     "hideToTray": "隐藏托盘",
     "language": "语言",
     "registerSuccess": "快捷键 \"{{shortcut}}\" 注册成功",
-    "registerFail": "快捷键 \"{{shortcut}}\" 注册失败",
-    "profile": "配置",
-    "profileNew": "新建",
-    "profileEdit": "编辑",
-    "profileDelete": "删除",
-    "profileProcesses": "适用进程",
-    "profileWhenForeground": "对应进程在前台时，按这一份列表响应",
-    "profileGlobal": "全局",
-    "profileOverridden": "{{names}} 已覆盖",
-    "profileOverriddenShort": "已覆盖",
-    "profileUsedBy": "已用于「{{name}}」",
-    "profileName": "名称",
-    "profileCreate": "创建",
-    "profileSave": "保存",
-    "profileCancel": "取消",
-    "profileDeleteTitle": "删除子配置",
-    "profileDeleteAsk": "删除「{{name}}」？这条配置上的快捷键与数值覆盖会去掉。",
-    "profileNameEmpty": "名称不能为空",
-    "profileNameTooLong": "名称最多 {{max}} 个字",
-    "profileNameDuplicate": "名称已被使用",
-    "profileNameReserved": "名称不能使用「{{name}}」",
-    "profileDefaultName": "配置 {{n}}",
-    "profileNameSeparator": "、",
-    "profileNotRunning": "当前未运行",
-    "profileSearch": "搜索进程名或窗口标题"
+    "registerFail": "快捷键 \"{{shortcut}}\" 注册失败"
   },
   "about": {
     "title": "OpenSpeedy",

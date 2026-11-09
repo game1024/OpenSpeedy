@@ -7,14 +7,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn profile_dir(manifest_dir: &PathBuf, profile: &str) -> PathBuf {
-    // Inherited from the caller's environment; Cargo does not set it for build
-    // scripts. `--target-dir` on the command line is not seen here.
-    let target = env::var("CARGO_TARGET_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| manifest_dir.join("target"));
-    target.join(profile)
-}
+/// Build a cmake project (host arch) via the cmake crate, copy the output binary.
 fn build_cmake_crate(
     manifest_dir: &PathBuf,
     profile: &str,
@@ -33,7 +26,8 @@ fn build_cmake_crate(
         .build();
 
     let bin_src = dst.join("bin").join(&bin_name);
-    let bin_dst = profile_dir(manifest_dir, profile).join(&bin_name);
+    let prof_dir = manifest_dir.join("target").join(profile);
+    let bin_dst = prof_dir.join(&bin_name);
 
     std::fs::copy(&bin_src, &bin_dst).unwrap_or_else(|e| {
         panic!("copy {} -> {} failed: {}", bin_src.display(), bin_dst.display(), e);
@@ -82,7 +76,8 @@ fn build_cmake_command(
     }
 
     let bin_src = build_dir.join(build_type).join(&bin_name);
-    let bin_dst = profile_dir(manifest_dir, profile).join(&bin_name);
+    let prof_dir = manifest_dir.join("target").join(profile);
+    let bin_dst = prof_dir.join(&bin_name);
 
     std::fs::copy(&bin_src, &bin_dst).unwrap_or_else(|e| {
         panic!("copy {} -> {} failed: {}", bin_src.display(), bin_dst.display(), e);
@@ -121,9 +116,6 @@ fn cargo_build_bridge(bridge_dir: &PathBuf, profile: &str, target: Option<&str>)
 
     let mut cmd = Command::new("cargo");
     cmd.args(["build", "--manifest-path", &bridge_dir.join("Cargo.toml").to_string_lossy()]);
-    // The app build already holds CARGO_TARGET_DIR. A nested cargo using that
-    // same directory waits on the lock forever.
-    cmd.env_remove("CARGO_TARGET_DIR");
     if !profile_flag.is_empty() { cmd.arg(profile_flag); }
     if let Some(t) = target { cmd.args(["--target", t]); }
 
@@ -148,7 +140,7 @@ fn cargo_build_bridge(bridge_dir: &PathBuf, profile: &str, target: Option<&str>)
 /// Build Rust bridge for host arch (→ bridge64.exe) and optionally i686 (→ bridge32.exe).
 fn build_rust_bridge(manifest_dir: &PathBuf, profile: &str) {
     let bridge_dir = manifest_dir.join("../src-bridge");
-    let prof_dir = profile_dir(manifest_dir, profile);
+    let prof_dir = manifest_dir.join("target").join(profile);
 
     // --- 64-bit (host arch) ---
     if let Some((_, src)) = cargo_build_bridge(&bridge_dir, profile, None) {
@@ -207,7 +199,7 @@ fn main() {
     // Copy binaries to resources folder for Tauri bundling
     let bin_dir = manifest_dir.join("binaries");
     let _ = std::fs::create_dir_all(&bin_dir);
-    let prof_dir = profile_dir(&manifest_dir, &profile);
+    let prof_dir = manifest_dir.join("target").join(profile);
     for name in &["speedpatch32.dll", "speedpatch64.dll", "bridge32.exe", "bridge64.exe"] {
         let src = prof_dir.join(name);
         if src.exists() {

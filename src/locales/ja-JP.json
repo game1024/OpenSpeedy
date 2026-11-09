@@ -73,9 +73,7 @@
   },
   "shortcut": {
     "notSet": "未設定",
-    "keyNotSupported": "このキーはショートカットに使用できません",
-    "inherited": "継承",
-    "restoreInherit": "グローバルに戻す"
+    "keyNotSupported": "このキーはショートカットに使用できません"
   },
   "settings": {
     "loading": "設定を読み込み中…",
@@ -97,31 +95,7 @@
     "hideToTray": "トレイに格納",
     "language": "言語",
     "registerSuccess": "ショートカット \"{{shortcut}}\" 登録成功",
-    "registerFail": "ショートカット \"{{shortcut}}\" 登録失敗",
-    "profile": "プロファイル",
-    "profileNew": "新規",
-    "profileEdit": "編集",
-    "profileDelete": "削除",
-    "profileProcesses": "対象プロセス",
-    "profileWhenForeground": "対応するプロセスが前面のとき、この一覧で応答します",
-    "profileGlobal": "共通",
-    "profileOverridden": "{{names}} で上書き",
-    "profileOverriddenShort": "上書き",
-    "profileUsedBy": "「{{name}}」で使用中",
-    "profileName": "名前",
-    "profileCreate": "作成",
-    "profileSave": "保存",
-    "profileCancel": "キャンセル",
-    "profileDeleteTitle": "プロファイルを削除",
-    "profileDeleteAsk": "「{{name}}」を削除しますか？ショートカットと数値の上書きが削除されます。",
-    "profileNameEmpty": "名前は必須です",
-    "profileNameTooLong": "{{max}} 文字まで",
-    "profileNameDuplicate": "この名前は使われています",
-    "profileNameReserved": "「{{name}}」という名前は使えません",
-    "profileDefaultName": "プロファイル {{n}}",
-    "profileNameSeparator": "、",
-    "profileNotRunning": "実行中ではありません",
-    "profileSearch": "プロセス名またはウィンドウタイトルで検索"
+    "registerFail": "ショートカット \"{{shortcut}}\" 登録失敗"
   },
   "about": {
     "title": "OpenSpeedy",

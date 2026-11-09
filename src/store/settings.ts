@@ -69,7 +69,6 @@ export const DEFAULTS: SettingsState = {
 import { Store } from "@tauri-apps/plugin-store";
 import { locale } from "@tauri-apps/plugin-os";
 import { mapSystemLocale } from "../i18n";
-import { normalizeProfiles, type ShortcutProfile } from "../shortcutProfile";
 
 let _store: Store | null = null;
 
@@ -111,17 +110,5 @@ export async function setSetting<K extends keyof SettingsState>(key: K, value: S
   const saved = (await store.get<SettingsState>("settings")) || ({} as SettingsState);
   saved[key] = value;
   await store.set("settings", saved);
-  await store.save();
-}
-
-/** Sibling of `settings` in settings.json. Missing key loads as an empty list. */
-export async function loadShortcutProfiles(): Promise<ShortcutProfile[]> {
-  const store = await getStore();
-  return normalizeProfiles(await store.get<unknown>("shortcutProfiles"));
-}
-
-export async function saveShortcutProfiles(profiles: readonly ShortcutProfile[]) {
-  const store = await getStore();
-  await store.set("shortcutProfiles", normalizeProfiles(profiles));
   await store.save();
 }
