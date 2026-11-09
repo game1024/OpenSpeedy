@@ -232,7 +232,28 @@ pub fn enumerate_processes_fast() -> Vec<ProcessInfo> {
 
             if !name.is_empty() {
                 // Merge from cache
-                if let Some(cached) = cache_get(pid) {
+                if let Some(mut cached) = cache_get(pid) {
+                    // A process that was still starting up on the first poll
+                    // could not be opened (0 KB, no window yet). Retry those
+                    // two readings until they succeed instead of pinning the
+                    // placeholder forever — otherwise a game launched after
+                    // OpenSpeedy never becomes visible in the list.
+                    if cached.memory_kb == 0 || cached.window_title.is_none() {
+                        let memory_kb = get_memory_kb(pid);
+                        let window_title = find_window_title(pid);
+                        if memory_kb != cached.memory_kb || window_title != cached.window_title {
+                            cache_set(
+                                pid,
+                                cached.arch.clone(),
+                                window_title.clone(),
+                                memory_kb,
+                                cached.exe_path.clone(),
+                                cached.admin,
+                            );
+                            cached.memory_kb = memory_kb;
+                            cached.window_title = window_title;
+                        }
+                    }
                     processes.push(ProcessInfo {
                         pid,
                         name,
@@ -243,17 +264,29 @@ pub fn enumerate_processes_fast() -> Vec<ProcessInfo> {
                         admin: cached.admin,
                     });
                 } else {
-                    // New process — eagerly fetch arch + exe path + admin (cheapest), defer memory+title
+                    // New process — cache the values actually read. Caching
+                    // placeholders here made every following fast poll report
+                    // the process as unreadable, so the UI filter dropped it
+                    // on the very next tick.
                     let arch = detect_arch(pid);
                     let exe_path = get_exe_path(pid);
                     let admin = is_admin(pid);
-                    cache_set(pid, arch.clone(), None, 0, exe_path.clone(), admin);
+                    let window_title = find_window_title(pid);
+                    let memory_kb = get_memory_kb(pid);
+                    cache_set(
+                        pid,
+                        arch.clone(),
+                        window_title.clone(),
+                        memory_kb,
+                        exe_path.clone(),
+                        admin,
+                    );
                     processes.push(ProcessInfo {
                         pid,
                         name,
                         arch,
-                        window_title: find_window_title(pid),
-                        memory_kb: get_memory_kb(pid),
+                        window_title,
+                        memory_kb,
                         exe_path,
                         admin,
                     });
@@ -267,6 +300,19 @@ pub fn enumerate_processes_fast() -> Vec<ProcessInfo> {
     }
 
     let _ = unsafe { CloseHandle(snapshot) };
+
+    // The fast poll runs continuously, so it also has to drop cache entries
+    // for processes that have exited. Windows reuses PIDs — without this, a
+    // game started later could inherit a dead process's cached details and
+    // never be recognised as a new process.
+    let live_pids: std::collections::HashSet<u32> = processes.iter().map(|p| p.pid).collect();
+    if let Ok(mut cache) = cache().lock() {
+        cache.retain(|pid, _| live_pids.contains(pid));
+    }
+    if let Ok(mut icons) = icon_cache().lock() {
+        icons.retain(|pid, _| live_pids.contains(pid));
+    }
+
     processes
 }
 

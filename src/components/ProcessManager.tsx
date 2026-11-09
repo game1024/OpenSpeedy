@@ -16,7 +16,6 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import SpeedPanel from "./SpeedPanel";
 import ProcessDetail from "./ProcessDetail";
 import { useSettings, useSpeed } from "../hooks/useSettings";
-import { getAcceleratedNames, addAcceleratedName, removeAcceleratedName } from "../store/process";
 
 // ── Types & constants ────────────────────────────────────────────────────
 
@@ -311,29 +310,6 @@ export default function ProcessManager() {
   useEffect(() => { if (search.trim()) { invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {}); } }, [search]);
   useInterval(async () => { try { setProcesses(await invoke<ProcessInfo[]>("get_process_list_fast")); } catch {} }, 1000);
 
-  // Periodically inject saved process names
-  useInterval(async () => {
-    if (processes.length === 0) return;
-    const names = await getAcceleratedNames();
-    for (const name of names) {
-      const procs = processes.filter(p =>
-        p.name.toLowerCase() === name.toLowerCase() && !speedMap.get(p.pid)?.enabled
-      );
-      if (procs.length === 0) continue;
-      const arch = procs[0].arch;
-      setSpeedMap(prev => {
-        const n = new Map(prev);
-        for (const p of procs) {
-          n.set(p.pid, { injected: true, enabled: true, arch });
-        }
-        return n;
-      });
-      for (const p of procs) {
-        invoke<boolean>("bridge_inject", { pid: p.pid, arch }).catch(() => {});
-      }
-    }
-  }, 1000);
-
   // Hide protected system processes (memory 0 = handle could not be opened)
   const visibleProcesses = useMemo(
     () => (showSystem ? processes : processes.filter(p => p.memory_kb > 0)),
@@ -371,7 +347,6 @@ export default function ProcessManager() {
     const group = nameGroups.get(name.toLowerCase());
     if (!group) return;
     if (!group.anyEnabled) {
-      addAcceleratedName(name);
       for (const pid of group.pids) {
         setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch: group.arch }); return n; });
       }
@@ -379,7 +354,6 @@ export default function ProcessManager() {
         invoke<boolean>("bridge_inject", { pid, arch: group.arch }).catch(() => {});
       }
     } else {
-      removeAcceleratedName(name);
       for (const pid of group.pids) {
         setSpeedMap(prev => { const n = new Map(prev); const cur = n.get(pid); if (cur) n.set(pid, { ...cur, enabled: false }); return n; });
       }
