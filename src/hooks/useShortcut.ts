@@ -23,6 +23,38 @@ type ShortcutTriggerState = {
   state: "Pressed" | "Released";
 };
 
+const PAD_PREFIX = "Pad:";
+
+export function isGamepadShortcut(shortcut: string): boolean {
+  return shortcut.startsWith(PAD_PREFIX);
+}
+
+/** Stored `Pad:LB+A` is shown as `LB+A`. Unlabeled buttons drop the vendor id. */
+export function shortcutLabel(shortcut: string): string {
+  const body = isGamepadShortcut(shortcut) ? shortcut.slice(PAD_PREFIX.length) : shortcut;
+  return body.split("+").map(prettyToken).join("+");
+}
+
+function prettyToken(key: string): string {
+  const raw = /^V[0-9A-F]{4}P[0-9A-F]{4}([BAH])(\d+)([A-Za-z]*)$/.exec(key);
+  if (!raw) return key;
+  if (raw[1] === "B") return `B${raw[2]}`;
+  if (raw[1] === "A") return `Axis${raw[2]}`;
+  return raw[3] || `Hat${raw[2]}`;
+}
+
+type PadHandler = (state: "Pressed" | "Released") => void;
+const padHandlers = new Map<string, PadHandler>();
+let padListening = false;
+
+function ensurePadListener() {
+  if (padListening) return;
+  padListening = true;
+  void listen<{ binding: string; state: "Pressed" | "Released" }>("gamepad-chord", (event) => {
+    padHandlers.get(event.payload.binding)?.(event.payload.state);
+  });
+}
+
 function remember(shortcut: string, ok: boolean) {
   _statusCache = { ..._statusCache, [shortcut]: ok };
   emit();
@@ -86,6 +118,46 @@ function runSlot(slot: ShortcutSlot, phase: "press" | "release") {
       const next = Math.max(0.01, (current ?? 1) - speedOf("decreaseSpeedStep", 0.5));
       invoke("bridge_set_speed", { factor: next });
       persistSpeed(next);
+  const register = useCallback(async (shortcut: string, callback: () => void): Promise<boolean> => {
+    if (isGamepadShortcut(shortcut)) {
+      ensurePadListener();
+      if (padHandlers.has(shortcut)) {
+        remember(shortcut, false);
+        return false;
+      }
+      padHandlers.set(shortcut, (state) => {
+        if (state === "Pressed") callback();
+      });
+      remember(shortcut, true);
+      return true;
+    }
+    return doRegister(shortcut, ({ state }: ShortcutTriggerState) => {
+      if (state !== "Pressed") return;
+      callback();
+    });
+  }, [doRegister]);
+
+  const registerHold = useCallback(async (
+    shortcut: string,
+    onPress: () => void,
+    onRelease: () => void,
+  ): Promise<boolean> => {
+    if (isGamepadShortcut(shortcut)) {
+      ensurePadListener();
+      if (padHandlers.has(shortcut)) {
+        remember(shortcut, false);
+        return false;
+      }
+      padHandlers.set(shortcut, (state) => {
+        if (state === "Pressed") onPress();
+        else onRelease();
+      });
+      remember(shortcut, true);
+      return true;
+    }
+    return doRegister(shortcut, ({ state }: ShortcutTriggerState) => {
+      if (state === "Pressed") onPress();
+      else onRelease();
     });
     return;
   }
@@ -182,6 +254,23 @@ async function applyActive(force: boolean) {
     persistSpeed(1);
   }
   if (!primed) {
+  const unregister = useCallback(async (shortcut: string) => {
+    if (!shortcut) return;
+    if (isGamepadShortcut(shortcut)) {
+      padHandlers.delete(shortcut);
+      const { [shortcut]: _, ...rest } = _statusCache;
+      _statusCache = rest;
+      emit();
+      return;
+    }
+    if (await GlobalShortcut.isRegistered(shortcut)) await GlobalShortcut.unregister(shortcut);
+    const { [shortcut]: _, ...rest } = _statusCache;
+    _statusCache = rest;
+    emit();
+  }, []);
+
+  const init = useCallback(async () => {
+    padHandlers.clear();
     await GlobalShortcut.unregisterAll().catch(() => {});
     _statusCache = {};
     emit();

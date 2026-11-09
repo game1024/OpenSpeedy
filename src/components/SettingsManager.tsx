@@ -19,6 +19,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useSettings } from "../hooks/useSettings";
 import { shortcutRegistered, syncShortcuts, useShortcut } from "../hooks/useShortcut";
+import { shortcutLabel, useShortcut } from "../hooks/useShortcut";
 import { useSnackbar } from "../contexts/SnackbarContext";
 import { reportError } from "../utils/frontendLog";
 import type { SettingsState } from "../store/settings";
@@ -141,6 +142,15 @@ export default function SettingsManager() {
     for (const proc of list) {
       if (!wanted.has(exeKey(proc.name))) continue;
       invoke("bridge_inject", { pid: proc.pid, arch: proc.arch }).catch(() => {});
+  async function changeShortcut(key: keyof SettingsState, oldVal: string, newVal: string, cb: () => void) {
+    if (oldVal) await unregister(oldVal).catch(() => { });
+    if (newVal) {
+      const ok = await register(newVal, cb).catch(() => false);
+      if (ok) {
+        notify(t("settings.registerSuccess", { shortcut: shortcutLabel(newVal) }), "success");
+      } else {
+        notify(t("settings.registerFail", { shortcut: shortcutLabel(newVal) }), "error");
+      }
     }
   }
 
@@ -154,6 +164,15 @@ export default function SettingsManager() {
     } else {
       await set(slot, value);
       await syncShortcuts();
+  async function changeHoldShortcut(oldVal: string, newVal: string, onPress: () => void, onRelease: () => void) {
+    if (oldVal) await unregister(oldVal).catch(() => { });
+    if (newVal) {
+      const ok = await registerHold(newVal, onPress, onRelease).catch(() => false);
+      if (ok) {
+        notify(t("settings.registerSuccess", { shortcut: shortcutLabel(newVal) }), "success");
+      } else {
+        notify(t("settings.registerFail", { shortcut: shortcutLabel(newVal) }), "error");
+      }
     }
     // A profile key is only registered while its process is in the foreground, so there is nothing to report yet.
     const ok = value ? shortcutRegistered(value) : undefined;

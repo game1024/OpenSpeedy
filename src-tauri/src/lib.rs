@@ -1,6 +1,7 @@
 pub mod applog;
 mod bridge_client;
 mod bridge_job;
+mod gamepad;
 mod process_enumerator;
 mod system_stats;
 
@@ -282,6 +283,7 @@ pub fn run() -> Result<(), String> {
             applog::info("setup", "tauri setup callback entered");
             ensure_bridges();
             watch_foreground(app.handle().clone());
+            gamepad::start(app.handle().clone());
             // Register Ctrl+C handler so bridges are killed on console exit
             unsafe { let _ = SetConsoleCtrlHandler(Some(ctrlc_handler), true); }
             applog::info("setup", "startup complete");
@@ -316,6 +318,7 @@ pub fn run() -> Result<(), String> {
     app.run(|_app_handle, event| {
         if let tauri::RunEvent::Exit = event {
             applog::info("shutdown", "exit requested, stopping bridges");
+            gamepad::stop();
             shutdown_bridges();
         }
     });
