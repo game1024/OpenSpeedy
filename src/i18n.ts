@@ -77,6 +77,13 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+// The document language is read by assistive technology and by the browser's
+// own text handling; keep it in sync when the language is switched at runtime.
+i18n.on("languageChanged", (lng) => {
+  if (typeof lng === "string") document.documentElement.lang = lng;
+});
+document.documentElement.lang = i18n.language || "en-US";
+
 // On startup: use system language unless user explicitly chose a different one.
 // The result only lands a few awaits in, so UI that renders text outside the
 // React tree (the tray menu is built imperatively) must await `languageReady`

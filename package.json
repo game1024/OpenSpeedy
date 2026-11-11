@@ -23,7 +23,6 @@
     "@tauri-apps/plugin-os": "^2.3.2",
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-store": "^2.4.3",
-    "@tauri-apps/plugin-window": "^2.0.0-alpha.1",
     "ahooks": "^3.9.7",
     "antd": "^6.4.5",
     "i18next": "^26.3.1",

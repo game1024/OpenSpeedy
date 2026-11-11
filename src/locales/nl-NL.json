@@ -9,7 +9,8 @@
     "tabs": {
       "speed": "Snelheid",
       "settings": "Instellingen",
-      "about": "Over"
+      "about": "Over",
+      "diagnostics": "Diagnose"
     }
   },
   "titleBar": {
@@ -69,13 +70,29 @@
       "moduleBase": "Basisadres",
       "moduleSize": "Grootte",
       "modulesCount": "{{count}} modules"
-    }
+    },
+    "injectTitle": "Snelheid voor dit proces inschakelen?",
+    "injectBody": "OpenSpeedy laadt zijn snelheidsmodule in {{name}}. Het leest of wijzigt geen spelgeheugen.",
+    "injectConfirm": "Inschakelen",
+    "injectCancel": "Annuleren",
+    "guardTitle": "Dit proces is beveiligd",
+    "guardBlocked": "{{name}} laadt {{matched}}, een bekende anti-cheat-module.",
+    "guardUnverified": "{{name}} kon niet worden geïnspecteerd — het is beveiligd of draait met verhoogde rechten, dus valt er niets te bevestigen.",
+    "guardNoTouch": "OpenSpeedy raakt processen onder anti-cheat-beveiliging niet aan. Gebruik de overschrijving alleen als je zeker weet dat het een fout-positief is.",
+    "guardWarnOnly": "De beveiliging is door de terugdraaischakelaar verlaagd naar een sterke waarschuwing. Dit proces lijkt beveiligd — doorgaan kan het game-account in gevaar brengen.",
+    "guardElevated": "Dit proces draait met verhoogde rechten. OpenSpeedy kan er alleen mee werken als de app als beheerder is gestart.",
+    "guardOverride": "Toch één keer doorgaan",
+    "guardRefusedCount": "{{count}} proces(sen) zijn overgeslagen omdat ze door anti-cheat zijn beveiligd."
   },
   "shortcut": {
     "notSet": "Niet ingesteld",
     "keyNotSupported": "Deze toets kan niet als sneltoets worden gebruikt",
     "inherited": "Geërfd",
-    "restoreInherit": "Globaal gebruiken"
+    "restoreInherit": "Globaal gebruiken",
+    "occupied": "Registratie mislukt. Een ander programma heeft deze combinatie mogelijk al in bezit.",
+    "occupiedShort": "Bezet?",
+    "duplicate": "Een andere sneltoets gebruikt dezelfde combinatie",
+    "reserved": "{{shortcut}} is gereserveerd door Windows en kan niet als sneltoets worden gebruikt"
   },
   "settings": {
     "loading": "Instellingen laden…",
@@ -125,7 +142,18 @@
     "profileGlobalHint": "Wordt gebruikt als geen profiel past",
     "profileActiveNow": "Actief",
     "profileNotRunning": "Niet actief",
-    "profileSearch": "Zoek op proces of venstertitel"
+    "profileSearch": "Zoek op proces of venstertitel",
+    "registerFailedCount": "{{count}} sneltoets(en) konden niet worden geregistreerd. Een ander programma houdt ze mogelijk bezet. Open Diagnose om te zien welke stap mislukt.",
+    "profileAutoApply": "Automatische snelheid",
+    "profileAutoApplyHint": "Pas deze snelheid toe zolang het programma op de voorgrond staat. Een handmatige wijziging wint altijd.",
+    "autoApply": "Automatische snelheid per profiel",
+    "autoApplyHint": "Een profiel kan zijn eigen snelheid toepassen zolang een van zijn programma's op de voorgrond staat. Standaard uit.",
+    "gamepad": "Gamepad",
+    "gamepadHint": "Een gamepad-combinatie gaat niet via de sneltoestentabel, dus blijft werken als het venster de focus verliest of het spel volledig scherm is. Neem er een op door een gamepad-knop ingedrukt te houden tijdens het opnemen van een sneltoets hierboven.",
+    "gamepadNone": "Er is nog geen gamepad-combinatie gebonden.",
+    "remoteControl": "Lokale besturingspagina",
+    "remoteControlHint": "Een kleine pagina op 127.0.0.1 die de snelheid wijzigt zonder game-processen aan te raken. Hij heeft het sessietoken nodig en is niet bereikbaar vanaf andere machines.",
+    "remoteControlUrl": "Adres"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -143,5 +171,53 @@
     "copyInfoError": "Kopiëren mislukt. Kopieer handmatig.",
     "copyInfo": "Systeeminfo",
     "openLog": "Log openen"
+  },
+  "diag": {
+    "title": "Invoerdiagnose",
+    "intro": "Controleert de keten van de sneltoestentabel van het systeem tot de snelheidsbrug. Het leest nooit spelgeheugen, onderschept toetsen of injecteert iets nieuws.",
+    "observe": "Invoerobservatie",
+    "observeHint": "Voegt register_fail / hotkey_fired / inject_result-records toe aan het diagnoselog. Standaard uit.",
+    "polling": "Alleen-lezen pollkanaal",
+    "pollingHint": "Leest de toestand van het toetsenbord in plaats van een sneltoets te registreren. Gebruik dit wanneer een ander programma je combinatie bezet.",
+    "pollingNote": "Polling leest alleen het toetsenbord. Het spel ontvangt de combinatie nog steeds — er wordt niets onderschept.",
+    "compat": "Compatibiliteitsmodus",
+    "compatHint": "Stuur elke sneltoets via de poller in plaats van via de sneltoestentabel.",
+    "rustDispatch": "Acties op de achtergrond uitvoeren",
+    "rustDispatchHint": "De snelheidswijziging wordt toegepast door de app-kern in plaats van het venster, dus werkt ook als het venster verborgen is.",
+    "guardWarnOnly": "Beveiliging: alleen waarschuwing",
+    "guardWarnOnlyHint": "Terugdraaischakelaar. Uit weigert beveiligde games; aan zet de controle omlaag naar een sterke waarschuwing. Standaard uit.",
+    "retry": "Geweigerde sneltoetsen opnieuw proberen",
+    "retryHint": "Een combinatie die een ander programma bezet, wordt na 2 s, 4 s, 8 s en daarna elke 10 s opnieuw geprobeerd. Standaard uit.",
+    "statusTitle": "Sneltoetsstatus",
+    "slot": "Slot",
+    "chord": "Toetscombinatie",
+    "state": "Status",
+    "stateOk": "Geregistreerd",
+    "stateFail": "Mislukt — mogelijk bezet",
+    "statePending": "Wacht op synchronisatie",
+    "stateEmpty": "Niet ingesteld",
+    "stateGamepad": "Gamepad-binding",
+    "testTitle": "Eén-druk-controle",
+    "testNeedsObserve": "Schakel invoerobservatie in om de controle uit te voeren.",
+    "testNoChord": "Nog geen enkele slot heeft een toetsenbord-sneltoets, dus is er niets te testen.",
+    "testStart": "Controle uitvoeren",
+    "testCancel": "Annuleren",
+    "preparing": "Voorbereiden…",
+    "testPressNow": "Druk binnen 3 seconden één keer op {{shortcut}}.",
+    "occupiedCode": "code 1409 — de combinatie is al geregistreerd door een ander programma",
+    "gamepadHint": "Als de toetscombinatie onbruikbaar blijft, koppel dan een gamepad-combinatie in Instellingen — deze hangt niet van de vensterfocus af.",
+    "logHint": "Elke controle laat [input]-records achter in het diagnoselog van vandaag.",
+    "verdict": {
+      "not_registered": "Niet geregistreerd",
+      "registered_no_fire": "Geregistreerd, maar nooit geactiveerd",
+      "fired_no_inject": "Geactiveerd, maar de snelheidswijziging ging nergens heen",
+      "ok": "De hele keten werkt"
+    },
+    "verdictHint": {
+      "not_registered": "Het systeem weigerde de registratie, dus drukken op de combinatie doet niets.",
+      "registered_no_fire": "OpenSpeedy houdt de combinatie vast maar er kwam binnen 3 seconden geen callback. Druk eerder nadat de controle is gestart.",
+      "fired_no_inject": "De sneltoets bereikte OpenSpeedy, maar er is momenteel geen proces dat een snelheidswijziging accepteert. Schakel eerst snelheid op een game in en controleer opnieuw.",
+      "ok": "De combinatie is geregistreerd, de callback werd geactiveerd en de brug accepteerde een snelheidswijziging."
+    }
   }
 }

@@ -136,26 +136,34 @@ pub fn start(app: tauri::AppHandle) {
 }
 
 fn poll_once(app: &tauri::AppHandle) {
-    let mut bindings = lock_bindings();
-    for binding in bindings.iter_mut() {
-        let down = binding.keys.iter().all(|vk| key_down(*vk));
-        if down && !binding.was_down {
-            binding.was_down = true;
-            let now = Instant::now();
-            let too_soon = binding
-                .last_fire
-                .map(|last| now.saturating_duration_since(last) < Duration::from_millis(DEBOUNCE_MS))
-                .unwrap_or(false);
-            if !too_soon {
-                binding.last_fire = Some(now);
-                fire(app, &binding.slot, "press");
-            }
-        } else if !down {
-            if binding.was_down {
-                binding.was_down = false;
-                fire(app, &binding.slot, "release");
+    // Detect edges while holding the lock, then drop it before any emit so the
+    // IPC write can never block config commands that also lock BINDINGS.
+    let mut to_fire: Vec<(String, String)> = Vec::new();
+    {
+        let mut bindings = lock_bindings();
+        for binding in bindings.iter_mut() {
+            let down = binding.keys.iter().all(|vk| key_down(*vk));
+            if down && !binding.was_down {
+                binding.was_down = true;
+                let now = Instant::now();
+                let too_soon = binding
+                    .last_fire
+                    .map(|last| now.saturating_duration_since(last) < Duration::from_millis(DEBOUNCE_MS))
+                    .unwrap_or(false);
+                if !too_soon {
+                    binding.last_fire = Some(now);
+                    to_fire.push((binding.slot.clone(), "press".to_string()));
+                }
+            } else if !down {
+                if binding.was_down {
+                    binding.was_down = false;
+                    to_fire.push((binding.slot.clone(), "release".to_string()));
+                }
             }
         }
+    }
+    for (slot, phase) in to_fire {
+        fire(app, &slot, &phase);
     }
 }
 

@@ -10,6 +10,7 @@ import { assignChannels, polledChords } from "../channelArbitration";
 import { setDispatchInRust, userTouchedSpeedFlag } from "../inputMode";
 import { decideAutoApply } from "../autoApply";
 import { getAcceleratedNames } from "../store/process";
+import { reportError } from "../utils/frontendLog";
 import {
   diffRegistration,
   globalShortcuts,
@@ -57,6 +58,11 @@ function ensurePadListener() {
   padListening = true;
   void listen<{ binding: string; state: "Pressed" | "Released" }>("gamepad-chord", (event) => {
     padHandlers.get(event.payload.binding)?.(event.payload.state);
+  }).catch(e => {
+    // Do not leave the flag set: a failed registration would otherwise make
+    // the whole gamepad channel silently dead until the app is restarted.
+    padListening = false;
+    void reportError("shortcut", "gamepad listener failed", String(e));
   });
 }
 
@@ -70,6 +76,9 @@ function ensurePollListener() {
       traceInput("hotkey_fired", { slot, channel: "poll" });
     }
     runSlot(slot, event.payload.phase, "poll");
+  }).catch(e => {
+    pollListening = false;
+    void reportError("shortcut", "input-polled listener failed", String(e));
   });
 }
 
@@ -280,9 +289,10 @@ async function registerChord(entry: RegEntry) {
   try {
     await GlobalShortcut.register(entry.shortcut, (event: ShortcutTriggerState) => onChord(entry, event.state));
     remember(entry.shortcut, true);
-    console.log("[shortcut] register OK:", entry.shortcut);
+    // Never print the chord itself: the [input] schema is slot-only on purpose.
+    console.log("[shortcut] register OK:", entry.slot);
   } catch (e) {
-    console.error("[shortcut] register FAIL:", entry.shortcut, e);
+    console.error("[shortcut] register FAIL:", entry.slot);
     // The plugin surfaces the Win32 failure as text, not a code. 1409 is
     // ERROR_HOTKEY_ALREADY_REGISTERED, the only case that is recognised here;
     // anything else stays absent rather than being guessed.
@@ -532,6 +542,9 @@ export function initShortcuts() {
   void listen<string>("foreground-changed", (event) => {
     void enqueue(false).catch(() => {});
     void handleAutoApply(typeof event.payload === "string" ? event.payload : "");
+  }).catch(e => {
+    watching = false;
+    void reportError("shortcut", "foreground listener failed", String(e));
   });
   void enqueue(true);
 }

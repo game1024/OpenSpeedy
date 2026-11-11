@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { type SettingsState } from "../store/settings";
+import { type SettingsState, DEFAULTS } from "../store/settings";
 import { loadSettings, setSetting } from "../store/settings";
 import { dispatchInRustEnabled, markUserSpeedChange } from "../inputMode";
 
@@ -54,7 +54,10 @@ export function useSettings() {
   }, []);
 
   const set = useCallback(async <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
-    _cache = { ..._cache!, [key]: value };
+    // Spreading `null` yields `{}`, which would broadcast a settings object
+    // with this one key and no defaults until loadSettings() resolves. An
+    // early `set()` (e.g. the autostart sync) must not do that.
+    _cache = { ...DEFAULTS, ...(_cache ?? {}), [key]: value };
     emit();
     await setSetting(key, value);
   }, []);

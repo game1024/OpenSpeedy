@@ -196,7 +196,10 @@ pub fn get_system_stats() -> SystemStats {
                 kernel: ft_to_u64(&kernel),
                 user: ft_to_u64(&user),
             };
-            let mut prev = CPU_PREV.lock().unwrap();
+            let mut prev = match CPU_PREV.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
             let pct = if let Some(ref p) = *prev {
                 let idle_delta = now.idle.saturating_sub(p.idle) as f64;
                 let total_delta =

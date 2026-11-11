@@ -2,15 +2,21 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Paper, Typography, Slider, ButtonBase } from "@mui/material";
 import SpeedIcon from "@mui/icons-material/Speed";
-// ── Logarithmic speed mapping: slider [-1000, 1000] → speed [0.001, 1000] ──
-// 0 = 1×, full right = 1000×, full left = 0.001×
-// speed = 10^(v * 3 / 1000)
+// ── Logarithmic speed mapping: slider [-3, 3] → speed [0.001, 1000] ──
+// speed = 10^v, so 0 = 1× and every whole step is a factor of ten.
+const SLIDER_MIN = -3;
+const SLIDER_MAX = 3;
+const SLIDER_STEP = 0.01;
 
 export function toSpeed(v: number): number {
   return Math.pow(10, v);
 }
 export function toSlider(s: number): number {
   return Math.log10(s);
+}
+/** MUI reports `number | number[]`; this slider is always single-valued. */
+function scalar(v: number | number[]): number {
+  return typeof v === "number" ? v : (v[0] ?? 0);
 }
 
 interface SpeedPanelProps {
@@ -102,9 +108,9 @@ export default React.memo(function SpeedPanel({ speed, gears, onChange, onCommit
         <Box sx={{ display: "flex", justifyContent: "center", mb: 0.5, }}>
           <Slider
             value={toSlider(speed)}
-            onChange={(_, v) => onChange(toSpeed(v as number))}
-            onChangeCommitted={(_, v) => onCommit(toSpeed(v as number))}
-            min={-3} max={3} step={0.01}
+            onChange={(_, v) => onChange(toSpeed(scalar(v)))}
+            onChangeCommitted={(_, v) => onCommit(toSpeed(scalar(v)))}
+            min={SLIDER_MIN} max={SLIDER_MAX} step={SLIDER_STEP}
             marks={[
               { value: -3, label: "0.001" },
               { value: -2, label: "0.01" },

@@ -9,7 +9,8 @@
     "tabs": {
       "speed": "Velocidade",
       "settings": "Configurações",
-      "about": "Sobre"
+      "about": "Sobre",
+      "diagnostics": "Diagnóstico"
     }
   },
   "titleBar": {
@@ -69,13 +70,29 @@
       "moduleBase": "Endereço Base",
       "moduleSize": "Tamanho",
       "modulesCount": "{{count}} módulos"
-    }
+    },
+    "injectTitle": "Ativar a velocidade para este processo?",
+    "injectBody": "O OpenSpeedy carregará seu módulo de velocidade em {{name}}. Ele não lê nem modifica a memória do jogo.",
+    "injectConfirm": "Ativar",
+    "injectCancel": "Cancelar",
+    "guardTitle": "Este processo está protegido",
+    "guardBlocked": "{{name}} carrega {{matched}}, um módulo anti-cheat conhecido.",
+    "guardUnverified": "{{name}} não pôde ser inspecionado — está protegido ou roda com privilégios elevados, então nada pode ser confirmado.",
+    "guardNoTouch": "O OpenSpeedy não toca processos sob proteção anti-cheat. Use a substituição apenas se tiver certeza de que é um falso positivo.",
+    "guardWarnOnly": "A proteção foi rebaixada a um aviso forte pelo interruptor de reversão. Este processo parece protegido — continuar pode colocar a conta do jogo em risco.",
+    "guardElevated": "Este processo roda com privilégios elevados. O OpenSpeedy só funciona com ele quando o app foi iniciado como administrador.",
+    "guardOverride": "Continuar uma vez mesmo assim",
+    "guardRefusedCount": "{{count}} processo(s) foram ignorados porque estão protegidos por um anti-cheat."
   },
   "shortcut": {
     "notSet": "Não definido",
     "keyNotSupported": "Esta tecla não pode ser usada como atalho",
     "inherited": "Herdado",
-    "restoreInherit": "Usar global"
+    "restoreInherit": "Usar global",
+    "occupied": "Falha no registro. Outro programa já pode estar ocupando esta combinação.",
+    "occupiedShort": "Ocupado?",
+    "duplicate": "Outro atalho usa a mesma combinação",
+    "reserved": "{{shortcut}} é reservado pelo Windows e não pode ser usado como atalho"
   },
   "settings": {
     "loading": "Carregando configurações…",
@@ -125,7 +142,18 @@
     "profileGlobalHint": "Usado quando nenhum perfil corresponde",
     "profileActiveNow": "Ativo",
     "profileNotRunning": "Não está em execução",
-    "profileSearch": "Pesquisar processo ou título da janela"
+    "profileSearch": "Pesquisar processo ou título da janela",
+    "registerFailedCount": "{{count}} atalho(s) não puderam ser registrados. Outro programa pode estar os ocupando. Abra o Diagnóstico para ver qual etapa falha.",
+    "profileAutoApply": "Velocidade automática",
+    "profileAutoApplyHint": "Aplique esta velocidade enquanto o programa estiver em primeiro plano. Uma mudança manual sempre prevalece.",
+    "autoApply": "Velocidade automática por perfil",
+    "autoApplyHint": "Um perfil pode aplicar sua própria velocidade enquanto um de seus programas estiver em primeiro plano. Desligado por padrão.",
+    "gamepad": "Controle",
+    "gamepadHint": "Uma combinação de controle não passa pela tabela de atalhos, então continua funcionando quando a janela perde o foco ou o jogo está em tela cheia. Grave uma segurando um botão do controle enquanto grava um atalho acima.",
+    "gamepadNone": "Nenhuma combinação de controle foi associada ainda.",
+    "remoteControl": "Página de controle local",
+    "remoteControlHint": "Uma página pequena em 127.0.0.1 que muda a velocidade sem tocar em nenhum processo do jogo. Ela precisa do token de sessão e é inatingível a partir de outras máquinas.",
+    "remoteControlUrl": "Endereço"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -143,5 +171,53 @@
     "copyInfoError": "Falha ao copiar. Copie manualmente.",
     "copyInfo": "Info do sistema",
     "openLog": "Abrir log"
+  },
+  "diag": {
+    "title": "Diagnóstico de entrada",
+    "intro": "Verifica a cadeia da tabela de atalhos do sistema até a ponte de velocidade. Nunca lê a memória do jogo, intercepta teclas ou injeta algo novo.",
+    "observe": "Observação de entrada",
+    "observeHint": "Adiciona registros register_fail / hotkey_fired / inject_result ao log de diagnóstico. Desligado por padrão.",
+    "polling": "Canal de sondagem somente leitura",
+    "pollingHint": "Lê o estado do teclado em vez de registrar um atalho. Use quando outro programa ocupa sua combinação.",
+    "pollingNote": "A sondagem apenas lê o teclado. O jogo ainda recebe a combinação — nada é interceptado.",
+    "compat": "Modo de compatibilidade",
+    "compatHint": "Envia cada atalho de teclado pelo sondador em vez da tabela de atalhos.",
+    "rustDispatch": "Executar ações em segundo plano",
+    "rustDispatchHint": "A mudança de velocidade é aplicada pelo núcleo do app em vez da janela, por isso também funciona com a janela oculta.",
+    "guardWarnOnly": "Proteção: apenas aviso",
+    "guardWarnOnlyHint": "Interruptor de reversão. Desligado recusa jogos protegidos; ligado rebaixa a verificação a um aviso forte. Desligado por padrão.",
+    "retry": "Repetir atalhos recusados",
+    "retryHint": "Uma combinação ocupada por outro programa é repetida após 2 s, 4 s, 8 s e depois a cada 10 s. Desligado por padrão.",
+    "statusTitle": "Estado dos atalhos",
+    "slot": "Slot",
+    "chord": "Combinação",
+    "state": "Estado",
+    "stateOk": "Registrado",
+    "stateFail": "Falhou — possivelmente ocupado",
+    "statePending": "Aguardando sincronização",
+    "stateEmpty": "Não definido",
+    "stateGamepad": "Associação de controle",
+    "testTitle": "Verificação de um toque",
+    "testNeedsObserve": "Ative a observação de entrada para executar a verificação.",
+    "testNoChord": "Nenhum slot tem um atalho de teclado ainda, então não há nada para testar.",
+    "testStart": "Executar verificação",
+    "testCancel": "Cancelar",
+    "preparing": "Preparando…",
+    "testPressNow": "Pressione {{shortcut}} uma vez em até 3 segundos.",
+    "occupiedCode": "código 1409 — a combinação já está registrada por outro programa",
+    "gamepadHint": "Se a combinação de teclado continuar inutilizável, associe uma combinação de controle em Configurações — ela não depende do foco da janela.",
+    "logHint": "Cada verificação deixa registros [input] no log de diagnóstico de hoje.",
+    "verdict": {
+      "not_registered": "Não registrado",
+      "registered_no_fire": "Registrado, mas nunca disparou",
+      "fired_no_inject": "Disparou, mas a mudança de velocidade não levou a nada",
+      "ok": "Toda a cadeia funciona"
+    },
+    "verdictHint": {
+      "not_registered": "O sistema recusou o registro, então pressionar a combinação não faz nada.",
+      "registered_no_fire": "OpenSpeedy mantém a combinação, mas nenhum retorno chegou em 3 segundos. Pressione mais cedo após iniciar a verificação.",
+      "fired_no_inject": "O atalho chegou ao OpenSpeedy, mas nenhum processo está aceitando uma mudança de velocidade agora. Ative a velocidade em um jogo primeiro e verifique novamente.",
+      "ok": "A combinação está registrada, o retorno foi disparado e a ponte aceitou uma mudança de velocidade."
+    }
   }
 }

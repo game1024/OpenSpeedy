@@ -27,8 +27,9 @@ use windows::Win32::System::SystemInformation::GetLocalTime;
 const LOG_DIR_NAME: &str = "logs";
 /// Log files kept; older days are deleted at startup.
 const KEEP_DAYS: usize = 14;
-/// Start a fresh file once a day's log passes this size, so a session that
-/// logs without pause cannot fill the disk.
+/// Start a fresh file once a day's log passes this size, moving the oversized
+/// one aside instead of deleting it; a session that logs without pause still
+/// cannot fill the disk.
 const MAX_BYTES: u64 = 16 * 1024 * 1024;
 
 static LOG_DIR: OnceLock<PathBuf> = OnceLock::new();
@@ -64,9 +65,13 @@ fn thread_name() -> String {
 /// running (and so a panic does not leave it locked). The next write reopens it
 /// and appends.
 fn release_file() {
-    if let Ok(mut guard) = WRITER.lock() {
-        *guard = None;
-    }
+    // A poisoned writer must still be releasable — the panic hook calls this
+    // very function after a panic that may have happened while holding it.
+    let mut guard = match WRITER.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    *guard = None;
 }
 
 /// Local date as `YYYYMMDD`, used both for the file name and to decide when a
@@ -104,10 +109,12 @@ fn open_for_today(guard: &mut MutexGuard<Option<File>>, date: &str) {
         })
         .ok();
 
-    if let Ok(mut current) = CURRENT_DATE.lock() {
-        current.clear();
-        current.push_str(date);
-    }
+    let mut current = match CURRENT_DATE.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    current.clear();
+    current.push_str(date);
 }
 
 /// The log file the app is writing to right now.
@@ -135,21 +142,39 @@ fn write_line(level: &str, phase: &str, msg: &str) {
     );
 
     let today = date_stamp();
-    let Ok(mut guard) = WRITER.lock() else { return };
+    // Recover a poisoned writer like every other mutex in this crate. Losing
+    // all diagnostics (including the PANIC record) for the rest of the
+    // session is far worse than reusing the handle left by a panicking thread.
+    let mut guard = match WRITER.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
 
-    let stale_day = CURRENT_DATE.lock().map(|d| *d != today).unwrap_or(true);
+    let stale_day = match CURRENT_DATE.lock() {
+        Ok(d) => *d != today,
+        Err(poisoned) => *poisoned.into_inner() != today,
+    };
     if guard.is_none() || stale_day {
         open_for_today(&mut guard, &today);
     }
-    let Some(file) = guard.as_mut() else { return };
 
-    let _ = file.write_all(line.as_bytes());
-    let _ = file.flush();
+    let oversized = {
+        let Some(file) = guard.as_mut() else { return };
+        let _ = file.write_all(line.as_bytes());
+        let _ = file.flush();
+        file.metadata().map(|m| m.len() > MAX_BYTES).unwrap_or(false)
+    };
 
-    // A single day of logs should not grow without bound either.
-    if file.metadata().map(|m| m.len() > MAX_BYTES).unwrap_or(false) {
-        let path = log_path();
-        *guard = OpenOptions::new().create(true).write(true).truncate(true).open(path).ok();
+    // Rotate the oversized file aside instead of truncating it: `log_path()`
+    // keeps pointing at today's file, and the evidence from a crash survives
+    // the very next log line.
+    if oversized {
+        let dir = LOG_DIR.get().cloned().unwrap_or_else(install_dir);
+        let path = dir.join(file_name_for(&today));
+        *guard = None; // Windows cannot rename an open file.
+        let rotated = dir.join(format!("openspeedy.{today}.1.log"));
+        let _ = std::fs::rename(&path, &rotated);
+        open_for_today(&mut guard, &today);
     }
 }
 
@@ -157,25 +182,33 @@ fn write_line(level: &str, phase: &str, msg: &str) {
 fn prune_old_files(dir: &std::path::Path) {
     let Ok(entries) = std::fs::read_dir(dir) else { return };
 
-    // Stamp embedded in the file name, e.g. `openspeedy.20260912.log` → 20260912.
-    let mut stamps: Vec<String> = entries
+    // Stamp embedded in the file name: `openspeedy.20260912.log` and its
+    // rotated sibling `openspeedy.20260912.1.log` both belong to 20260912.
+    let files: Vec<(String, String)> = entries
         .flatten()
         .filter_map(|e| e.file_name().to_str().map(str::to_string))
         .filter_map(|name| {
             let rest = name.strip_prefix("openspeedy.")?;
-            let stamp = rest.strip_suffix(".log")?;
+            let body = rest.strip_suffix(".log")?;
+            let stamp = body.split('.').next().unwrap_or(body).to_string();
             (stamp.len() == 8 && stamp.bytes().all(|b| b.is_ascii_digit()))
-                .then(|| stamp.to_string())
+                .then(|| (stamp, name))
         })
         .collect();
-    if stamps.is_empty() {
+    if files.is_empty() {
         return;
     }
 
+    let mut stamps: Vec<String> = files.iter().map(|(stamp, _)| stamp.clone()).collect();
     stamps.sort();
+    stamps.dedup();
     let keep_from = stamps.len().saturating_sub(KEEP_DAYS);
     for stamp in &stamps[..keep_from] {
-        let _ = std::fs::remove_file(dir.join(file_name_for(stamp)));
+        for (day, name) in &files {
+            if day == stamp {
+                let _ = std::fs::remove_file(dir.join(name));
+            }
+        }
     }
 }
 

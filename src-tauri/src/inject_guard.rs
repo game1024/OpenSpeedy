@@ -81,6 +81,9 @@ fn refused(info: &process_enumerator::ProcessInfo, reason: &str, matched: Option
 }
 
 /// Decide whether `pid` may be injected. Pure read-only inspection.
+/// With `guard.warn_only` on, *every* refusal (including `unreadable` and
+/// `unverified`) becomes `allowed = true` plus a `warning`; the UI must still
+/// show that warning before injecting.
 pub fn check(pid: u32) -> GuardVerdict {
     let mut verdict = check_raw(pid);
     if !verdict.allowed && WARN_ONLY.load(Ordering::Relaxed) {
@@ -180,7 +183,9 @@ mod tests {
     }
 
     /// The rollback switch degrades a hard deny to a strong warning without
-    /// changing any code. A pid that cannot be enumerated is always refused.
+    /// changing any code. It currently covers every refusal reason, including
+    /// `unreadable`; tightening it to `anticheat` only would change the
+    /// switch's observable behaviour and is left as a follow-up.
     #[test]
     fn warn_only_degrades_a_denial_to_a_warning() {
         set_warn_only(false);

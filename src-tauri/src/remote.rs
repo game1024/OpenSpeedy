@@ -11,8 +11,9 @@
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::time::Duration;
 
 use tauri::Emitter;
 
@@ -21,9 +22,14 @@ const PORT: u16 = 17890;
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
 static TOKEN: Mutex<String> = Mutex::new(String::new());
-/// True while one listener thread owns the port. Re-enabling before the old
-/// thread has exited simply lets that thread carry on with the refreshed token.
+/// True while one listener thread owns the port.
 static LISTENING: AtomicBool = AtomicBool::new(false);
+/// Incremented on every switch transition, so a listener from an older
+/// generation always stops even if the switch is turned back on immediately.
+static GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// Matches the upper bound the settings UI allows for a speed value.
+const MAX_FACTOR: f64 = 100.0;
 
 /// A token that is hard to guess from the outside.
 fn make_token() -> String {
@@ -71,6 +77,11 @@ pub fn info() -> RemoteInfo {
 /// Switch the page on or off. Switching on starts the listener, switching off
 /// closes it — the port is not listening while the feature is off.
 pub fn set_enabled(on: bool, app: tauri::AppHandle) {
+    // Every transition invalidates the previous generation. Without this, a
+    // close→open inside one 50 ms poll tick could make `start` return early
+    // while the old thread was already exiting: enabled=true, valid token,
+    // and nobody listening.
+    let generation = GENERATION.fetch_add(1, Ordering::AcqRel) + 1;
     ENABLED.store(on, Ordering::Relaxed);
     if on {
         let token = make_token();
@@ -81,7 +92,7 @@ pub fn set_enabled(on: bool, app: tauri::AppHandle) {
             };
             *current = token;
         }
-        start(app);
+        start(app, generation);
     } else {
         // The token dies with the session; a page that is still open cannot
         // act any more.
@@ -93,12 +104,20 @@ pub fn set_enabled(on: bool, app: tauri::AppHandle) {
     }
 }
 
-fn start(app: tauri::AppHandle) {
+fn start(app: tauri::AppHandle, generation: u64) {
+    // The old listener releases the port asynchronously. Wait for it (bounded)
+    // instead of returning silently with the switch on but no listener.
+    for _ in 0..40 {
+        if !LISTENING.load(Ordering::Relaxed) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
     if LISTENING
         .compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed)
         .is_err()
     {
-        // A listener is already running; it will pick up the new token.
+        crate::applog::warn("remote", "previous listener did not stop in time");
         return;
     }
     std::thread::spawn(move || {
@@ -120,11 +139,13 @@ fn start(app: tauri::AppHandle) {
             return;
         }
         crate::applog::info("remote", format!("local control page on 127.0.0.1:{PORT}"));
-        while ENABLED.load(Ordering::Relaxed) {
+        while ENABLED.load(Ordering::Relaxed)
+            && GENERATION.load(Ordering::Relaxed) == generation
+        {
             match listener.accept() {
                 Ok((stream, _)) => handle(stream, &app),
                 Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    std::thread::sleep(Duration::from_millis(50));
                 }
                 Err(_) => break,
             }
@@ -136,6 +157,10 @@ fn start(app: tauri::AppHandle) {
 }
 
 fn read_request(stream: &mut TcpStream) -> Option<String> {
+    // A half-written request must not pin the single listener thread forever
+    // (which would also stop the port from closing on switch-off).
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+    let _ = stream.set_write_timeout(Some(Duration::from_millis(500)));
     let mut buffer = [0u8; 2048];
     let read = stream.read(&mut buffer).ok()?;
     Some(String::from_utf8_lossy(&buffer[..read]).into_owned())
@@ -170,16 +195,30 @@ fn query_what(request: &str) -> Option<String> {
 }
 
 /// Resolve a page action to the factor to apply. `current` comes from
-/// `bridge_get_speed`, the same source of truth the shortcut dispatcher uses;
-/// an explicit `?value=` still works for scripted callers.
-fn factor_for(what: Option<&str>, requested: Option<f64>, current: f64) -> f64 {
-    const STEP: f64 = 0.5;
+/// `current_speed`, the same source of truth the shortcut dispatcher uses;
+/// `config` is the dispatcher's step table, so the page and the hotkeys never
+/// disagree. An explicit `?value=` still works for scripted callers.
+fn factor_for(
+    what: Option<&str>,
+    requested: Option<f64>,
+    current: f64,
+    config: crate::dispatch::Config,
+) -> f64 {
+    let clamp = |v: f64| {
+        if v.is_finite() {
+            v.clamp(0.01, MAX_FACTOR)
+        } else {
+            1.0
+        }
+    };
     match what {
-        Some("up") => (current + STEP).max(0.01),
-        Some("down") => (current - STEP).max(0.01),
+        Some("up") => clamp(current + config.increase_step),
+        Some("down") => clamp(current - config.decrease_step),
         Some("reset") => 1.0,
         _ => match requested {
-            Some(v) if v > 0.0 => v,
+            // `inf`, `NaN` and absurd values would otherwise go straight into
+            // the injected DLL's timing arithmetic.
+            Some(v) if v.is_finite() && v > 0.0 && v <= MAX_FACTOR => v,
             _ => 1.0,
         },
     }
@@ -241,7 +280,8 @@ fn handle(mut stream: TcpStream, app: &tauri::AppHandle) {
         let factor = factor_for(
             query_what(&request).as_deref(),
             query_value(&request),
-            crate::bridge_client::bridge64_get_speed().unwrap_or(1.0),
+            crate::bridge_client::current_speed().unwrap_or(1.0),
+            crate::dispatch::config(),
         );
         crate::bridge_client::bridge64_set_speed(factor);
         crate::bridge_client::bridge32_set_speed(factor);
@@ -287,12 +327,28 @@ mod tests {
 
     #[test]
     fn buttons_change_the_speed_instead_of_all_resetting_it() {
-        assert_eq!(factor_for(Some("up"), None, 1.0), 1.5);
-        assert_eq!(factor_for(Some("down"), None, 1.0), 0.5);
-        assert_eq!(factor_for(Some("reset"), None, 3.0), 1.0);
-        assert_eq!(factor_for(None, Some(2.5), 3.0), 2.5);
-        assert_eq!(factor_for(None, None, 3.0), 1.0);
-        assert_eq!(factor_for(Some("down"), None, 0.2), 0.01);
+        let cfg = crate::dispatch::Config::default();
+        assert_eq!(factor_for(Some("up"), None, 1.0, cfg), 1.5);
+        assert_eq!(factor_for(Some("down"), None, 1.0, cfg), 0.5);
+        assert_eq!(factor_for(Some("reset"), None, 3.0, cfg), 1.0);
+        assert_eq!(factor_for(None, Some(2.5), 3.0, cfg), 2.5);
+        assert_eq!(factor_for(None, None, 3.0, cfg), 1.0);
+        assert_eq!(factor_for(Some("down"), None, 0.2, cfg), 0.01);
+        // The page honours the same step table the hotkeys use.
+        let custom = crate::dispatch::Config { increase_step: 0.25, ..cfg };
+        assert_eq!(factor_for(Some("up"), None, 1.0, custom), 1.25);
+    }
+
+    #[test]
+    fn non_finite_and_out_of_range_values_are_rejected() {
+        let cfg = crate::dispatch::Config::default();
+        assert_eq!(factor_for(None, Some(f64::INFINITY), 1.0, cfg), 1.0);
+        assert_eq!(factor_for(None, Some(f64::NAN), 1.0, cfg), 1.0);
+        assert_eq!(factor_for(None, Some(1e308), 1.0, cfg), 1.0);
+        assert_eq!(factor_for(None, Some(-3.0), 1.0, cfg), 1.0);
+        assert_eq!(factor_for(None, Some(50.0), 1.0, cfg), 50.0);
+        assert_eq!(factor_for(Some("up"), None, f64::INFINITY, cfg), 1.0);
+        assert_eq!(factor_for(Some("up"), None, 99.9, cfg), 100.0);
     }
 
     /// The lock is released again before the check runs — the mutex is not

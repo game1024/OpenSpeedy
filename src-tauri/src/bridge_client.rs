@@ -147,6 +147,18 @@ pub fn bridge64_get_speed() -> Option<f64> {
     pipe_command(PIPE_64, "GETSPEED").and_then(|r| r.strip_prefix("OK ").and_then(|s| s.parse().ok()))
 }
 
+/// Get speed factor from bridge32 — the fallback when the 64-bit bridge is
+/// down. Both bridges are written together, so either one is a valid source.
+pub fn bridge32_get_speed() -> Option<f64> {
+    pipe_command(PIPE_32, "GETSPEED").and_then(|r| r.strip_prefix("OK ").and_then(|s| s.parse().ok()))
+}
+
+/// Single source of truth for the current factor. Falling back to the 32-bit
+/// bridge avoids silently restarting from 1.0 when only bridge64 died.
+pub fn current_speed() -> Option<f64> {
+    bridge64_get_speed().or_else(bridge32_get_speed)
+}
+
 // ── Per-arch inject / eject / enable / disable ──
 
 pub fn bridge64_inject(pid: u32) -> bool {

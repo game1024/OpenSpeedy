@@ -9,7 +9,8 @@
     "tabs": {
       "speed": "Velocidad",
       "settings": "Ajustes",
-      "about": "Acerca de"
+      "about": "Acerca de",
+      "diagnostics": "Diagnóstico"
     }
   },
   "titleBar": {
@@ -69,13 +70,29 @@
       "moduleBase": "Dirección Base",
       "moduleSize": "Tamaño",
       "modulesCount": "{{count}} módulos"
-    }
+    },
+    "injectTitle": "¿Activar la velocidad para este proceso?",
+    "injectBody": "OpenSpeedy cargará su módulo de velocidad en {{name}}. No lee ni modifica la memoria del juego.",
+    "injectConfirm": "Activar",
+    "injectCancel": "Cancelar",
+    "guardTitle": "Este proceso está protegido",
+    "guardBlocked": "{{name}} carga {{matched}}, un módulo anti-cheat conocido.",
+    "guardUnverified": "No se pudo inspeccionar {{name}} — está protegido o se ejecuta con privilegios elevados, así que no se puede confirmar nada.",
+    "guardNoTouch": "OpenSpeedy no toca los procesos bajo protección anti-cheat. Usa la excepción solo si estás seguro de que es un falso positivo.",
+    "guardWarnOnly": "La protección se degradó a un aviso importante mediante el interruptor de retroceso. Este proceso parece protegido; continuar puede poner en riesgo la cuenta del juego.",
+    "guardElevated": "Este proceso se ejecuta con privilegios elevados. OpenSpeedy solo puede trabajar con él si la app se inició como administrador.",
+    "guardOverride": "Continuar una vez de todos modos",
+    "guardRefusedCount": "Se omitieron {{count}} proceso(s) porque están protegidos por un anti-cheat."
   },
   "shortcut": {
     "notSet": "Sin definir",
     "keyNotSupported": "Esta tecla no se puede usar como atajo",
     "inherited": "Heredado",
-    "restoreInherit": "Usar global"
+    "restoreInherit": "Usar global",
+    "occupied": "Error al registrar. Puede que otro programa ya ocupe esta combinación.",
+    "occupiedShort": "¿Ocupado?",
+    "duplicate": "Otro atajo usa la misma combinación",
+    "reserved": "{{shortcut}} está reservado por Windows y no se puede usar como atajo"
   },
   "settings": {
     "loading": "Cargando ajustes…",
@@ -125,7 +142,18 @@
     "profileGlobalHint": "Se usa si ningún perfil coincide",
     "profileActiveNow": "Activo",
     "profileNotRunning": "No está en ejecución",
-    "profileSearch": "Buscar proceso o título de ventana"
+    "profileSearch": "Buscar proceso o título de ventana",
+    "registerFailedCount": "No se pudieron registrar {{count}} atajo(s). Puede que otro programa los ocupe. Abre el Diagnóstico para ver en qué paso falla.",
+    "profileAutoApply": "Velocidad automática",
+    "profileAutoApplyHint": "Aplica esta velocidad mientras el programa está en primer plano. Un cambio manual siempre prevalece.",
+    "autoApply": "Velocidad automática por perfil",
+    "autoApplyHint": "Un perfil puede aplicar su propia velocidad mientras uno de sus programas está en primer plano. Desactivado por defecto.",
+    "gamepad": "Mando",
+    "gamepadHint": "Una combinación de mando no pasa por la tabla de teclas rápidas, así que sigue funcionando cuando la ventana pierde el foco o el juego está a pantalla completa. Grábala manteniendo un botón del mando mientras grabas un atajo arriba.",
+    "gamepadNone": "Aún no hay ninguna combinación de mando asignada.",
+    "remoteControl": "Página de control local",
+    "remoteControlHint": "Una página pequeña en 127.0.0.1 que cambia la velocidad sin tocar ningún proceso del juego. Necesita el token de sesión y no es accesible desde otros equipos.",
+    "remoteControlUrl": "Dirección"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -143,5 +171,53 @@
     "copyInfoError": "Error al copiar. Copie manualmente.",
     "copyInfo": "Info del sistema",
     "openLog": "Abrir registro"
+  },
+  "diag": {
+    "title": "Diagnóstico de entrada",
+    "intro": "Comprueba la cadena desde la tabla de teclas rápidas del sistema hasta el puente de velocidad. Nunca lee la memoria del juego, intercepta teclas ni inyecta nada nuevo.",
+    "observe": "Observación de entrada",
+    "observeHint": "Añade registros register_fail / hotkey_fired / inject_result al registro de diagnóstico. Desactivado por defecto.",
+    "polling": "Canal de sondeo de solo lectura",
+    "pollingHint": "Lee el estado del teclado en lugar de registrar una tecla. Úsalo cuando otro programa ocupa tu combinación.",
+    "pollingNote": "El sondeo solo lee el teclado. El juego sigue recibiendo la combinación; no se intercepta nada.",
+    "compat": "Modo compatibilidad",
+    "compatHint": "Envía cada atajo de teclado mediante el sondeador en lugar de la tabla de teclas rápidas.",
+    "rustDispatch": "Ejecutar acciones en segundo plano",
+    "rustDispatchHint": "El cambio de velocidad lo aplica el núcleo de la app en lugar de la ventana, por lo que también funciona con la ventana oculta.",
+    "guardWarnOnly": "Protección: solo aviso",
+    "guardWarnOnlyHint": "Interruptor de retroceso. Desactivado rechaza juegos protegidos; activado degrada la comprobación a un aviso importante. Desactivado por defecto.",
+    "retry": "Reintentar atajos rechazados",
+    "retryHint": "Una combinación que ocupa otro programa se reintenta tras 2 s, 4 s, 8 s y luego cada 10 s. Desactivado por defecto.",
+    "statusTitle": "Estado de atajos",
+    "slot": "Ranura",
+    "chord": "Combinación",
+    "state": "Estado",
+    "stateOk": "Registrado",
+    "stateFail": "Error — posiblemente ocupado",
+    "statePending": "Esperando sincronización",
+    "stateEmpty": "Sin configurar",
+    "stateGamepad": "Asignación de mando",
+    "testTitle": "Comprobación de un pulsación",
+    "testNeedsObserve": "Activa la observación de entrada para ejecutar la comprobación.",
+    "testNoChord": "Ninguna ranura tiene aún un atajo de teclado, así que no hay nada que probar.",
+    "testStart": "Ejecutar comprobación",
+    "testCancel": "Cancelar",
+    "preparing": "Preparando…",
+    "testPressNow": "Pulsa {{shortcut}} una vez en un plazo de 3 segundos.",
+    "occupiedCode": "código 1409 — la combinación ya está registrada por otro programa",
+    "gamepadHint": "Si la combinación de teclado sigue sin funcionar, asigna una combinación de mando en Ajustes; no depende del foco de la ventana.",
+    "logHint": "Cada comprobación deja registros [input] en el registro de diagnóstico de hoy.",
+    "verdict": {
+      "not_registered": "No registrado",
+      "registered_no_fire": "Registrado, pero nunca se activó",
+      "fired_no_inject": "Se activó, pero el cambio de velocidad no surtió efecto",
+      "ok": "Toda la cadena funciona"
+    },
+    "verdictHint": {
+      "not_registered": "El sistema rechazó el registro, así que pulsar la combinación no hace nada.",
+      "registered_no_fire": "OpenSpeedy mantiene la combinación, pero no llegó ninguna llamada en 3 segundos. Pulsa más pronto tras iniciar la comprobación.",
+      "fired_no_inject": "La tecla llegó a OpenSpeedy, pero ningún proceso acepta un cambio de velocidad ahora. Activa la velocidad en un juego primero y vuelve a comprobar.",
+      "ok": "La combinación está registrada, se activó la llamada y el puente aceptó un cambio de velocidad."
+    }
   }
 }
