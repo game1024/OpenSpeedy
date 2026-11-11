@@ -30,14 +30,45 @@ export interface SettingsState {
   hideToTray: boolean;
   language: "zh-CN" | "zh-TW" | "ja-JP" | "ko-KR" | "de-DE" | "fr-FR" | "en-US" | "ru-RU" | "hi-IN" | "nl-NL" | "pt-BR" | "es-ES";
   speed: number;
+
+  /**
+   * Stage switch for the input-observation work. Off by default: it only adds
+   * `[input]` records to the diagnostics log and unlocks the one-press check,
+   * never a new way of touching a game.
+   */
+  "input.observe": boolean;
+
+  /** Stage-1 switch: retry chords the OS refused, 2 s → 10 s backoff. */
+  "hotkey.retry": boolean;
+
+  /** Stage-2 switch: the read-only polling channel. */
+  "input.polling": boolean;
+
+  /** Stage-2 switch: send every keyboard chord through the poller. */
+  "input.compat": boolean;
+
+  /** Stage-3 switch: the shortcut action runs in Rust, not in the webview. */
+  "dispatch.rust": boolean;
+
+  /** Stage-4 rollback switch: hard deny → strong warning. Off = hard deny. */
+  "guard.warn_only": boolean;
+
+  /** Stage-5 switch: a profile may apply its own speed automatically. */
+  "auto.apply": boolean;
+
+  /** Stage-6 switch: the local control page on 127.0.0.1. */
+  "remote.control": boolean;
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────
 
 export const DEFAULTS: SettingsState = {
-  increaseSpeedShortcut: "",
+  // Overlay-friendly by default: the bracket pair is rarely claimed by games or
+  // by the shell, unlike the function keys these slots used to carry. Only new
+  // installs see this — an existing settings file wins on merge.
+  increaseSpeedShortcut: "Ctrl+Alt+]",
   increaseSpeedStep: 0.5,
-  decreaseSpeedShortcut: "",
+  decreaseSpeedShortcut: "Ctrl+Alt+[",
   decreaseSpeedStep: 0.5,
   resetSpeedShortcut: "Ctrl+Alt+0",
 
@@ -66,6 +97,25 @@ export const DEFAULTS: SettingsState = {
   hideToTray: true,
   language: "en-US" as const,
   speed: 1.0,
+  // Stage 0 rollback switch. Turning it off restores the pre-stage-0 log
+  // volume without touching any code.
+  "input.observe": false,
+  // Stage 1 rollback switch. Off keeps the old "a refused chord stays refused"
+  // behaviour; on retries it on the 2 s → 10 s schedule.
+  "hotkey.retry": false,
+  // Stage 2 rollback switch. Off leaves the hotkey table as the only channel.
+  "input.polling": false,
+  // Stage 2: compatibility mode, every chord polled instead of registered.
+  "input.compat": false,
+  // Stage 3 rollback switch. Off keeps the action in the webview.
+  "dispatch.rust": false,
+  // Stage 4 rollback switch. Off = hard deny for protected games; on degrades
+  // the module to a strong warning (the documented rollback condition).
+  "guard.warn_only": false,
+  // Stage 5 rollback switch. Off keeps the speed entirely in the user's hands.
+  "auto.apply": false,
+  // Stage 6 rollback switch. Off keeps the port closed.
+  "remote.control": false,
 };
 
 // ── Store (singleton) ─────────────────────────────────────────────────────

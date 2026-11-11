@@ -26,7 +26,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { shortcutLabel } from "../hooks/useShortcut";
-import { Box, Typography, IconButton } from "@mui/material";
+import { Box, Tooltip, Typography, IconButton } from "@mui/material";
 import { KeyComboTag } from "@blueprintjs/core";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import { platform } from '@tauri-apps/plugin-os';
@@ -40,6 +40,8 @@ interface ShortcutFieldProps {
     disable?: boolean;
     minWidth?: string;
     conflict?: boolean;
+    /** The OS refused this chord, so the hotkey does nothing right now. */
+    unavailable?: boolean;
     /** When set, an empty value shows this global shortcut faded, with an inherit caption. */
     inheritFrom?: string;
     /** Profile slot saved as "no shortcut", so the global key is not used. */
@@ -73,7 +75,7 @@ function displayKey(key: string): string {
     }
 }
 
-export default function ShortcutField({ value, onChange, disable = false, minWidth = '10rem', conflict = false, inheritFrom, muted = false, onRestore }: ShortcutFieldProps) {
+export default function ShortcutField({ value, onChange, disable = false, minWidth = '10rem', conflict = false, unavailable = false, inheritFrom, muted = false, onRestore }: ShortcutFieldProps) {
     const { t } = useTranslation();
     const [isRecording, setIsRecording] = useState(false);
     const [currentCombo, setCurrentCombo] = useState('');
@@ -341,7 +343,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                 alignItems: 'center',
                 gap: 2,
                 border: 1,
-                borderColor: conflict ? "error.main" : "divider",
+                borderColor: (conflict || unavailable) ? "error.main" : "divider",
                 borderRadius: 1,
                 padding: '0.5rem 0.75rem',
                 minWidth,
@@ -380,10 +382,18 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
             ) : (
                 (value || inheritFrom !== undefined || muted) ? (
                     <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', gap: 0.5, opacity: value || muted ? 1 : 0.45 }}>
-                        {conflict && (
-                            <Typography variant="caption" sx={{ color: "error.main", fontWeight: 600, mr: 0.5 }}>
-                                ⚠
-                            </Typography>
+                        {(conflict || unavailable) && (
+                            // Registration failure is the case users cannot see
+                            // anywhere else: the chord looks configured but the
+                            // OS never accepted it.
+                            <Tooltip title={unavailable ? t("shortcut.occupied") : t("shortcut.duplicate")} arrow>
+                                <Typography
+                                    variant="caption"
+                                    sx={{ color: "error.main", fontWeight: 600, mr: 0.5, whiteSpace: "nowrap", cursor: "help" }}
+                                >
+                                    {unavailable ? t("shortcut.occupiedShort") : "⚠"}
+                                </Typography>
+                            </Tooltip>
                         )}
                         {muted ? (
                             <KeyComboTag combo={t("shortcut.notSet")} />

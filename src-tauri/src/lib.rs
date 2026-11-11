@@ -1,8 +1,13 @@
 pub mod applog;
 mod bridge_client;
 mod bridge_job;
+mod dispatch;
 mod gamepad;
+mod inject_guard;
+mod input_poll;
+mod inputtrace;
 mod process_enumerator;
+mod remote;
 pub mod startup;
 mod system_stats;
 
@@ -137,7 +142,8 @@ fn watch_foreground(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         let mut last = String::new();
         loop {
-            // ponytail: polls one window every 300ms. Upgrade path: SetWinEventHook(EVENT_SYSTEM_FOREGROUND).
+            // Polls the foreground window every 300 ms. Deliberately no OS
+            // event hooks: the input layer must not install any hook.
             let name = process_enumerator::foreground_exe_name();
             if name != last {
                 let _ = app.emit("foreground-changed", &name);
@@ -202,9 +208,116 @@ async fn get_system_stats() -> system_stats::SystemStats {
     system_stats::get_system_stats()
 }
 
+/// Run one shortcut action in Rust. The frontend calls this instead of
+/// changing the speed itself when the stage-3 switch is on.
 #[tauri::command(async)]
-async fn bridge_inject(pid: u32, arch: String) -> bool {
-    if arch == "x86" {
+async fn input_dispatch(app: tauri::AppHandle, slot: String, phase: String, source: String) -> Option<f64> {
+    dispatch::dispatch(&app, &slot, &phase, &source)
+}
+
+/// Stage-3 switch: the action happens in Rust instead of in the webview.
+#[tauri::command(async)]
+async fn input_dispatch_mode(enabled: bool) {
+    dispatch::set_enabled(enabled);
+}
+
+/// The speed values the Rust dispatcher needs.
+#[tauri::command(async)]
+async fn input_config(
+    increase_step: f64,
+    decrease_step: f64,
+    gears: Vec<f64>,
+    hold_speed: f64,
+) {
+    let mut values = [1.0, 2.0, 5.0, 10.0, 100.0];
+    for (index, value) in gears.iter().take(5).enumerate() {
+        values[index] = *value;
+    }
+    dispatch::set_config(dispatch::Config {
+        increase_step,
+        decrease_step,
+        gears: values,
+        hold_speed,
+    });
+}
+
+/// Switch the local control page on or off. While it is off nothing listens
+/// on the port.
+#[tauri::command(async)]
+async fn remote_enable(app: tauri::AppHandle, enabled: bool) {
+    remote::set_enabled(enabled, app);
+}
+
+/// Address and token of the local control page.
+#[tauri::command(async)]
+async fn remote_info() -> remote::RemoteInfo {
+    remote::info()
+}
+
+/// The slots that are polled instead of registered as hotkeys. A chord the
+/// OS refused (1409) or every chord in compatibility mode ends up here.
+#[tauri::command(async)]
+async fn input_poll_set(bindings: Vec<(String, String)>) {
+    input_poll::set_bindings(bindings);
+}
+
+/// Master switch for the polling channel.
+#[tauri::command(async)]
+async fn input_poll_enable(enabled: bool) {
+    input_poll::set_enabled(enabled);
+}
+
+/// Exe names that count as "a game is in front of the user" — they get the
+/// fast polling period.
+#[tauri::command(async)]
+async fn input_poll_focus_exes(exes: Vec<String>) {
+    input_poll::set_focus_exes(exes);
+}
+
+/// Anti-cheat check for one pid. The UI calls this before offering to enable
+/// speed, so the refusal is explained instead of silently failing.
+#[tauri::command(async)]
+async fn injection_guard(pid: u32) -> inject_guard::GuardVerdict {
+    inject_guard::check(pid)
+}
+
+/// Stage-4 rollback switch: `false` (default) keeps the hard deny, `true`
+/// degrades it to a strong warning. No code rollback is needed.
+#[tauri::command(async)]
+async fn injection_guard_mode(warn_only: bool) {
+    inject_guard::set_warn_only(warn_only);
+}
+
+#[tauri::command(async)]
+async fn bridge_inject(pid: u32, arch: String, force: bool) -> bool {
+    // Defence in depth: the UI asked the guard already, but a stale process
+    // list or a direct invoke must not be able to skip it.
+    if !force {
+        let verdict = inject_guard::check(pid);
+        if !verdict.allowed {
+            applog::warn(
+                "guard",
+                format!(
+                    "refused pid={pid} reason={} matched={}",
+                    verdict.reason,
+                    verdict.matched.as_deref().unwrap_or("-"),
+                ),
+            );
+            inputtrace::trace_inject(pid, false, "guard_denied");
+            return false;
+        }
+        if let Some(warning) = &verdict.warning {
+            applog::warn(
+                "guard",
+                format!(
+                    "warn-only pid={pid} reason={warning} matched={}",
+                    verdict.matched.as_deref().unwrap_or("-"),
+                ),
+            );
+        }
+    }
+
+    let ok = if arch == "x86" {
         let ok = bridge_client::bridge32_inject(pid);
         bridge_client::bridge32_enable(pid);
         ok
@@ -212,7 +325,22 @@ async fn bridge_inject(pid: u32, arch: String) -> bool {
         let ok = bridge_client::bridge64_inject(pid);
         bridge_client::bridge64_enable(pid);
         ok
+    };
+
+    // Stage 0 observation: one line per attempt (deduped inside `inputtrace`).
+    // A false result has two very different causes, so ask the bridge whether
+    // it is reachable at all before blaming the injection.
+    if ok {
+        inputtrace::trace_inject(pid, true, "ok");
+    } else {
+        let reachable = if arch == "x86" {
+            bridge_client::bridge32_health()
+        } else {
+            bridge_client::bridge64_health()
+        };
+        inputtrace::trace_inject(pid, false, if reachable { "inject_failed" } else { "bridge_unreachable" });
     }
+    ok
 }
 
 #[tauri::command(async)]
@@ -265,6 +393,36 @@ async fn report_frontend_error(source: String, message: String, stack: Option<St
     }
 }
 
+/// One structured input-layer record. Field values are whitelisted in
+/// `inputtrace`, so the log never carries key text or window titles.
+#[tauri::command(async)]
+async fn input_trace(
+    event: String,
+    slot: Option<String>,
+    channel: Option<String>,
+    code: Option<u32>,
+    pid: Option<u32>,
+    ok: Option<bool>,
+    reason: Option<String>,
+) {
+    inputtrace::trace(
+        &event,
+        slot.as_deref(),
+        channel.as_deref(),
+        code,
+        pid,
+        ok,
+        reason.as_deref(),
+    );
+}
+
+/// Mirrors the `input.observe` switch. Off means the input layer adds nothing
+/// to the log — injection results included.
+#[tauri::command(async)]
+async fn set_input_trace(enabled: bool) {
+    inputtrace::set_enabled(enabled);
+}
+
 /// Start the GUI. Returns `Err` instead of panicking so the caller can write
 /// the failure to the log and show it to the user — a panic here would make the
 /// process disappear with no console and no trace.
@@ -293,6 +451,7 @@ pub fn run() -> Result<(), String> {
             startup::apply_initial_window_visibility(app.handle());
             ensure_bridges();
             gamepad::start(app.handle().clone());
+            input_poll::start(app.handle().clone());
             watch_foreground(app.handle().clone());
             // Register Ctrl+C handler so bridges are killed on console exit
             unsafe { let _ = SetConsoleCtrlHandler(Some(ctrlc_handler), true); }
@@ -312,12 +471,24 @@ pub fn run() -> Result<(), String> {
             bridge_get_speed,
             get_system_stats,
             bridge_inject,
+            injection_guard,
+            injection_guard_mode,
+            input_dispatch,
+            remote_enable,
+            remote_info,
+            input_dispatch_mode,
+            input_config,
+            input_poll_set,
+            input_poll_enable,
+            input_poll_focus_exes,
             bridge_enable,
             bridge_disable,
             bridge_get_status,
             set_always_on_top,
             get_log_path,
             report_frontend_error,
+            input_trace,
+            set_input_trace,
         ])
         .device_event_filter(tauri::DeviceEventFilter::Always)
         .build(tauri::generate_context!())

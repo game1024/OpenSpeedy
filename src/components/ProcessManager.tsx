@@ -5,7 +5,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useInterval } from "ahooks";
 import { Splitter } from "antd";
 import {
-  Box, Paper, Typography, Avatar, Switch, TextField, IconButton, Tooltip,
+  Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Typography, Avatar,
+  Switch, TextField, IconButton, Tooltip,
   Divider, Table, TableCell, TableHead, TableRow, Tabs, Tab,
 } from "@mui/material";
 import WindowIcon from "@mui/icons-material/Window";
@@ -268,6 +269,19 @@ interface SpeedState {
 
 type AccelProbe = { pid: number; state: "on" | "off" | "absent" };
 
+/** Mirrors `inject_guard::GuardVerdict` on the Rust side. */
+type GuardVerdict = {
+  allowed: boolean;
+  reason: "ok" | "anticheat" | "unreadable" | "unverified" | string;
+  matched: string | null;
+  process: string;
+  elevated: boolean;
+  warning: string | null;
+};
+
+/** A manual enable waiting for the user to confirm the injection. */
+type PendingInject = { pids: number[]; name: string; arch: string; verdict: GuardVerdict; remember: boolean };
+
 function applyAccelProbes(
   prev: Map<number, SpeedState>,
   processes: ProcessInfo[],
@@ -300,6 +314,7 @@ function applyAccelProbes(
 }
 
 export default function ProcessManager() {
+  const { t } = useTranslation();
   const [processes, setProcesses] = useState<ProcessInfo[]>([]);
   const [search, setSearch] = useState("");
   const [icons, setIcons] = useState<Record<number, string>>({});
@@ -310,6 +325,8 @@ export default function ProcessManager() {
   // Off by default — protected system processes report 0 memory because their
   // handle cannot be opened
   const [showSystem, setShowSystem] = useState(false);
+  // Manual enable waiting for the injection confirmation (stage 4).
+  const [pending, setPending] = useState<PendingInject | null>(null);
   const { settings } = useSettings();
   const { speed, setSpeed, commitSpeed } = useSpeed();
 
@@ -325,15 +342,43 @@ export default function ProcessManager() {
     return s;
   }, [speedMap]);
 
+  /** Ask the backend whether this process may be injected, then show the
+   *  confirmation. Nothing is written before the user answers. */
+  async function requestInject(pids: number[], name: string, arch: string, remember = false) {
+    const verdict = await invoke<GuardVerdict>("injection_guard", { pid: pids[0] }).catch(() => null);
+    setPending({
+      pids,
+      name,
+      arch,
+      remember,
+      // A failed query must not become a silent allow: the Rust side re-checks
+      // anyway, and here it simply reads as "no objection".
+      verdict: verdict ?? { allowed: true, reason: "ok", matched: null, process: name, elevated: false, warning: null },
+    });
+  }
+
+  /** The user answered. `force` is the one-off override for a false positive. */
+  async function confirmInject(force: boolean) {
+    const target = pending;
+    setPending(null);
+    if (!target) return;
+    if (target.remember) void addAcceleratedName(target.name);
+    for (const pid of target.pids) {
+      inflight.current.add(pid);
+      setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch: target.arch }); return n; });
+      invoke<boolean>("bridge_inject", { pid, arch: target.arch, force })
+        .catch((e) => { console.error("[toggle] bridge_inject error:", e); })
+        .finally(() => { inflight.current.delete(pid); });
+    }
+  }
+
   // Toggle — optimistic: set state immediately, fire backend call in background
   async function toggle(pid: number, arch: string) {
     const wasOn = speedMap.get(pid)?.enabled ?? false;
     inflight.current.add(pid);
     if (!wasOn) {
-      setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch }); return n; });
-      invoke<boolean>("bridge_inject", { pid, arch })
-        .catch((e) => { console.error("[toggle] bridge_inject error:", e); })
-        .finally(() => { inflight.current.delete(pid); });
+      inflight.current.delete(pid);
+      await requestInject([pid], processes.find(p => p.pid === pid)?.name ?? "", arch);
     } else {
       const procName = processes.find(p => p.pid === pid)?.name;
       if (procName) await removeAcceleratedName(procName);
@@ -370,7 +415,7 @@ export default function ProcessManager() {
       });
       for (const p of procs) {
         inflight.current.add(p.pid);
-        invoke<boolean>("bridge_inject", { pid: p.pid, arch })
+        invoke<boolean>("bridge_inject", { pid: p.pid, arch, force: false })
           .catch(() => {})
           .finally(() => { inflight.current.delete(p.pid); });
       }
@@ -414,16 +459,9 @@ export default function ProcessManager() {
     const group = nameGroups.get(name.toLowerCase());
     if (!group) return;
     if (!group.anyEnabled) {
-      addAcceleratedName(name);
-      for (const pid of group.pids) inflight.current.add(pid);
-      for (const pid of group.pids) {
-        setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch: group.arch }); return n; });
-      }
-      for (const pid of group.pids) {
-        invoke<boolean>("bridge_inject", { pid, arch: group.arch })
-          .catch(() => {})
-          .finally(() => { inflight.current.delete(pid); });
-      }
+      // The name is only remembered once the user confirms; cancelling leaves
+      // no standing instruction behind.
+      await requestInject(group.pids, name, group.arch, true);
     } else {
       for (const pid of group.pids) inflight.current.add(pid);
       await removeAcceleratedName(name);
@@ -485,6 +523,44 @@ export default function ProcessManager() {
           </Splitter.Panel>
         </Splitter>
       </Box>
+
+      <Dialog open={!!pending} onClose={() => setPending(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {pending && (!pending.verdict.allowed || pending.verdict.warning) ? t("process.guardTitle") : t("process.injectTitle")}
+        </DialogTitle>
+        <DialogContent>
+          {pending && (
+            <>
+              <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
+                {pending.verdict.allowed
+                  ? t("process.injectBody", { name: pending.name })
+                  : pending.verdict.reason === "anticheat"
+                    ? t("process.guardBlocked", { name: pending.name, matched: pending.verdict.matched ?? "" })
+                    : t("process.guardUnverified", { name: pending.name })}
+              </Typography>
+              {!pending.verdict.allowed && (
+                <Alert severity="error" sx={{ mt: 1.5 }}>{t("process.guardNoTouch")}</Alert>
+              )}
+              {pending.verdict.warning && (
+                <Alert severity="warning" sx={{ mt: 1.5 }}>{t("process.guardWarnOnly")}</Alert>
+              )}
+              {pending.verdict.allowed && !pending.verdict.warning && pending.verdict.elevated && (
+                <Alert severity="warning" sx={{ mt: 1.5 }}>{t("process.guardElevated")}</Alert>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPending(null)}>{t("process.injectCancel")}</Button>
+          <Button
+            color={pending?.verdict.allowed ? "primary" : "error"}
+            variant="contained"
+            onClick={() => { void confirmInject(!pending?.verdict.allowed); }}
+          >
+            {pending?.verdict.allowed ? t("process.injectConfirm") : t("process.guardOverride")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

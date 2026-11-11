@@ -37,7 +37,14 @@ export interface ShortcutProfile {
   processes: string[];
   shortcuts: Partial<Record<ShortcutSlot, string>>;
   values?: Partial<Record<SpeedValueKey, number>>;
+  /** Stage 5: apply a speed automatically while this profile's exe is in front. */
+  autoApply?: boolean;
+  /** The factor the automatic speed uses. */
+  autoSpeed?: number;
 }
+
+/** Range for the automatic speed factor. */
+export const AUTO_SPEED_BOUNDS: readonly [number, number] = [0.01, 100];
 
 /** Fits the settings row: the closed select stays beside the edit and delete buttons. */
 export const PROFILE_NAME_MAX = 20;
@@ -162,6 +169,7 @@ export function normalizeProfiles(raw: unknown): ShortcutProfile[] {
       ? row.processes.filter((name): name is string => typeof name === "string")
       : [];
     const rawValues = row.values;
+    const autoSpeed = row.autoSpeed;
     parsed.push({
       id: row.id,
       name: typeof row.name === "string" ? row.name : "",
@@ -172,6 +180,13 @@ export function normalizeProfiles(raw: unknown): ShortcutProfile[] {
           ? rawValues as Partial<Record<SpeedValueKey, unknown>>
           : undefined,
       ),
+      autoApply: row.autoApply === true ? true : undefined,
+      autoSpeed: typeof autoSpeed === "number" &&
+        Number.isFinite(autoSpeed) &&
+        autoSpeed >= AUTO_SPEED_BOUNDS[0] &&
+        autoSpeed <= AUTO_SPEED_BOUNDS[1]
+        ? autoSpeed
+        : undefined,
     });
   }
   return stripDuplicateProcesses(parsed);
@@ -187,6 +202,13 @@ export function upsertProfile(
     processes: profile.processes,
     shortcuts: compactShortcuts(profile.shortcuts),
     values: compactValues(profile.values),
+    autoApply: profile.autoApply === true ? true : undefined,
+    autoSpeed: typeof profile.autoSpeed === "number" &&
+      Number.isFinite(profile.autoSpeed) &&
+      profile.autoSpeed >= AUTO_SPEED_BOUNDS[0] &&
+      profile.autoSpeed <= AUTO_SPEED_BOUNDS[1]
+      ? profile.autoSpeed
+      : undefined,
   };
   const replaced = profiles.some(p => p.id === next.id)
     ? profiles.map(p => (p.id === next.id ? next : p))
