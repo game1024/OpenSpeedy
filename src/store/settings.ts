@@ -160,12 +160,23 @@ export async function getSetting<K extends keyof SettingsState>(key: K): Promise
   return merged[key];
 }
 
-export async function setSetting<K extends keyof SettingsState>(key: K, value: SettingsState[K]) {
-  const store = await getStore();
-  const saved = (await store.get<SettingsState>("settings")) || ({} as SettingsState);
-  saved[key] = value;
-  await store.set("settings", saved);
-  await store.save();
+// `setSetting` is a read-modify-write across several awaits. Two concurrent
+// writes would otherwise interleave (A.get → B.get → A.set → B.set) and B
+// would silently discard A's change. Serialise them on a single chain while
+// keeping the same async signature for every caller.
+let _writeQueue: Promise<void> = Promise.resolve();
+
+export function setSetting<K extends keyof SettingsState>(key: K, value: SettingsState[K]): Promise<void> {
+  const run = async () => {
+    const store = await getStore();
+    const saved = (await store.get<SettingsState>("settings")) || ({} as SettingsState);
+    saved[key] = value;
+    await store.set("settings", saved);
+    await store.save();
+  };
+  const next = _writeQueue.then(run, run);
+  _writeQueue = next.catch(() => {});
+  return next;
 }
 
 /** Sibling of `settings` in settings.json. Missing key loads as an empty list. */

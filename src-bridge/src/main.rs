@@ -93,8 +93,14 @@ fn exe_dir() -> PathBuf {
     let mut buf = vec![0u16; 260];
     let mut len = buf.len() as u32;
     let h = unsafe { GetCurrentProcess() };
-    unsafe {
-        let _ = QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, PWSTR::from_raw(buf.as_mut_ptr()), &mut len);
+    let ok = unsafe {
+        QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, PWSTR::from_raw(buf.as_mut_ptr()), &mut len)
+    };
+    // On failure `len` still holds the original capacity; slicing with it
+    // would build a path out of 260 NUL characters and silently inject the
+    // wrong DLL path.
+    if ok.is_err() || len == 0 || len as usize > buf.len() {
+        return PathBuf::from(".");
     }
     let s = String::from_utf16_lossy(&buf[..len as usize]);
     PathBuf::from(&s).parent().unwrap_or(&PathBuf::from(".")).to_path_buf()
@@ -191,7 +197,12 @@ fn try_inject_impl(h_proc: &HANDLE, dll_path: &str, fn_name: &str, wide: bool) -
     eprintln!("[bridge] VirtualAllocEx ok, remote_mem={remote_mem:?}");
 
     unsafe {
-        let _ = WriteProcessMemory(*h_proc, remote_mem, path_bytes.as_ptr() as _, path_len, None);
+        let written = WriteProcessMemory(*h_proc, remote_mem, path_bytes.as_ptr() as _, path_len, None);
+        if written.is_err() {
+            eprintln!("[bridge] WriteProcessMemory failed");
+            let _ = VirtualFreeEx(*h_proc, remote_mem, 0, MEM_RELEASE);
+            return false;
+        }
     }
     eprintln!("[bridge] WriteProcessMemory done");
 
@@ -200,7 +211,10 @@ fn try_inject_impl(h_proc: &HANDLE, dll_path: &str, fn_name: &str, wide: bool) -
         GetModuleHandleW(PCWSTR::from_raw(wide_k32.as_ptr()))
     } {
         Ok(h) => h,
-        Err(_) => return false,
+        Err(_) => {
+            unsafe { let _ = VirtualFreeEx(*h_proc, remote_mem, 0, MEM_RELEASE); }
+            return false;
+        }
     };
     eprintln!("[bridge] GetModuleHandleW(kernel32) ok");
 
@@ -210,6 +224,7 @@ fn try_inject_impl(h_proc: &HANDLE, dll_path: &str, fn_name: &str, wide: bool) -
             Some(ptr) => ptr,
             None => {
                 eprintln!("[bridge] GetProcAddress({fn_name}) failed");
+                let _ = VirtualFreeEx(*h_proc, remote_mem, 0, MEM_RELEASE);
                 return false;
             }
         }
@@ -223,7 +238,7 @@ fn try_inject_impl(h_proc: &HANDLE, dll_path: &str, fn_name: &str, wide: bool) -
         Ok(h) => h,
         Err(e) => {
             eprintln!("[bridge] CreateRemoteThread failed: {e:?}");
-            unsafe { VirtualFreeEx(*h_proc, remote_mem, 0, MEM_RELEASE); }
+            unsafe { let _ = VirtualFreeEx(*h_proc, remote_mem, 0, MEM_RELEASE); }
             return false;
         }
     };
@@ -240,7 +255,7 @@ fn try_inject_impl(h_proc: &HANDLE, dll_path: &str, fn_name: &str, wide: bool) -
     };
     eprintln!("[bridge] GetExitCodeThread ok={ok:?} exit_code={exit_code}");
 
-    unsafe { VirtualFreeEx(*h_proc, remote_mem, 0, MEM_RELEASE); let _ = CloseHandle(h_thread); }
+    unsafe { let _ = VirtualFreeEx(*h_proc, remote_mem, 0, MEM_RELEASE); let _ = CloseHandle(h_thread); }
     eprintln!("[bridge] cleanup done, LoadLibrary result={}", exit_code != 0);
 
     // LoadLibrary returns NULL (0) on failure, non-zero HMODULE on success
@@ -350,6 +365,12 @@ fn do_is_enabled(_pid: u32) -> Result<bool, String> {
 }
 
 fn do_set_speed(factor: f64) {
+    // The timing detours divide by the factor and convert scaled doubles to
+    // DWORD. A zero/negative/NaN/infinite value would produce a division by
+    // zero, an infinite wait or an undefined integer conversion.
+    if !factor.is_finite() || !(0.01..=100.0).contains(&factor) {
+        return;
+    }
     let dll_wide = to_wide(OWN_SPEEDPATCH);
     unsafe {
         let Ok(h) = LoadLibraryW(PCWSTR::from_raw(dll_wide.as_ptr())) else { return };
@@ -401,6 +422,11 @@ fn handle_command(line: &str) -> String {
         }
         "SETSPEED" => {
             let f: f64 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(1.0);
+            // Reject at the protocol boundary as well, so an invalid request
+            // reports an error instead of a misleading "OK".
+            if !f.is_finite() || !(0.01..=100.0).contains(&f) {
+                return "ERROR invalid factor".into();
+            }
             do_set_speed(f);
             "OK".into()
         }

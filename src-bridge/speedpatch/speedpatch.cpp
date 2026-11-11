@@ -43,6 +43,13 @@ inline VOID shouldUpdateAll();
 
 SPEEDPATCH_API void SP_SetSpeed(double factor_)
 {
+    // The timing detours divide by this value and convert scaled doubles to
+    // DWORD. Reject NaN/inf/0/negative and clamp to the range the UI allows.
+    // The comparison form also rejects NaN without needing <cmath>.
+    if (!(factor_ >= 0.01 && factor_ <= 100.0))
+    {
+        return;
+    }
     factor.store(factor_);
 }
 
@@ -78,10 +85,15 @@ void SP_Install()
 
 void SP_Uninstall()
 {
-    if (hFileMap != NULL)
+    if (pEnabled != NULL)
     {
         UnmapViewOfFile(pEnabled);
+        pEnabled = NULL;
+    }
+    if (hFileMap != NULL)
+    {
         CloseHandle(hFileMap);
+        hFileMap = NULL;
     }
 }
 

@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { Snackbar, Alert, AlertColor } from '@mui/material';
 
 interface SnackbarContextType {
@@ -37,19 +37,23 @@ export const SnackbarProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [severity, setSeverity] = useState<AlertColor>('info');
   const [duration, setDuration] = useState(3000);
 
-  const notify = (message: string, severity: AlertColor = 'info', duration: number = 3000) => {
+  const notify = useCallback((message: string, severity: AlertColor = 'info', duration: number = 3000) => {
     setMessage(message);
     setSeverity(severity);
     setDuration(duration);
     setOpen(true);
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setOpen(false);
-  };
+  }, []);
+
+  // A stable context value keeps every consumer from re-rendering whenever a
+  // snackbar is shown (which otherwise cascades through the whole window).
+  const value = useMemo(() => ({ notify }), [notify]);
 
   return (
-    <SnackbarContext.Provider value={{ notify }}>
+    <SnackbarContext.Provider value={value}>
       {children}
       <Snackbar 
         open={open} 

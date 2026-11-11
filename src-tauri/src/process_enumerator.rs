@@ -108,12 +108,6 @@ pub struct ModuleInfo {
     pub size: u32,
 }
 
-fn to_wide(s: &str) -> Vec<u16> {
-    use std::ffi::OsStr;
-    use std::os::windows::ffi::OsStrExt;
-    OsStr::new(s).encode_wide().chain(std::iter::once(0)).collect()
-}
-
 // ---------------------------------------------------------------------------
 // Module enumeration for a single process
 // ---------------------------------------------------------------------------
@@ -130,57 +124,48 @@ pub fn enumerate_modules(pid: u32) -> Vec<ModuleInfo> {
         Err(_) => return modules,
     };
 
-    // Determine module filter flag: 32-bit or 64-bit modules
+    // Determine module filter flag: 32-bit or 64-bit modules. Use the API the
+    // rest of this file uses instead of resolving it by hand through a
+    // transmute between incompatible function signatures.
     let filter = {
         let mut wow64 = windows::Win32::Foundation::BOOL::default();
-        let kernel32_wide = to_wide("kernel32.dll");
-        let k32 = unsafe {
-            windows::Win32::System::LibraryLoader::GetModuleHandleW(
-                windows::core::PCWSTR::from_raw(kernel32_wide.as_ptr()),
-            )
-            .unwrap_or_default()
-        };
-        let is_wow64_proc: Option<
-            unsafe extern "system" fn(
-                windows::Win32::Foundation::HANDLE,
-                *mut windows::Win32::Foundation::BOOL,
-            ) -> windows::Win32::Foundation::BOOL,
-        > = unsafe {
-            std::mem::transmute(windows::Win32::System::LibraryLoader::GetProcAddress(
-                k32,
-                windows::core::s!("IsWow64Process"),
-            ))
-        };
-        let is_wow64 = if let Some(f) = is_wow64_proc {
-            unsafe { let _ = f(h_proc, &mut wow64); }
-            wow64.as_bool()
-        } else {
-            false
-        };
+        let is_wow64 = unsafe { IsWow64Process(h_proc, &mut wow64) }.is_ok()
+            && wow64.as_bool();
         if is_wow64 { LIST_MODULES_32BIT } else { LIST_MODULES_64BIT }
     };
 
+    // A large game can load more than 1024 modules. Windows reports the byte
+    // count it needs; grow and retry rather than returning an empty list —
+    // `inject_guard` reads an empty list as "unverified" and hard-denies it.
+    let elem = std::mem::size_of::<HMODULE>() as u32;
     let mut h_mods: Vec<HMODULE> = vec![HMODULE::default(); 1024];
     let mut needed: u32 = 0;
-    let h_mods_size = (h_mods.len() * std::mem::size_of::<HMODULE>()) as u32;
-
-    if unsafe {
-        EnumProcessModulesEx(
-            h_proc,
-            h_mods.as_mut_ptr(),
-            h_mods_size,
-            &mut needed,
-            filter,
-        )
+    let mut ok = false;
+    for _ in 0..4 {
+        let result = unsafe {
+            EnumProcessModulesEx(
+                h_proc,
+                h_mods.as_mut_ptr(),
+                (h_mods.len() as u32) * elem,
+                &mut needed,
+                filter,
+            )
+        };
+        if result.is_err() {
+            break;
+        }
+        if needed <= (h_mods.len() as u32) * elem {
+            ok = true;
+            break;
+        }
+        h_mods.resize((needed as usize) / elem as usize + 16, HMODULE::default());
     }
-    .is_err()
-    {
+    if !ok {
         unsafe { let _ = CloseHandle(h_proc); }
         return modules;
     }
 
-    let count = (needed as usize) / std::mem::size_of::<HMODULE>();
-    h_mods.truncate(count);
+    h_mods.truncate(((needed as usize) / elem as usize).min(h_mods.len()));
 
     for &h_mod in &h_mods {
         let mut name_buf = [0u16; 260];
@@ -274,6 +259,18 @@ pub fn enumerate_processes_fast() -> Vec<ProcessInfo> {
     }
 
     let _ = unsafe { CloseHandle(snapshot) };
+
+    // The 1 s poll uses only this fast path. Drop cached heavy data for pids
+    // that are gone, otherwise Windows pid reuse hands out a stale arch/admin
+    // and `bridge_inject` picks the wrong bridge for a 32-bit game.
+    let live_pids: std::collections::HashSet<u32> = processes.iter().map(|p| p.pid).collect();
+    if let Ok(mut cache) = cache().lock() {
+        cache.retain(|pid, _| live_pids.contains(pid));
+    }
+    if let Ok(mut icons) = icon_cache().lock() {
+        icons.retain(|pid, _| live_pids.contains(pid));
+    }
+
     processes
 }
 
@@ -620,11 +617,15 @@ fn is_admin(pid: u32) -> bool {
 }
 
 fn detect_arch(pid: u32) -> String {
-    let handle = open_process(pid);
-    if handle.is_none() {
+    // Protected/elevated processes often refuse PROCESS_VM_READ. A limited
+    // query handle is enough for IsWow64Process and avoids guessing "x64" for
+    // a 32-bit target.
+    let handle = open_process(pid).or_else(|| {
+        unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()
+    });
+    let Some(handle) = handle else {
         return "x64".to_string();
-    }
-    let handle = handle.unwrap();
+    };
 
     let mut is_wow64 = windows::Win32::Foundation::BOOL::default();
     let result = unsafe { IsWow64Process(handle, &mut is_wow64) };

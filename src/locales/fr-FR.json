@@ -9,7 +9,8 @@
     "tabs": {
       "speed": "Vitesse",
       "settings": "Paramètres",
-      "about": "À propos"
+      "about": "À propos",
+      "diagnostics": "Diagnostics"
     }
   },
   "titleBar": {
@@ -69,13 +70,29 @@
       "moduleBase": "Adresse de Base",
       "moduleSize": "Taille",
       "modulesCount": "{{count}} modules"
-    }
+    },
+    "injectTitle": "Activer la vitesse pour ce processus ?",
+    "injectBody": "OpenSpeedy va charger son module de vitesse dans {{name}}. Il ne lit ni ne modifie la mémoire du jeu.",
+    "injectConfirm": "Activer",
+    "injectCancel": "Annuler",
+    "guardTitle": "Ce processus est protégé",
+    "guardBlocked": "{{name}} charge {{matched}}, un module anti-cheat connu.",
+    "guardUnverified": "{{name}} n'a pas pu être inspecté — il est protégé ou s'exécute avec des privilèges élevés, rien ne peut être confirmé.",
+    "guardNoTouch": "OpenSpeedy ne touche pas aux processus sous protection anti-cheat. N'utilisez la substitution qu'en cas de faux positif certain.",
+    "guardWarnOnly": "La protection a été rétrogradée en avertissement fort par le commutateur de repli. Ce processus semble protégé — continuer peut mettre le compte de jeu en danger.",
+    "guardElevated": "Ce processus s'exécute avec des privilèges élevés. OpenSpeedy ne peut travailler avec que si l'app a été lancée en tant qu'administrateur.",
+    "guardOverride": "Continuer une fois quand même",
+    "guardRefusedCount": "{{count}} processus ont été ignoré(s) car protégés par un anti-cheat."
   },
   "shortcut": {
     "notSet": "Non défini",
     "keyNotSupported": "Cette touche ne peut pas servir de raccourci",
     "inherited": "Hérité",
-    "restoreInherit": "Utiliser le global"
+    "restoreInherit": "Utiliser le global",
+    "occupied": "Échec de l'enregistrement. Un autre programme possède peut-être déjà cette combinaison.",
+    "occupiedShort": "Occupé ?",
+    "duplicate": "Un autre raccourci utilise la même combinaison",
+    "reserved": "{{shortcut}} est réservé par Windows et ne peut pas être utilisé comme raccourci"
   },
   "settings": {
     "loading": "Chargement des paramètres…",
@@ -85,8 +102,6 @@
     "increase": "Augmenter",
     "decrease": "Diminuer",
     "reset": "Réinitialiser",
-    "confirm": "OK",
-    "cancel": "Annuler",
     "gears": "Vitesses",
     "hold": "Maintenir",
     "gear": "Rapport",
@@ -127,7 +142,18 @@
     "profileGlobalHint": "Utilisé si aucun profil ne correspond",
     "profileActiveNow": "Actif",
     "profileNotRunning": "Pas en cours",
-    "profileSearch": "Rechercher un processus ou un titre de fenêtre"
+    "profileSearch": "Rechercher un processus ou un titre de fenêtre",
+    "registerFailedCount": "{{count}} raccourci(s) n'ont pas pu être enregistrés. Un autre programme les occupe peut-être. Ouvrez les Diagnostics pour voir quelle étape échoue.",
+    "profileAutoApply": "Vitesse automatique",
+    "profileAutoApplyHint": "Appliquez cette vitesse tant que le programme est au premier plan. Un changement manual l'emporte toujours.",
+    "autoApply": "Vitesse automatique par profil",
+    "autoApplyHint": "Un profil peut appliquer sa propre vitesse tant que l'un de ses programmes est au premier plan. Désactivé par défaut.",
+    "gamepad": "Manette",
+    "gamepadHint": "Une combinaison de manette ne passe pas par la table des raccourcis, elle fonctionne donc même si la fenêtre perd le focus ou le jeu est en plein écran. Enregistrez-la en maintenant un bouton de manette pendant l'enregistrement d'un raccourci ci-dessus.",
+    "gamepadNone": "Aucune combinaison de manette n'est encore associée.",
+    "remoteControl": "Page de contrôle locale",
+    "remoteControlHint": "Une petite page sur 127.0.0.1 qui change la vitesse sans toucher aucun processus de jeu. Elle nécessite le jeton de session et est inaccessible depuis d'autres machines.",
+    "remoteControlUrl": "Adresse"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -145,5 +171,53 @@
     "copyInfoError": "Échec de la copie. Veuillez copier manuellement.",
     "copyInfo": "Infos système",
     "openLog": "Ouvrir le journal"
+  },
+  "diag": {
+    "title": "Diagnostics des entrées",
+    "intro": "Vérifie la chaîne de la table des raccourcis système jusqu'au pont de vitesse. Ne lit jamais la mémoire du jeu, n'intercepte aucune touche et n'injecte rien de nouveau.",
+    "observe": "Observation des entrées",
+    "observeHint": "Ajoute les entrées register_fail / hotkey_fired / inject_result au journal de diagnostic. Désactivé par défaut.",
+    "polling": "Canal de sondage en lecture seule",
+    "pollingHint": "Lit l'état du clavier au lieu d'enregistrer un raccourci. À utiliser quand un autre programme occupe votre combinaison.",
+    "pollingNote": "Le sondage lit seulement le clavier. Le jeu reçoit toujours la combinaison — rien n'est intercepté.",
+    "compat": "Mode compatibilité",
+    "compatHint": "Envoie chaque raccourci clavier via le sondage plutôt que via la table des raccourcis.",
+    "rustDispatch": "Exécuter les actions en arrière-plan",
+    "rustDispatchHint": "Le changement de vitesse est appliqué par le cœur de l'app plutôt que par la fenêtre, il fonctionne donc aussi quand la fenêtre est masquée.",
+    "guardWarnOnly": "Protection : avertissement seul",
+    "guardWarnOnlyHint": "Commutateur de repli. Désactivé refuse les jeux protégés ; activé rétrograde la vérification en avertissement fort. Désactivé par défaut.",
+    "retry": "Réessayer les raccourcis refusés",
+    "retryHint": "Une combinaison occupée par un autre programme est réessayée après 2 s, 4 s, 8 s, puis toutes les 10 s. Désactivé par défaut.",
+    "statusTitle": "État des raccourcis",
+    "slot": "Emplacement",
+    "chord": "Combinaison",
+    "state": "État",
+    "stateOk": "Enregistré",
+    "stateFail": "Échec — probablement occupé",
+    "statePending": "En attente de synchronisation",
+    "stateEmpty": "Non défini",
+    "stateGamepad": "Association de manette",
+    "testTitle": "Vérification en une pression",
+    "testNeedsObserve": "Activez l'observation des entrées pour lancer la vérification.",
+    "testNoChord": "Aucun emplacement n'a encore de raccourci clavier, il n'y a donc rien à tester.",
+    "testStart": "Lancer la vérification",
+    "testCancel": "Annuler",
+    "preparing": "Préparation…",
+    "testPressNow": "Appuyez sur {{shortcut}} une fois dans les 3 secondes.",
+    "occupiedCode": "code 1409 — la combinaison est déjà enregistrée par un autre programme",
+    "gamepadHint": "Si la combinaison clavier reste inutilisable, associez une combinaison de manette dans les Paramètres — elle ne dépend pas du focus de la fenêtre.",
+    "logHint": "Chaque vérification laisse des entrées [input] dans le journal de diagnostic du jour.",
+    "verdict": {
+      "not_registered": "Non enregistré",
+      "registered_no_fire": "Enregistré, mais jamais déclenché",
+      "fired_no_inject": "Déclenché, mais le changement de vitesse n'a abouti à rien",
+      "ok": "Toute la chaîne fonctionne"
+    },
+    "verdictHint": {
+      "not_registered": "Le système a refusé l'enregistrement, donc appuyer sur la combinaison ne fait rien.",
+      "registered_no_fire": "OpenSpeedy détient la combinaison mais aucun rappel n'est arrivé en 3 secondes. Appuyez plus tôt après le lancement de la vérification.",
+      "fired_no_inject": "Le raccourci a atteint OpenSpeedy, mais aucun processus n'accepte de changement de vitesse pour l'instant. Activez la vitesse sur un jeu d'abord, puis revérifiez.",
+      "ok": "La combinaison est enregistrée, le rappel a été déclenché et le pont a accepté un changement de vitesse."
+    }
   }
 }

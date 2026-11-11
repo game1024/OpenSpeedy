@@ -102,6 +102,11 @@ export default function SettingsManager() {
     return () => { dead = true; stop?.(); };
   }, []);
 
+  // Below this width the sidebar would leave too little room for the tables.
+  // A hook must run on every render, including the `settings === null` one —
+  // declaring it after the early return changes the hook count between renders.
+  const wide = useMediaQuery("(min-width: 720px)");
+
   if (!settings) {
     return <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Typography color="text.disabled">{t("settings.loading")}</Typography>
@@ -114,8 +119,6 @@ export default function SettingsManager() {
   const activeProfile = foregroundKey
     ? profiles.find(item => item.processes.some(proc => exeKey(proc) === foregroundKey)) ?? null
     : null;
-  // Below this width the sidebar would leave too little room for the tables.
-  const wide = useMediaQuery("(min-width: 720px)");
 
   // Chords the OS refused, so the failure is visible without scanning every
   // field. Only the global table is unconditional, so profiles are excluded.
@@ -193,11 +196,14 @@ export default function SettingsManager() {
       <TextField type="number" size="small" value={shown}
         onChange={e => {
           const n = Number(e.target.value);
+          // The global table must apply the same bounds as a profile value:
+          // `min`/`max` on the input element are only a browser hint and do
+          // not stop pasted or typed values from reaching onChange.
+          if (!Number.isFinite(n) || n < min || n > max) return;
           if (!profile) {
-            void set(key, n || fallback);
+            void set(key, n);
             return;
           }
-          if (!Number.isFinite(n) || n < min || n > max) return;
           void persistProfiles(
             upsertProfile(profiles, { ...profile, values: { ...profile.values, [key]: n } }),
             profile.id,

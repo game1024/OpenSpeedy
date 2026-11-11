@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import i18n, { languageReady } from "../i18n";
 import { getSetting } from "../store/settings";
+import { reportError } from "../utils/frontendLog";
 
 const TRAY_ID = "main";
 
@@ -112,13 +113,14 @@ export function useTray() {
   useEffect(() => {
     const window = getCurrentWindow();
     let live = true;
+    let unlistenClose: (() => void) | undefined;
 
-    (async () => {
+    void (async () => {
       // Hide to tray instead of closing, unless the user turned that off. Read
       // at click time so the setting applies without a restart, and read
       // straight from the store rather than a rendered value, so this does not
       // depend on when the cache happened to load.
-      const unlistenClose = await window.onCloseRequested(async (e) => {
+      const unlisten = await window.onCloseRequested(async (e) => {
         e.preventDefault();
         if (await closeHidesToTray()) {
           await window.hide();
@@ -128,12 +130,14 @@ export function useTray() {
         // cleanup it triggers) behaves identically.
         await window.destroy();
       });
-      if (!live) unlistenClose();
-    })();
+      if (live) unlistenClose = unlisten;
+      else unlisten();
+    })().catch(e => void reportError("tray", "onCloseRequested failed", String(e)));
 
     i18n.on("languageChanged", rebuildMenu);
     return () => {
       live = false;
+      unlistenClose?.();
       // The tray itself outlives this component on purpose: closing the window
       // hides it, so the app only ever ends through the tray's own quit item.
       i18n.off("languageChanged", rebuildMenu);

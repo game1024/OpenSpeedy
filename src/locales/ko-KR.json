@@ -9,7 +9,8 @@
     "tabs": {
       "speed": "변속",
       "settings": "설정",
-      "about": "정보"
+      "about": "정보",
+      "diagnostics": "진단"
     }
   },
   "titleBar": {
@@ -69,13 +70,29 @@
       "moduleBase": "기본 주소",
       "moduleSize": "크기",
       "modulesCount": "{{count}}개 모듈"
-    }
+    },
+    "injectTitle": "이 프로세스의 속도를 사용하시겠습니까?",
+    "injectBody": "OpenSpeedy는 속도 모듈을 {{name}}에 로드합니다. 게임 메모리를 읽거나 수정하지 않습니다.",
+    "injectConfirm": "사용",
+    "injectCancel": "취소",
+    "guardTitle": "이 프로세스는 보호됨",
+    "guardBlocked": "{{name}}은(는) 알려진 안티치트 모듈 {{matched}}을(를) 로드합니다.",
+    "guardUnverified": "{{name}}을(를) 검사할 수 없습니다 — 보호되거나 관리자 권한으로 실행 중이라 확인할 수 없습니다.",
+    "guardNoTouch": "OpenSpeedy는 안티치트 보호를 받는 프로세스에 접촉하지 않습니다. 오탐지가 확실한 경우에만 재정의를 사용하세요.",
+    "guardWarnOnly": "보호가 롤백 스위치에 의해 강력한 경고로 하향되었습니다. 이 프로세스는 보호된 것으로 보이며 계속하면 게임 계정이 위험해질 수 있습니다.",
+    "guardElevated": "이 프로세스는 관리자 권한으로 실행 중입니다. OpenSpeedy는 앱을 관리자로 시작한 경우에만 이 프로세스에서 작동합니다.",
+    "guardOverride": "그래도 한 번 계속",
+    "guardRefusedCount": "{{count}}개의 프로세스가 안티치트로 보호되어 건너뛰어졌습니다."
   },
   "shortcut": {
     "notSet": "설정 안 됨",
     "keyNotSupported": "이 키는 단축키로 사용할 수 없습니다",
     "inherited": "상속",
-    "restoreInherit": "전역으로"
+    "restoreInherit": "전역으로",
+    "occupied": "등록 실패. 다른 프로그램이 이미 이 조합을 점유하고 있을 수 있습니다.",
+    "occupiedShort": "점유됨?",
+    "duplicate": "다른 단축키가 동일한 조합을 사용합니다",
+    "reserved": "{{shortcut}}은(는) Windows에서 예약되어 있어 단축키로 사용할 수 없습니다"
   },
   "settings": {
     "loading": "설정 로딩 중…",
@@ -85,8 +102,6 @@
     "increase": "증가",
     "decrease": "감소",
     "reset": "초기화",
-    "confirm": "확인",
-    "cancel": "취소",
     "gears": "변속 기어",
     "hold": "길게 누르기",
     "gear": "기어",
@@ -127,7 +142,18 @@
     "profileGlobalHint": "일치하는 프로필이 없을 때 적용",
     "profileActiveNow": "적용 중",
     "profileNotRunning": "실행 중이 아님",
-    "profileSearch": "프로세스 또는 창 제목 검색"
+    "profileSearch": "프로세스 또는 창 제목 검색",
+    "registerFailedCount": "{{count}}개의 단축키를 등록할 수 없습니다. 다른 프로그램이 점유하고 있을 수 있습니다. 어떤 단계에서 실패했는지는 진단에서 확인하세요.",
+    "profileAutoApply": "자동 속도",
+    "profileAutoApplyHint": "프로그램이 전경에 있는 동안 이 속도를 적용합니다. 수동 변경이 항상 우선합니다.",
+    "autoApply": "프로필별 자동 속도",
+    "autoApplyHint": "프로필은 해당 프로그램 중 하나가 전경에 있는 동안 자체 속도를 적용할 수 있습니다. 기본값은 꺼짐.",
+    "gamepad": "게임패드",
+    "gamepadHint": "게임패드 조합은 핫키 테이블을 거치지 않으므로 창이 포커스를 잃거나 게임이 전체 화면일 때도 계속 작동합니다. 위의 단축키를 녹화하는 동안 게임패드 버튼을 누른 채로 녹화하세요.",
+    "gamepadNone": "아직 게임패드 조합이 바인딩되지 않았습니다.",
+    "remoteControl": "로컬 제어 페이지",
+    "remoteControlHint": "127.0.0.1의 작은 페이지로, 게임 프로세스에 접촉하지 않고 속도를 변경합니다. 세션 토큰이 필요하며 다른 컴퓨터에서는 접근할 수 없습니다.",
+    "remoteControlUrl": "주소"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -145,5 +171,53 @@
     "copyInfoError": "시스템 정보 복사에 실패했습니다. 수동으로 복사하세요.",
     "copyInfo": "시스템 정보",
     "openLog": "로그 열기"
+  },
+  "diag": {
+    "title": "입력 진단",
+    "intro": "OS 핫키 테이블부터 속도 브리지까지의 연결을 확인합니다. 게임 메모리를 읽거나 키를 가로채거나 새로운 것을 주입하지 않습니다.",
+    "observe": "입력 관찰",
+    "observeHint": "진단 로그에 register_fail / hotkey_fired / inject_result 기록을 추가합니다. 기본값은 꺼짐.",
+    "polling": "읽기 전용 폴링 채널",
+    "pollingHint": "핫키를 등록하는 대신 키보드 상태를 읽습니다. 다른 프로그램이 조합을 점유한 경우 사용하세요.",
+    "pollingNote": "폴링은 키보드만 읽습니다. 게임은 여전히 조합을 받습니다. 아무것도 가로채지 않습니다.",
+    "compat": "호환 모드",
+    "compatHint": "모든 키보드 단축키를 핫키 테이블 대신 폴러를 통해 보냅니다.",
+    "rustDispatch": "백그라운드에서 동작 실행",
+    "rustDispatchHint": "속도 변경은 창이 아닌 앱 코어에서 적용되므로 창이 숨겨져 있을 때도 작동합니다.",
+    "guardWarnOnly": "보호: 경고만",
+    "guardWarnOnlyHint": "롤백 스위치. 끄면 보호된 게임을 거부하고, 켜면 검사를 강력한 경고로 낮춥니다. 기본값은 꺼짐.",
+    "retry": "거부된 단축키 다시 시도",
+    "retryHint": "다른 프로그램이 점유한 조합은 2초, 4초, 8초 후, 그 후에는 10초마다 다시 시도됩니다. 기본값은 꺼짐.",
+    "statusTitle": "단축키 상태",
+    "slot": "슬롯",
+    "chord": "키 조합",
+    "state": "상태",
+    "stateOk": "등록됨",
+    "stateFail": "실패 — 점유되었을 가능성 있음",
+    "statePending": "동기화 대기",
+    "stateEmpty": "설정 안 됨",
+    "stateGamepad": "게임패드 바인딩",
+    "testTitle": "한 번 누르기 검사",
+    "testNeedsObserve": "검사를 실행하려면 입력 관찰을 켜세요.",
+    "testNoChord": "아직 키보드 단축키가 있는 슬롯이 없으므로 테스트할 것이 없습니다.",
+    "testStart": "검사 실행",
+    "testCancel": "취소",
+    "preparing": "준비 중…",
+    "testPressNow": "3초 안에 {{shortcut}}를 한 번 누르세요.",
+    "occupiedCode": "코드 1409 — 이 조합은 다른 프로그램에 이미 등록되어 있습니다",
+    "gamepadHint": "키보드 조합이 계속 사용 불가능하다면 설정에서 게임패드 조합을 지정하세요. 창 포커스에 의존하지 않습니다.",
+    "logHint": "모든 검사는 오늘의 진단 로그에 [input] 기록을 남깁니다.",
+    "verdict": {
+      "not_registered": "등록되지 않음",
+      "registered_no_fire": "등록되었지만 발화하지 않음",
+      "fired_no_inject": "발화했지만 속도 변경이 적용되지 않음",
+      "ok": "전체 연결이 정상 작동합니다"
+    },
+    "verdictHint": {
+      "not_registered": "OS가 등록을 거부했으므로 조합을 눌러도 아무 일도 일어나지 않습니다.",
+      "registered_no_fire": "OpenSpeedy는 조합을 보유하고 있지만 3초 안에 콜백이 도착하지 않았습니다. 검사 시작 후 더 빨리 누르세요.",
+      "fired_no_inject": "핫키는 OpenSpeedy에 도달했지만 현재 속도 변경을 받아들이는 프로세스가 없습니다. 먼저 게임에서 속도를 켜고 다시 확인하세요.",
+      "ok": "조합이 등록되고 콜백이 발화했으며 브리지가 속도 변경을 수락했습니다."
+    }
   }
 }

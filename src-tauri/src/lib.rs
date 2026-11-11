@@ -200,7 +200,7 @@ async fn bridge_set_speed(factor: f64) -> bool {
 
 #[tauri::command(async)]
 async fn bridge_get_speed() -> Option<f64> {
-    bridge_client::bridge64_get_speed()
+    bridge_client::current_speed()
 }
 
 #[tauri::command(async)]
@@ -315,17 +315,25 @@ async fn bridge_inject(pid: u32, arch: String, force: bool) -> bool {
                 ),
             );
         }
+    } else {
+        // A direct invoke with force=true skipped the guard entirely. Keep an
+        // explicit audit line so a later anti-cheat incident can be traced
+        // back to a conscious override instead of an invisible bypass.
+        applog::warn("guard", format!("override pid={pid} reason=user_confirmed"));
     }
 
-    let ok = if arch == "x86" {
+    let (ok, enabled) = if arch == "x86" {
         let ok = bridge_client::bridge32_inject(pid);
-        bridge_client::bridge32_enable(pid);
-        ok
+        let enabled = bridge_client::bridge32_enable(pid);
+        (ok, enabled)
     } else {
         let ok = bridge_client::bridge64_inject(pid);
-        bridge_client::bridge64_enable(pid);
-        ok
+        let enabled = bridge_client::bridge64_enable(pid);
+        (ok, enabled)
     };
+    if ok && !enabled {
+        applog::warn("bridge", format!("inject ok but enable failed pid={pid} arch={arch}"));
+    }
 
     // Stage 0 observation: one line per attempt (deduped inside `inputtrace`).
     // A false result has two very different causes, so ask the bridge whether
@@ -385,9 +393,21 @@ async fn get_log_path() -> String {
 
 /// Sink for frontend errors (`window.onerror`, unhandled rejections, React
 /// render errors) so they end up in the same file as the Rust-side diagnostics.
+/// Cap untrusted frontend text before it reaches the shared diagnostics log.
+fn clamp_log_part(s: &str) -> String {
+    const LIMIT: usize = 4000;
+    let mut out: String = s.chars().take(LIMIT).collect();
+    if s.chars().count() > LIMIT {
+        out.push_str(" [truncated]");
+    }
+    out
+}
+
 #[tauri::command(async)]
 async fn report_frontend_error(source: String, message: String, stack: Option<String>) {
-    match stack.filter(|s| !s.trim().is_empty()) {
+    let source = clamp_log_part(&source);
+    let message = clamp_log_part(&message);
+    match stack.filter(|s| !s.trim().is_empty()).map(|s| clamp_log_part(&s)) {
         Some(stack) => applog::error("frontend", format!("{source}: {message}\n{stack}")),
         None => applog::error("frontend", format!("{source}: {message}")),
     }

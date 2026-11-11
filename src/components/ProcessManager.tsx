@@ -320,6 +320,8 @@ export default function ProcessManager() {
   const [icons, setIcons] = useState<Record<number, string>>({});
   const [speedMap, setSpeedMap] = useState<Map<number, SpeedState>>(new Map());
   const inflight = useRef(new Set<number>());
+  // Skip the 1s re-render when the polled list is byte-for-byte unchanged.
+  const lastListRef = useRef("");
   const [selectedPid, setSelectedPid] = useState<number | null>(null);
   const [tab, setTab] = useState(0);
   // Off by default — protected system processes report 0 memory because their
@@ -392,7 +394,16 @@ export default function ProcessManager() {
   // Data fetch
   useEffect(() => { invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {}); }, []);
   useEffect(() => { if (search.trim()) { invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {}); } }, [search]);
-  useInterval(async () => { try { setProcesses(await invoke<ProcessInfo[]>("get_process_list_fast")); } catch {} }, 1000);
+  useInterval(async () => {
+    try {
+      const list = await invoke<ProcessInfo[]>("get_process_list_fast");
+      const key = JSON.stringify(list);
+      if (key !== lastListRef.current) {
+        lastListRef.current = key;
+        setProcesses(list);
+      }
+    } catch {}
+  }, 1000);
 
   // Periodically inject saved process names
   useInterval(async () => {

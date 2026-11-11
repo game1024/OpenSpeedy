@@ -189,7 +189,7 @@ function App() {
             </Box>
           </Box>
 
-          <Box sx={{ width: "calc(100vw - 72px)", display: "flex", flexDirection: "column", overflow: "hidden "}}>
+          <Box sx={{ width: "calc(100vw - 72px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Box sx={{ display: tab === 0 ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <ProcessManager />
             </Box>
@@ -340,7 +340,7 @@ function BridgeChip({ ok, label }: { ok: boolean | null; label: string }) {
   return (
     <Chip
       icon={ok === null ? undefined : ok ? <CheckCircleIcon /> : <ErrorIcon />}
-      label={ok === null ? label : ok ? label : label}
+      label={label}
       size="small"
       color={ok === null ? "default" : ok ? "success" : "error"}
       variant="filled"

@@ -66,6 +66,16 @@ pub fn set_config(config: Config) {
     *current = config;
 }
 
+/// A snapshot of the current steps, shared with the other input channels so
+/// they apply the same increments as the shortcut dispatcher.
+pub fn config() -> Config {
+    let guard = match CONFIG.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    *guard
+}
+
 /// gamepad beats hotkey beats polling.
 pub fn priority(source: &str) -> u8 {
     match source {
@@ -110,24 +120,18 @@ fn claim(slot: &str, source: &str, phase: &str) -> bool {
 
 /// Apply one shortcut action. Returns the factor that was applied.
 pub fn dispatch(app: &tauri::AppHandle, slot: &str, phase: &str, source: &str) -> Option<f64> {
-    if !claim(slot, source, phase) {
-        return None;
-    }
-    let config = {
-        let guard = match CONFIG.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
-        };
-        *guard
-    };
+    let config = config();
 
+    // Resolve the action *before* claiming the slot. The `?` paths below (bad
+    // gear index) and the catch-all arm used to leave an owner in ACTIVE that
+    // no release would ever clear, permanently blocking lower-priority channels.
     let factor = match (slot, phase) {
         ("increaseSpeedShortcut", "press") => {
-            let current = crate::bridge_client::bridge64_get_speed().unwrap_or(1.0);
+            let current = crate::bridge_client::current_speed().unwrap_or(1.0);
             current + config.increase_step
         }
         ("decreaseSpeedShortcut", "press") => {
-            let current = crate::bridge_client::bridge64_get_speed().unwrap_or(1.0);
+            let current = crate::bridge_client::current_speed().unwrap_or(1.0);
             (current - config.decrease_step).max(0.01)
         }
         ("resetSpeedShortcut", "press") => 1.0,
@@ -139,6 +143,10 @@ pub fn dispatch(app: &tauri::AppHandle, slot: &str, phase: &str, source: &str) -
         }
         _ => return None,
     };
+
+    if !claim(slot, source, phase) {
+        return None;
+    }
 
     crate::bridge_client::bridge64_set_speed(factor);
     crate::bridge_client::bridge32_set_speed(factor);

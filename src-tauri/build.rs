@@ -212,7 +212,12 @@ fn main() {
         let src = prof_dir.join(name);
         if src.exists() {
             let dst = bin_dir.join(name);
-            let _ = std::fs::copy(&src, &dst);
+            // A failed copy used to be ignored while the build still reported
+            // success, bundling a stale or missing DLL/bridge. Every other
+            // copy in this file fails loudly; do the same here.
+            std::fs::copy(&src, &dst).unwrap_or_else(|e| {
+                panic!("copy {} -> {} failed: {}", src.display(), dst.display(), e);
+            });
             println!("cargo:info=  resource -> {}", dst.display());
         }
     }

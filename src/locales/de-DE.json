@@ -9,7 +9,8 @@
     "tabs": {
       "speed": "Tempo",
       "settings": "Einstellungen",
-      "about": "Über"
+      "about": "Über",
+      "diagnostics": "Diagnose"
     }
   },
   "titleBar": {
@@ -69,13 +70,29 @@
       "moduleBase": "Basisadresse",
       "moduleSize": "Größe",
       "modulesCount": "{{count}} Module"
-    }
+    },
+    "injectTitle": "Geschwindigkeit für diesen Prozess aktivieren?",
+    "injectBody": "OpenSpeedy lädt sein Speed-Modul in {{name}}. Es liest oder verändert keinen Spielspeicher.",
+    "injectConfirm": "Aktivieren",
+    "injectCancel": "Abbrechen",
+    "guardTitle": "Dieser Prozess ist geschützt",
+    "guardBlocked": "{{name}} lädt {{matched}}, ein bekanntes Anti-Cheat-Modul.",
+    "guardUnverified": "{{name}} konnte nicht untersucht werden — es ist geschützt oder läuft mit erhöhten Rechten, daher lässt sich nichts bestätigen.",
+    "guardNoTouch": "OpenSpeedy fasst Prozesse unter Anti-Cheat-Schutz nicht an. Nutze die Überschreibung nur, wenn du sicher bist, dass es ein Fehlalarm ist.",
+    "guardWarnOnly": "Der Wächter wurde durch den Rollback-Schalter auf eine deutliche Warnung herabgestuft. Dieser Prozess scheint geschützt — ein Fortfahren kann das Spielkonto gefährden.",
+    "guardElevated": "Dieser Prozess läuft mit erhöhten Rechten. OpenSpeedy kann nur damit arbeiten, wenn die App als Administrator gestartet wurde.",
+    "guardOverride": "Trotzdem einmal fortfahren",
+    "guardRefusedCount": "{{count}} Prozess(e) wurden übersprungen, weil sie durch Anti-Cheat geschützt sind."
   },
   "shortcut": {
     "notSet": "Nicht gesetzt",
     "keyNotSupported": "Diese Taste kann nicht als Tastenkürzel verwendet werden",
     "inherited": "Geerbt",
-    "restoreInherit": "Global verwenden"
+    "restoreInherit": "Global verwenden",
+    "occupied": "Registrierung fehlgeschlagen. Möglicherweise belegt ein anderes Programm diese Kombination bereits.",
+    "occupiedShort": "Belegt?",
+    "duplicate": "Ein anderes Kürzel verwendet dieselbe Kombination",
+    "reserved": "{{shortcut}} ist von Windows reserviert und kann nicht als Kürzel verwendet werden"
   },
   "settings": {
     "loading": "Einstellungen laden…",
@@ -85,8 +102,6 @@
     "increase": "Erhöhen",
     "decrease": "Verringern",
     "reset": "Zurücksetzen",
-    "confirm": "OK",
-    "cancel": "Abbrechen",
     "gears": "Gangstufen",
     "hold": "Halten",
     "gear": "Gang",
@@ -127,7 +142,18 @@
     "profileGlobalHint": "Gilt, wenn kein Profil passt",
     "profileActiveNow": "Aktiv",
     "profileNotRunning": "Nicht aktiv",
-    "profileSearch": "Prozess oder Fenstertitel suchen"
+    "profileSearch": "Prozess oder Fenstertitel suchen",
+    "registerFailedCount": "{{count}} Tastenkürzel konnte(n) nicht registriert werden. Möglicherweise belegt ein anderes Programm sie. Öffne die Diagnose, um zu sehen, welcher Schritt fehlschlägt.",
+    "profileAutoApply": "Automatische Geschwindigkeit",
+    "profileAutoApplyHint": "Diese Geschwindigkeit anwenden, solange das Programm im Vordergrund ist. Eine manuelle Änderung hat Vorrang.",
+    "autoApply": "Automatische Geschwindigkeit pro Profil",
+    "autoApplyHint": "Ein Profil kann seine eigene Geschwindigkeit anwenden, solange eines seiner Programme im Vordergrund ist. Standardmäßig aus.",
+    "gamepad": "Gamepad",
+    "gamepadHint": "Eine Gamepad-Kombination geht nicht durch die Hotkey-Tabelle, funktioniert also auch bei verlorenem Fokus oder Vollbild. Halte zum Aufnehmen eine Gamepad-Taste, während du oben ein Kürzel aufnimmst.",
+    "gamepadNone": "Noch keine Gamepad-Kombination gebunden.",
+    "remoteControl": "Lokale Steuerseite",
+    "remoteControlHint": "Eine kleine Seite auf 127.0.0.1, die die Geschwindigkeit ändert, ohne Spielprozesse zu berühren. Sie braucht das Sitzungs-Token und ist von anderen Rechnern nicht erreichbar.",
+    "remoteControlUrl": "Adresse"
   },
   "about": {
     "title": "OpenSpeedy",
@@ -145,5 +171,53 @@
     "copyInfoError": "Kopieren fehlgeschlagen. Bitte manuell kopieren.",
     "copyInfo": "Systeminfo",
     "openLog": "Protokoll öffnen"
+  },
+  "diag": {
+    "title": "Eingabe-Diagnose",
+    "intro": "Prüft die Kette von der OS-Hotkey-Tabelle bis zur Speed-Brücke. Es liest niemals Spielspeicher, fängt Tasten ab oder injiziert etwas Neues.",
+    "observe": "Eingabe-Beobachtung",
+    "observeHint": "Fügt register_fail / hotkey_fired / inject_result-Einträge zum Diagnose-Protokoll hinzu. Standardmäßig aus.",
+    "polling": "Nur-Lese-Polling-Kanal",
+    "pollingHint": "Liest den Tastaturzustand statt eine Taste zu registrieren. Nutze das, wenn ein anderes Programm deine Kombination belegt.",
+    "pollingNote": "Polling liest nur die Tastatur. Das Spiel erhält die Kombination weiterhin — es wird nichts abgefangen.",
+    "compat": "Kompatibilitätsmodus",
+    "compatHint": "Jede Tastenkombination über den Abfrager senden statt über die Hotkey-Tabelle.",
+    "rustDispatch": "Aktionen im Hintergrund ausführen",
+    "rustDispatchHint": "Die Geschwindigkeitsänderung wird vom App-Kern statt vom Fenster angewandt, funktioniert also auch bei verstecktem Fenster.",
+    "guardWarnOnly": "Wächter: nur Warnung",
+    "guardWarnOnlyHint": "Rollback-Schalter. Aus lehnt geschützte Spiele ab; ein schaltet die Prüfung auf eine deutliche Warnung zurück. Standardmäßig aus.",
+    "retry": "Abgelehnte Tastenkürzel erneut versuchen",
+    "retryHint": "Eine von einem anderen Programm belegte Kombination wird nach 2 s, 4 s, 8 s und danach alle 10 s erneut versucht. Standardmäßig aus.",
+    "statusTitle": "Tastenkürzel-Status",
+    "slot": "Slot",
+    "chord": "Tastenkombination",
+    "state": "Status",
+    "stateOk": "Registriert",
+    "stateFail": "Fehlgeschlagen — möglicherweise belegt",
+    "statePending": "Warten auf Synchronisierung",
+    "stateEmpty": "Nicht festgelegt",
+    "stateGamepad": "Gamepad-Belegung",
+    "testTitle": "Ein-Tasten-Prüfung",
+    "testNeedsObserve": "Schalte die Eingabe-Beobachtung ein, um die Prüfung zu starten.",
+    "testNoChord": "Noch kein Slot hat eine Tastenkombination, also gibt es nichts zu testen.",
+    "testStart": "Prüfung starten",
+    "testCancel": "Abbrechen",
+    "preparing": "Wird vorbereitet…",
+    "testPressNow": "Drücke {{shortcut}} einmal innerhalb von 3 Sekunden.",
+    "occupiedCode": "Code 1409 — die Kombination ist bereits von einem anderen Programm registriert",
+    "gamepadHint": "Falls die Tastenkombination nicht nutzbar bleibt, binde eine Gamepad-Kombination in den Einstellungen – sie hängt nicht am Fensterfokus.",
+    "logHint": "Jede Prüfung hinterlässt [input]-Einträge im heutigen Diagnose-Protokoll.",
+    "verdict": {
+      "not_registered": "Nicht registriert",
+      "registered_no_fire": "Registriert, aber es wurde nie ausgelöst",
+      "fired_no_inject": "Ausgelöst, aber die Geschwindigkeitsänderung blieb wirkungslos",
+      "ok": "Die gesamte Kette funktioniert"
+    },
+    "verdictHint": {
+      "not_registered": "Das Betriebssystem verweigerte die Registrierung, also bewirkt das Drücken der Kombination nichts.",
+      "registered_no_fire": "OpenSpeedy hält die Kombination, aber innerhalb von 3 Sekunden kam kein Rückruf. Drücke schneller nach Start der Prüfung.",
+      "fired_no_inject": "Die Taste erreichte OpenSpeedy, aber kein Prozess nimmt derzeit eine Geschwindigkeitsänderung an. Aktiviere erst die Geschwindigkeit bei einem Spiel und prüfe erneut.",
+      "ok": "Die Kombination ist registriert, der Rückruf wurde ausgelöst und die Brücke nahm eine Geschwindigkeitsänderung an."
+    }
   }
 }
