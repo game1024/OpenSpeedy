@@ -20,6 +20,9 @@
  */
 #include <windows.h>
 #include <winternl.h>
+// StringCchPrintf replaces wsprintf*: it is bounded by the buffer size and
+// never overflows.
+#include <strsafe.h>
 #include "Minhook.h"
 #include "speedpatch.h"
 #include <atomic>
@@ -68,6 +71,12 @@ void SP_Install()
     DWORD processId = GetCurrentProcessId();
     WCHAR filemapName[64];
     GetProcessFileMapName(processId, filemapName, 64);
+    // The mapping keeps the default DACL of the target process token, which
+    // already scopes it to the account the game runs under — the same account
+    // the bridge injects from. An explicit SDDL naming a user SID was tried
+    // here, but a DACL that does not name the exact account denies the bridge
+    // its own write access and silently disables speed control, so the safe
+    // default is kept.
     hFileMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof (bool), filemapName);
     if (hFileMap == NULL)
     {
@@ -165,7 +174,17 @@ void SP_Disable(DWORD processId)
 
 VOID GetProcessFileMapName(DWORD processId, WCHAR* buf, DWORD bufSize)
 {
-    wsprintfW(buf, L"OpenSpeedy.%lu", processId);
+    if (buf == NULL || bufSize == 0)
+    {
+        return;
+    }
+    // StringCchPrintf is bounded by bufSize, so a short buffer truncates
+    // instead of overrunning the caller's stack buffer.
+    HRESULT hr = StringCchPrintfW(buf, bufSize, L"OpenSpeedy.%lu", processId);
+    if (FAILED(hr))
+    {
+        buf[0] = L'\0';
+    }
 }
 
 double SpeedFactor()
@@ -575,7 +594,7 @@ inline VOID shouldUpdateAll()
 static void ReportHookFailure(const char* stage, MH_STATUS status)
 {
     char buf[160];
-    wsprintfA(buf, "[speedpatch] %s failed (status %d) — hook skipped\n", stage, (int)status);
+    StringCchPrintfA(buf, _countof(buf), "[speedpatch] %s failed (status %d) — hook skipped\n", stage, (int)status);
     OutputDebugStringA(buf);
     hookFailures.fetch_add(1);
 }
@@ -709,22 +728,27 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         }
         {
             std::unique_lock<std::shared_mutex> lock(mutex);
-            MH_UNHOOK(Real_Sleep);
-            MH_UNHOOK(Real_SleepEx);
-            MH_UNHOOK(Real_WaitForSingleObject);
-            MH_UNHOOK(Real_WaitForSingleObjectEx);
-            MH_UNHOOK(Real_WaitForMultipleObjects);
-            MH_UNHOOK(Real_WaitForMultipleObjectsEx);
-            MH_UNHOOK(Real_SetWaitableTimer);
-            MH_UNHOOK(Real_SetWaitableTimerEx);
-            MH_UNHOOK(Real_SetTimer);
-            MH_UNHOOK(Real_TimeGetTime);
-            MH_UNHOOK(Real_TimeSetEvent);
-            MH_UNHOOK(Real_GetTickCount);
-            MH_UNHOOK(Real_GetTickCount64);
-            MH_UNHOOK(Real_QueryPerformanceCounter);
-            MH_UNHOOK(Real_GetSystemTimeAsFileTime);
-            MH_UNHOOK(Real_GetSystemTimePreciseAsFileTime);
+            // MH_RemoveHook takes the *target* address of the hooked function,
+            // the very same address MH_CreateHook was given. The Real_*
+            // variables hold MinHook's trampoline, not the target, so passing
+            // them matched no hook and every removal silently failed.
+            MH_UNHOOK(&Sleep);
+            MH_UNHOOK(&SleepEx);
+            MH_UNHOOK(&WaitForSingleObject);
+            MH_UNHOOK(&WaitForSingleObjectEx);
+            MH_UNHOOK(&WaitForMultipleObjects);
+            MH_UNHOOK(&WaitForMultipleObjectsEx);
+            MH_UNHOOK(&SetWaitableTimer);
+            MH_UNHOOK(&SetWaitableTimerEx);
+            MH_UNHOOK(&SetTimer);
+            MH_UNHOOK(&timeGetTime);
+            MH_UNHOOK(&timeSetEvent);
+            MH_UNHOOK(&GetMessageTime);
+            MH_UNHOOK(&GetTickCount);
+            MH_UNHOOK(&GetTickCount64);
+            MH_UNHOOK(&QueryPerformanceCounter);
+            MH_UNHOOK(&GetSystemTimeAsFileTime);
+            MH_UNHOOK(&GetSystemTimePreciseAsFileTime);
         }
         // Wait for All threads to finish detour api
         Sleep(1000);
