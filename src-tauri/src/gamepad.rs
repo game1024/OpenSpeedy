@@ -64,6 +64,29 @@ struct PadState {
     chords: BTreeSet<String>,
 }
 
+/// Reusable buffers for one pad's raw reading. The poll runs at 60 Hz and the
+/// button/switch/axis counts never change for a given pad, so the vectors are
+/// kept alive between frames instead of being reallocated on every poll.
+#[derive(Default)]
+struct Scratch {
+    buttons: Vec<bool>,
+    switches: Vec<GameControllerSwitchPosition>,
+    axes: Vec<f64>,
+    labels: Vec<Option<&'static str>>,
+}
+
+impl Scratch {
+    /// Fit the buffers to a pad's current shape. `Vec::resize` keeps the
+    /// existing allocation whenever the pad's shape has not changed.
+    fn fit(&mut self, buttons: usize, switches: usize, axes: usize) {
+        self.buttons.resize(buttons, false);
+        self.switches.resize(switches, GameControllerSwitchPosition::Center);
+        self.axes.resize(axes, 0.0);
+        self.labels.clear();
+        self.labels.reserve(buttons);
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum PadKey {
     /// Xbox 360 and XInput-compatible pads. Windows.Gaming.Input does not
@@ -94,9 +117,10 @@ fn poll_loop(app: AppHandle) {
     applog::info("gamepad", "polling RawGameController");
     let mut states: HashMap<PadKey, PadState> = HashMap::new();
     let mut warned: HashSet<PadKey> = HashSet::new();
+    let mut scratch: HashMap<PadKey, Scratch> = HashMap::new();
     let mut logged_poll_error = false;
     while RUN.load(Ordering::Relaxed) {
-        match poll_once(&app, &mut states, &mut warned) {
+        match poll_once(&app, &mut states, &mut warned, &mut scratch) {
             Ok(()) => logged_poll_error = false,
             Err(e) if !logged_poll_error => {
                 applog::warn("gamepad", format!("poll failed: {e}"));
@@ -112,6 +136,7 @@ fn poll_once(
     app: &AppHandle,
     states: &mut HashMap<PadKey, PadState>,
     warned: &mut HashSet<PadKey>,
+    scratch: &mut HashMap<PadKey, Scratch>,
 ) -> windows::core::Result<()> {
     let mut seen = HashSet::new();
     for slot in 0..4 {
@@ -147,7 +172,7 @@ fn poll_once(
         *n += 1;
         seen.insert(key);
 
-        let down = match read_down(&controller, vid, pid) {
+        let down = match read_down(&controller, vid, pid, scratch.entry(key).or_default()) {
             Ok(down) => {
                 warned.remove(&key);
                 down
@@ -174,6 +199,8 @@ fn poll_once(
                 emit(app, binding, "Released");
             }
         }
+        // The pad is gone; its buffers are not needed any more.
+        scratch.remove(&key);
     }
     Ok(())
 }
@@ -214,11 +241,17 @@ fn capture_binding(previous: &BTreeSet<String>, released: &BTreeSet<String>) -> 
 }
 
 fn take_edges(state: &mut PadState, down: BTreeSet<String>) -> Edges {
-    let previous = state.down.clone();
-    let released_buttons: BTreeSet<String> = previous.difference(&down).cloned().collect();
+    // `state.down` still holds the previous sample until the end of this
+    // function, so it can be read in place instead of cloned every frame.
+    let released_buttons: BTreeSet<String> =
+        state.down.difference(&down).cloned().collect();
 
     let mut runtime = Vec::new();
-    let pressed: Vec<String> = down.iter().filter(|token| !previous.contains(*token)).cloned().collect();
+    let pressed: Vec<String> = down
+        .iter()
+        .filter(|token| !state.down.contains(*token))
+        .cloned()
+        .collect();
     for main in &pressed {
         let binding = chord_binding(&down, main);
         state.chords.insert(binding.clone());
@@ -235,8 +268,8 @@ fn take_edges(state: &mut PadState, down: BTreeSet<String>) -> Edges {
         runtime.push((binding, "Released"));
     }
 
-    let capture = capture_binding(&previous, &released_buttons);
-    let held = if previous != down && !down.is_empty() {
+    let capture = capture_binding(&state.down, &released_buttons);
+    let held = if state.down != down && !down.is_empty() {
         Some(down.iter().cloned().collect())
     } else {
         None
@@ -318,36 +351,49 @@ fn chord_held(binding: &str, down: &BTreeSet<String>) -> bool {
     !body.is_empty() && body.split('+').all(|part| down.contains(part))
 }
 
-fn read_down(controller: &RawGameController, vid: u16, pid: u16) -> windows::core::Result<BTreeSet<String>> {
+fn read_down(
+    controller: &RawGameController,
+    vid: u16,
+    pid: u16,
+    scratch: &mut Scratch,
+) -> windows::core::Result<BTreeSet<String>> {
     let button_count = controller.ButtonCount()? as usize;
     let switch_count = controller.SwitchCount()? as usize;
     let axis_count = controller.AxisCount()? as usize;
-    let mut buttons = vec![false; button_count];
-    let mut switches = vec![GameControllerSwitchPosition::Center; switch_count];
-    let mut axes = vec![0.0f64; axis_count];
-    let _ = controller.GetCurrentReading(&mut buttons, &mut switches, &mut axes)?;
+    scratch.fit(button_count, switch_count, axis_count);
 
-    let mut labels = Vec::with_capacity(button_count);
+    let _ = controller.GetCurrentReading(
+        &mut scratch.buttons,
+        &mut scratch.switches,
+        &mut scratch.axes,
+    )?;
+
     for index in 0..button_count {
-        labels.push(label_name(controller.GetButtonLabel(index as i32)?));
+        scratch.labels.push(label_name(controller.GetButtonLabel(index as i32)?));
     }
-    let any_label = labels.iter().any(|label| label.is_some());
+    let any_label = scratch.labels.iter().any(|label| label.is_some());
 
     let mut down = BTreeSet::new();
     // A pad Windows recognizes, but whose raw buttons have no names, is read
     // through Gamepad so A/B/LB don't also show up as B0. Named buttons, and
     // extra unlabeled ones, come from the raw report.
     let gamepad = Gamepad::FromGameController(controller).ok();
-    if gamepad.is_some() && !any_label {
-        if let Some(gamepad) = &gamepad {
-            push_gamepad_buttons(&mut down, gamepad.GetCurrentReading()?.Buttons);
+    // A single sample of the recognized-pad reading serves both the button set
+    // and the analog triggers, so a pad is never read twice per frame.
+    let gamepad_reading = match &gamepad {
+        Some(gamepad) => Some(gamepad.GetCurrentReading()?),
+        None => None,
+    };
+    if gamepad_reading.is_some() && !any_label {
+        if let Some(reading) = gamepad_reading.as_ref() {
+            push_gamepad_buttons(&mut down, reading.Buttons);
         }
     } else {
-        for (index, pressed) in buttons.iter().copied().enumerate() {
+        for (index, pressed) in scratch.buttons.iter().copied().enumerate() {
             if !pressed {
                 continue;
             }
-            let token = match labels[index] {
+            let token = match scratch.labels[index] {
                 Some(name) => name.to_string(),
                 None => format!("V{vid:04X}P{pid:04X}B{index}"),
             };
@@ -357,13 +403,12 @@ fn read_down(controller: &RawGameController, vid: u16, pid: u16) -> windows::cor
 
     // Hats are buttons. On a recognized pad the triggers are analog, so they
     // are not in the raw button list.
-    for position in switches.iter().copied() {
+    for position in scratch.switches.iter().copied() {
         if let Some(name) = switch_name(position) {
             down.insert(name.to_string());
         }
     }
-    if let Some(gamepad) = gamepad {
-        let reading = gamepad.GetCurrentReading()?;
+    if let Some(reading) = gamepad_reading.as_ref() {
         if reading.LeftTrigger >= TRIGGER_DOWN {
             down.insert("LT".into());
         }
@@ -371,7 +416,7 @@ fn read_down(controller: &RawGameController, vid: u16, pid: u16) -> windows::cor
             down.insert("RT".into());
         }
     } else {
-        for (index, value) in axes.iter().copied().enumerate() {
+        for (index, value) in scratch.axes.iter().copied().enumerate() {
             if value >= AXIS_DOWN {
                 down.insert(format!("V{vid:04X}P{pid:04X}A{index}"));
             }

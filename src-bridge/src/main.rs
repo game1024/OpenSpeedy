@@ -2,9 +2,9 @@
 //!
 //! Receives text commands from the main OpenSpeedy process:
 //!   INJECT <pid>  EJECT <pid>  ENABLE <pid>  DISABLE <pid>
-//!   ISENABLED <pid>  SETSPEED <factor>  GETSPEED  SHUTDOWN
+//!   SETSPEED <factor>  GETSPEED  SHUTDOWN
 //!
-//!   STATUS <pid>  — check injection + enabled status
+//!   STATUS <pid>  — OK ENABLED / OK DISABLED / ERROR <message>
 //!
 //! Responses:  OK [value]  or  ERROR <message>
 
@@ -13,10 +13,11 @@
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use windows::core::{PCSTR, PCWSTR, PWSTR, s};
 use windows::Win32::Foundation::{
-    CloseHandle, GetLastError, HANDLE, BOOL, ERROR_PIPE_CONNECTED, INVALID_HANDLE_VALUE,
+    CloseHandle, GetLastError, HANDLE, HMODULE, BOOL, ERROR_PIPE_CONNECTED, INVALID_HANDLE_VALUE,
 };
 use windows::Win32::Storage::FileSystem::{WriteFile, ReadFile, FILE_FLAGS_AND_ATTRIBUTES};
 use windows::Win32::System::Threading::{
@@ -117,7 +118,7 @@ fn is_process_64bit(pid: u32) -> bool {
         let kernel32 = GetModuleHandleW(PCWSTR::from_raw(wide_k32.as_ptr())).unwrap_or_default();
         let is_wow64: Option<unsafe extern "system" fn(HANDLE, *mut BOOL) -> BOOL> =
             std::mem::transmute(GetProcAddress(kernel32, s!("IsWow64Process")));
-        if let Some(f) = is_wow64 { f(h, &mut wow64); }
+        if let Some(f) = is_wow64 { let _ = f(h, &mut wow64); }
         let _ = CloseHandle(h);
         let result = !wow64.as_bool();
         eprintln!("[bridge] is_process_64bit({pid}): wow64={} -> is64={result}", wow64.as_bool());
@@ -132,6 +133,25 @@ const OWN_SPEEDPATCH: &str = "speedpatch32.dll";
 
 fn speedpatch_dll(is64: bool) -> &'static str {
     if is64 { "speedpatch64.dll" } else { "speedpatch32.dll" }
+}
+
+/// Reject named-pipe clients that arrive over the network (SMB). Local IPC is
+/// the only expected transport; a remote client would be an attack.
+const PIPE_REJECT_REMOTE_CLIENTS: u32 = 0x0000_0008;
+
+/// Cache the module handle for our own speedpatch DLL. `LoadLibraryW` bumps the
+/// ref count on every call; holding one handle for the bridge's lifetime is
+/// enough to resolve every exported symbol we need. Stored as a raw address
+/// (`usize`) because `HMODULE` is not `Sync` and so cannot live in a `static`.
+static SPEEDPATCH_MODULE: OnceLock<Option<usize>> = OnceLock::new();
+
+fn load_speedpatch() -> Option<HMODULE> {
+    let cached = SPEEDPATCH_MODULE.get_or_init(|| {
+        let dll_wide = to_wide(OWN_SPEEDPATCH);
+        unsafe { LoadLibraryW(PCWSTR::from_raw(dll_wide.as_ptr())).ok().map(|h| h.0 as usize) }
+    });
+    let raw = (*cached)?;
+    Some(HMODULE(raw as *mut std::ffi::c_void))
 }
 
 // ── Core operations ──────────────────────────────────────────────────────
@@ -315,11 +335,9 @@ fn do_eject(pid: u32) -> Result<(), String> {
 
 fn do_enable(pid: u32) -> Result<(), String> {
     eprintln!("[bridge] ENABLE pid={pid} dll={OWN_SPEEDPATCH}");
-    let dll_wide = to_wide(OWN_SPEEDPATCH);
+    let h = load_speedpatch().ok_or("LoadLibraryW failed")?;
     unsafe {
-        let h = LoadLibraryW(PCWSTR::from_raw(dll_wide.as_ptr())).map_err(|e| format!("LoadLibraryW: {e:?}"))?;
-        eprintln!("[bridge] ENABLE LoadLibraryW ok h={h:?}");
-
+        eprintln!("[bridge] ENABLE module h={h:?}");
         let sp_enable: Option<unsafe extern "C" fn(u32)> =
             std::mem::transmute(GetProcAddress(h, s!("SP_Enable")));
         eprintln!("[bridge] ENABLE GetProcAddress(SP_Enable) ok = {sp_enable:?}");
@@ -346,10 +364,9 @@ fn do_enable(pid: u32) -> Result<(), String> {
 
 fn do_disable(pid: u32) -> Result<(), String> {
     eprintln!("[bridge] DISABLE pid={pid} dll={OWN_SPEEDPATCH}");
-    let dll_wide = to_wide(OWN_SPEEDPATCH);
+    let h = load_speedpatch().ok_or("LoadLibraryW failed")?;
     unsafe {
-        let h = LoadLibraryW(PCWSTR::from_raw(dll_wide.as_ptr())).map_err(|e| format!("LoadLibraryW: {e:?}"))?;
-        eprintln!("[bridge] DISABLE LoadLibraryW ok h={h:?}");
+        eprintln!("[bridge] DISABLE module h={h:?}");
         let sp_disable: Option<unsafe extern "C" fn(u32)> =
             std::mem::transmute(GetProcAddress(h, s!("SP_Disable")));
         eprintln!("[bridge] DISABLE GetProcAddress(SP_Disable) ok = {sp_disable:?}");
@@ -359,11 +376,6 @@ fn do_disable(pid: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn do_is_enabled(_pid: u32) -> Result<bool, String> {
-    // Always report as enabled — SP_IsEnabledById is unreliable on 32-bit
-    Ok(true)
-}
-
 fn do_set_speed(factor: f64) {
     // The timing detours divide by the factor and convert scaled doubles to
     // DWORD. A zero/negative/NaN/infinite value would produce a division by
@@ -371,9 +383,8 @@ fn do_set_speed(factor: f64) {
     if !factor.is_finite() || !(0.01..=100.0).contains(&factor) {
         return;
     }
-    let dll_wide = to_wide(OWN_SPEEDPATCH);
+    let Some(h) = load_speedpatch() else { return };
     unsafe {
-        let Ok(h) = LoadLibraryW(PCWSTR::from_raw(dll_wide.as_ptr())) else { return };
         let set_speed: Option<unsafe extern "C" fn(f64)> =
             std::mem::transmute(GetProcAddress(h, s!("SP_SetSpeed")));
         if let Some(f) = set_speed { f(factor); }
@@ -381,12 +392,23 @@ fn do_set_speed(factor: f64) {
 }
 
 fn do_get_speed() -> f64 {
-    let dll_wide = to_wide(OWN_SPEEDPATCH);
+    let Some(h) = load_speedpatch() else { return 1.0 };
     unsafe {
-        let Ok(h) = LoadLibraryW(PCWSTR::from_raw(dll_wide.as_ptr())) else { return 1.0 };
         let get_speed: Option<unsafe extern "C" fn() -> f64> =
             std::mem::transmute(GetProcAddress(h, s!("SP_GetSpeed")));
         if let Some(f) = get_speed { f() } else { 1.0 }
+    }
+}
+
+/// True when the target process has the speedpatch DLL installed and enabled.
+/// Reads the per-PID shared memory the injected DLL maintains; a target that
+/// was never injected reports `false` rather than an error.
+fn do_get_status(pid: u32) -> Option<bool> {
+    let Some(h) = load_speedpatch() else { return None };
+    unsafe {
+        let f: Option<unsafe extern "C" fn(u32) -> BOOL> =
+            std::mem::transmute(GetProcAddress(h, s!("SP_IsEnabledById")));
+        f.map(|f| f(pid).as_bool())
     }
 }
 
@@ -413,13 +435,6 @@ fn handle_command(line: &str) -> String {
             let pid: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
             match do_disable(pid) { Ok(()) => "OK".into(), Err(e) => format!("ERROR {e}") }
         }
-        "ISENABLED" => {
-            let pid: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-            match do_is_enabled(pid) {
-                Ok(true) => "OK 1".into(), Ok(false) => "OK 0".into(),
-                Err(e) => format!("ERROR {e}"),
-            }
-        }
         "SETSPEED" => {
             let f: f64 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(1.0);
             // Reject at the protocol boundary as well, so an invalid request
@@ -434,7 +449,14 @@ fn handle_command(line: &str) -> String {
             let s = do_get_speed();
             format!("OK {s:.6}")
         }
-        "STATUS" => "OK".into(),
+        "STATUS" => {
+            let pid: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+            match do_get_status(pid) {
+                Some(true) => "OK ENABLED".into(),
+                Some(false) => "OK DISABLED".into(),
+                None => "ERROR status unavailable".into(),
+            }
+        }
         "SHUTDOWN" => "OK shutting down".into(),
         _ => "ERROR unknown command".into(),
     }
@@ -458,7 +480,7 @@ fn pipe_server() {
         let h_pipe = unsafe {
             CreateNamedPipeW(
                 PCWSTR::from_raw(name_wide.as_ptr()),
-                FILE_FLAGS_AND_ATTRIBUTES(3), // PIPE_ACCESS_DUPLEX
+                FILE_FLAGS_AND_ATTRIBUTES(0x3 | PIPE_REJECT_REMOTE_CLIENTS), // PIPE_ACCESS_DUPLEX | reject remote clients
                 NAMED_PIPE_MODE(PIPE_TYPE_MESSAGE.0 | PIPE_READMODE_MESSAGE.0 | PIPE_WAIT.0),
                 1, 4096, 4096, 0, None,
             )

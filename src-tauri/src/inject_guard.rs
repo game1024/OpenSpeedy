@@ -81,16 +81,28 @@ fn refused(info: &process_enumerator::ProcessInfo, reason: &str, matched: Option
 }
 
 /// Decide whether `pid` may be injected. Pure read-only inspection.
-/// With `guard.warn_only` on, *every* refusal (including `unreadable` and
-/// `unverified`) becomes `allowed = true` plus a `warning`; the UI must still
-/// show that warning before injecting.
+///
+/// The stage-4 rollback switch (`guard.warn_only`) only softens an *anti-cheat*
+/// refusal into a strong warning the user must acknowledge before injecting.
+/// `unreadable` and `unverified` refusals stay hard denials — those mean we
+/// could not prove the process is safe, and silently allowing them would turn
+/// the guard into a no-op for exactly the cases it exists to catch.
 pub fn check(pid: u32) -> GuardVerdict {
     let mut verdict = check_raw(pid);
-    if !verdict.allowed && WARN_ONLY.load(Ordering::Relaxed) {
+    if !verdict.allowed
+        && WARN_ONLY.load(Ordering::Relaxed)
+        && warn_only_covers(&verdict.reason)
+    {
         verdict.warning = Some(verdict.reason.clone());
         verdict.allowed = true;
     }
     verdict
+}
+
+/// Which refusal reasons the rollback switch is allowed to soften. Only an
+/// explicit anti-cheat match is degradable; "can't tell" verdicts are not.
+fn warn_only_covers(reason: &str) -> bool {
+    reason == "anticheat"
 }
 
 fn check_raw(pid: u32) -> GuardVerdict {
@@ -182,21 +194,31 @@ mod tests {
         assert_eq!(verdict.matched, None);
     }
 
-    /// The rollback switch degrades a hard deny to a strong warning without
-    /// changing any code. It currently covers every refusal reason, including
-    /// `unreadable`; tightening it to `anticheat` only would change the
-    /// switch's observable behaviour and is left as a follow-up.
+    /// The rollback switch only softens an *anti-cheat* refusal, never the
+    /// "could not verify the process" refusals (`unreadable`/`unverified`).
+    /// Those must stay hard denials so the guard cannot be silently turned
+    /// into a no-op for the very cases it protects against.
     #[test]
-    fn warn_only_degrades_a_denial_to_a_warning() {
+    fn warn_only_covers_only_anticheat() {
+        assert!(warn_only_covers("anticheat"));
+        assert!(!warn_only_covers("unreadable"));
+        assert!(!warn_only_covers("unverified"));
+        assert!(!warn_only_covers("ok"));
+    }
+
+    #[test]
+    fn warn_only_softens_anticheat_but_not_unreadable() {
+        // `u32::MAX` is not a live process, so the guard refuses it as
+        // `unreadable`. Toggling the switch must not change that verdict.
         set_warn_only(false);
-        let hard = check(u32::MAX);
-        assert!(!hard.allowed);
-        assert!(hard.warning.is_none());
+        let denied = check(u32::MAX);
+        assert!(!denied.allowed);
+        assert!(denied.warning.is_none());
 
         set_warn_only(true);
-        let soft = check(u32::MAX);
-        assert!(soft.allowed);
-        assert_eq!(soft.warning.as_deref(), Some("unreadable"));
+        let still_denied = check(u32::MAX);
+        assert!(!still_denied.allowed, "unreadable must stay a hard denial");
+        assert!(still_denied.warning.is_none());
         set_warn_only(false);
     }
 
