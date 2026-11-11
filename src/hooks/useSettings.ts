@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { type SettingsState } from "../store/settings";
 import { loadSettings, setSetting } from "../store/settings";
+import { dispatchInRustEnabled, markUserSpeedChange } from "../inputMode";
 
 // ── Module-level store (useSyncExternalStore compatible) ────────────────────
 
@@ -78,16 +80,40 @@ export function useSpeed() {
     if (persistedSpeed !== undefined) setSpeed(persistedSpeed as number);
   }, [persistedSpeed]);
 
+  // Stage 3: the Rust dispatcher reports the factor it applied. This is the
+  // only place the stored value is written in that mode, so there is exactly
+  // one writer for it.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let dead = false;
+    listen<{ factor: number }>("speed-changed", event => {
+      const factor = event.payload?.factor;
+      if (typeof factor !== "number" || !Number.isFinite(factor)) return;
+      setSpeed(factor);
+      void set("speed", factor);
+    }).then(unlisten => {
+      if (dead) unlisten();
+      else stop = unlisten;
+    }).catch(() => {});
+    return () => { dead = true; stop?.(); };
+  }, [set]);
+
   // Sync saved speed to bridge on startup
   useEffect(() => {
     invoke<number | null>("bridge_get_speed").then(current => {
       loadSettings().then(s => {
-        if (s.speed && current !== s.speed) {
-          invoke("bridge_set_speed", { factor: s.speed });
+        if (current !== null && current !== s.speed) {
+          if (dispatchInRustEnabled()) {
+            // The bridge holds the truth in this mode; the stored value
+            // follows it instead of overwriting it.
+            void set("speed", current);
+          } else if (s.speed) {
+            invoke("bridge_set_speed", { factor: s.speed });
+          }
         }
       });
     });
-  }, []);
+  }, [set]);
 
   const updateSpeed = useCallback((s: number) => {
     setSpeed(s);
@@ -95,6 +121,9 @@ export function useSpeed() {
 
   const commitSpeed = useCallback(async (s: number) => {
     setSpeed(s);
+    // A manual change ends the automatic speed for this session — the user
+    // wins over any profile.
+    markUserSpeedChange();
     await invoke("bridge_set_speed", { factor: s });
     await set("speed", s);
   }, [set]);

@@ -3,14 +3,14 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle,
-  IconButton, TextField, Tooltip, Typography,
+  IconButton, Switch, TextField, Tooltip, Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import WindowIcon from "@mui/icons-material/Window";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
-  exeBase, exeKey, nextProfileName, occupiedBy, PROFILE_NAME_MAX, validateProfileName,
+  AUTO_SPEED_BOUNDS, exeBase, exeKey, nextProfileName, occupiedBy, PROFILE_NAME_MAX, validateProfileName,
   type NameError, type ShortcutProfile,
 } from "../shortcutProfile";
 
@@ -37,6 +37,9 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
   const [icons, setIcons] = useState<Record<number, string>>({});
   const [query, setQuery] = useState("");
   const [showSystem, setShowSystem] = useState(false);
+  // Stage 5: the automatic speed for this profile.
+  const [autoApply, setAutoApply] = useState(false);
+  const [autoSpeed, setAutoSpeed] = useState(1.5);
 
   const asked = useRef(new Set<number>());
 
@@ -46,6 +49,8 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
     setPicked((initial?.processes ?? []).map(exeBase).filter(Boolean));
     setQuery("");
     setShowSystem(false);
+    setAutoApply(initial?.autoApply === true);
+    setAutoSpeed(initial?.autoSpeed ?? 1.5);
     let stop = false;
     const apply = (list: ProcessInfo[]) => { if (!stop) setProcesses(list); };
     // Full scan once, so a pid cached earlier with no memory reading is filled in.
@@ -125,6 +130,8 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
       processes: kept,
       shortcuts: initial?.shortcuts ?? {},
       values: initial?.values,
+      autoApply: autoApply ? true : undefined,
+      autoSpeed: autoApply ? autoSpeed : undefined,
     });
   }
 
@@ -188,6 +195,27 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
               <Typography variant="body2" color="text.disabled">{t("process.noResults")}</Typography>
             </Box>
           )}
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1.5 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{t("settings.profileAutoApply")}</Typography>
+            <Typography variant="caption" color="text.disabled">{t("settings.profileAutoApplyHint")}</Typography>
+          </Box>
+          <TextField
+            size="small"
+            type="number"
+            disabled={!autoApply}
+            value={autoSpeed}
+            onChange={e => {
+              const value = Number(e.target.value);
+              if (!Number.isFinite(value)) return;
+              if (value < AUTO_SPEED_BOUNDS[0] || value > AUTO_SPEED_BOUNDS[1]) return;
+              setAutoSpeed(value);
+            }}
+            slotProps={{ htmlInput: { min: AUTO_SPEED_BOUNDS[0], max: AUTO_SPEED_BOUNDS[1], step: 0.1 } }}
+            sx={{ width: 90 }}
+          />
+          <Switch checked={autoApply} onChange={(_, value) => setAutoApply(value)} />
         </Box>
       </DialogContent>
       <DialogActions>

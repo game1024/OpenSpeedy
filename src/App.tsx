@@ -19,6 +19,7 @@ import steamIcon from "./assets/steam.svg";
 import bilibiliIcon from "./assets/bilibili.svg";
 import ProcessManager from "./components/ProcessManager";
 import SettingsManager from "./components/SettingsManager";
+import Diagnostics from "./components/Diagnostics";
 import { useShortcut } from "./hooks/useShortcut";
 import { useTray } from "./hooks/useTray";
 import { useSettings } from "./hooks/useSettings";
@@ -147,6 +148,19 @@ function App() {
     invoke<boolean>("bridge32_health").catch(() => false).then(setB32);
   }, []);
 
+  // The Rust side starts with the local control listener down in every
+  // process. A persisted `remote.control = true` must re-arm it on every
+  // start, otherwise the switch says "on" while nothing is listening. Keyed
+  // on the settings load transition so it runs exactly once and does not
+  // regenerate the token when the user toggles the switch later.
+  const settingsLoaded = settings !== null;
+  useEffect(() => {
+    if (!settingsLoaded || settings?.["remote.control"] !== true) return;
+    invoke("remote_enable", { enabled: true })
+      .catch(e => void reportError("remote", "remote_enable on startup failed", String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoaded]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -159,6 +173,7 @@ function App() {
               sx={{ minWidth: 72, "& .MuiTab-root": { minHeight: 56 } }}>
               <Tab icon={<SpeedIcon />} label={t("app.tabs.speed")} />
               <Tab icon={<SettingsIcon />} label={t("app.tabs.settings")} />
+              <Tab icon={<BugReportIcon />} label={t("app.tabs.diagnostics")} />
               <Tab icon={<InfoIcon />} label={t("app.tabs.about")} />
             </Tabs>
             <Box sx={{ flex: 1 }} />
@@ -181,7 +196,9 @@ function App() {
 
             {tab === 1 && <SettingsManager />}
 
-            {tab === 2 && (
+            {tab === 2 && <Diagnostics />}
+
+            {tab === 3 && (
               <Box sx={{ flex: 1, width: "100%", overflow: "auto" }}>
                 <Box sx={{ maxWidth: 400, mx: "auto", mt: 8, textAlign: "center", px: 2 }}>
                   <Box component="img" src={appIcon} sx={{ width: 80, height: 80, mb: 1 }} />
