@@ -3,9 +3,56 @@
 //! - Host arch: cmake crate auto-detects the compiler
 //! - Cross arch: cmake -A to target the other platform
 
+use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
+
+/// MSBuild copies the whole environment into a case-insensitive dictionary
+/// before it starts `cl.exe`. An environment that carries both `HTTPS_PROXY`
+/// and `https_proxy` therefore fails with "an item with the same key has
+/// already been added" and the compiler never starts — the native build then
+/// dies with the unhelpful "No CMAKE_C_COMPILER could be found".
+///
+/// On Windows those two names are the *same* variable, so keeping either one
+/// is equivalent; the duplicate is simply dropped here. Without this the
+/// native build depends on how the shell happened to be set up.
+fn dedupe_env_by_case() {
+    let mut seen: HashSet<String> = HashSet::new();
+    let duplicates: Vec<String> = env::vars()
+        .filter_map(|(key, _)| {
+            if seen.insert(key.to_ascii_lowercase()) {
+                None
+            } else {
+                Some(key)
+            }
+        })
+        .collect();
+    for key in duplicates {
+        println!("cargo:warning=dropping duplicate env var (differs only in case): {key}");
+        env::remove_var(&key);
+    }
+}
+
+/// Point the native build at a temp directory it is allowed to write to.
+///
+/// MSBuild creates a scratch folder under %TEMP% before it starts the
+/// compiler. Where the environment denies directory creation there, MSBuild
+/// dies with "UnauthorizedAccessException" while creating MSBuildTemp*, and
+/// the whole native build fails with a misleading "No CMAKE_C_COMPILER could
+/// be found". A scratch directory inside the cargo target dir is always
+/// writable, so the native tools are pointed there instead.
+fn use_writable_temp_dir(manifest_dir: &PathBuf, profile: &str) {
+    let dir = profile_dir(manifest_dir, profile).join("build-tmp");
+    if std::fs::create_dir_all(&dir).is_err() {
+        println!("cargo:warning=could not create {} — leaving %TEMP% in place", dir.display());
+        return;
+    }
+    let win = dir.to_string_lossy().to_string();
+    env::set_var("TEMP", &win);
+    env::set_var("TMP", &win);
+    println!("cargo:info=native build temp dir = {}", dir.display());
+}
 
 fn profile_dir(manifest_dir: &PathBuf, profile: &str) -> PathBuf {
     // Inherited from the caller's environment; Cargo does not set it for build
@@ -145,6 +192,42 @@ fn cargo_build_bridge(bridge_dir: &PathBuf, profile: &str, target: Option<&str>)
     Some((label.to_string(), src))
 }
 
+/// Whether the 32-bit Windows target can be cross-compiled.
+///
+/// `rustup` is the usual way to ask, but a plain toolchain install has no
+/// rustup at all — and then the check would silently report "not installed"
+/// even though the target's standard library sits right there in the
+/// toolchain. Ask rustc for the target's lib directory instead and look for
+/// the standard library in it.
+fn has_i686_target() -> bool {
+    let target = "i686-pc-windows-msvc";
+
+    if let Ok(out) = Command::new("rustup").args(["target", "list", "--installed"]).output() {
+        if String::from_utf8_lossy(&out.stdout).contains(target) {
+            return true;
+        }
+    }
+
+    let out = match Command::new("rustc")
+        .args(["--print", "target-libdir", "--target", target])
+        .output()
+    {
+        Ok(out) if out.status.success() => out,
+        _ => return false,
+    };
+    let libdir = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
+    libdir.is_dir()
+        && std::fs::read_dir(&libdir)
+            .map(|entries| {
+                entries.flatten().any(|e| {
+                    e.file_name()
+                        .to_string_lossy()
+                        .starts_with("libstd-")
+                })
+            })
+            .unwrap_or(false)
+}
+
 /// Build Rust bridge for host arch (→ bridge64.exe) and optionally i686 (→ bridge32.exe).
 fn build_rust_bridge(manifest_dir: &PathBuf, profile: &str) {
     let bridge_dir = manifest_dir.join("../src-bridge");
@@ -158,10 +241,7 @@ fn build_rust_bridge(manifest_dir: &PathBuf, profile: &str) {
     }
 
     // --- 32-bit (cross-compile if i686 target installed) ---
-    let check = Command::new("rustup").args(["target", "list", "--installed"]).output();
-    let has_i686 = check.map(|o| {
-        String::from_utf8_lossy(&o.stdout).contains("i686-pc-windows-msvc")
-    }).unwrap_or(false);
+    let has_i686 = has_i686_target();
 
     if has_i686 {
         if let Some((_, src)) = cargo_build_bridge(&bridge_dir, profile, Some("i686-pc-windows-msvc")) {
@@ -176,6 +256,8 @@ fn build_rust_bridge(manifest_dir: &PathBuf, profile: &str) {
 }
 
 fn main() {
+    dedupe_env_by_case();
+
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
 
     match target_arch.as_str() {
@@ -189,6 +271,7 @@ fn main() {
 
     let profile = env::var("PROFILE").unwrap();
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    use_writable_temp_dir(&manifest_dir, &profile);
 
     // --- speedpatch DLLs (C++ / cmake) ---
     build_project(&manifest_dir, &profile, target_arch.as_str(),
