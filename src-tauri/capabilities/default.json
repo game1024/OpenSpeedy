@@ -5,7 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default",
+    "opener:allow-reveal-item-in-dir",
     "core:window:default",
     "core:window:allow-close",
     "core:window:allow-minimize",
@@ -23,7 +23,6 @@
     "global-shortcut:allow-unregister-all",
     "store:default",
     "autostart:default",
-    "shell:default",
     "shell:allow-open",
     "os:default",
     "os:allow-locale",

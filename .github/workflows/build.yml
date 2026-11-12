@@ -45,6 +45,13 @@ jobs:
           $ver = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
           echo "version=$ver" >> $env:GITHUB_OUTPUT
 
+      - name: Clean stale bundled binaries
+        # The bundler reads src-tauri/binaries/ verbatim; a debug build or a
+        # cached copy left there would otherwise be packaged into the release
+        # MSI. The release build script regenerates these files, so deleting
+        # any stale copy is safe and guarantees a clean payload.
+        run: Remove-Item src-tauri/binaries/* -Recurse -Force -ErrorAction SilentlyContinue
+
       - name: Build
         run: npx tauri build
 
