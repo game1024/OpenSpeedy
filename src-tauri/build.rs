@@ -287,21 +287,31 @@ fn main() {
     println!("cargo:rerun-if-changed=../src-bridge/third_party/minhook/");
     println!("cargo:rerun-if-changed=../src-bridge/src/");
 
-    // Copy binaries to resources folder for Tauri bundling
-    let bin_dir = manifest_dir.join("binaries");
-    let _ = std::fs::create_dir_all(&bin_dir);
-    let prof_dir = profile_dir(&manifest_dir, &profile);
-    for name in &["speedpatch32.dll", "speedpatch64.dll", "bridge32.exe", "bridge64.exe"] {
-        let src = prof_dir.join(name);
-        if src.exists() {
-            let dst = bin_dir.join(name);
-            // A failed copy used to be ignored while the build still reported
-            // success, bundling a stale or missing DLL/bridge. Every other
-            // copy in this file fails loudly; do the same here.
-            std::fs::copy(&src, &dst).unwrap_or_else(|e| {
-                panic!("copy {} -> {} failed: {}", src.display(), dst.display(), e);
-            });
-            println!("cargo:info=  resource -> {}", dst.display());
+    // Copy binaries to resources folder for Tauri bundling.
+    //
+    // Only a non-debug profile owns this folder. The bundler reads it when it
+    // packages the installer, so whatever sits here is what gets shipped. A
+    // debug build (`cargo build`, `cargo test`) writing here would replace the
+    // release payload with debug binaries — and since the release build
+    // script is cached the next time, the installer would quietly ship the
+    // debug ones. The app looks for its bridge next to the executable, so the
+    // debug profile has no use for these files.
+    if profile != "debug" {
+        let bin_dir = manifest_dir.join("binaries");
+        let _ = std::fs::create_dir_all(&bin_dir);
+        let prof_dir = profile_dir(&manifest_dir, &profile);
+        for name in &["speedpatch32.dll", "speedpatch64.dll", "bridge32.exe", "bridge64.exe"] {
+            let src = prof_dir.join(name);
+            if src.exists() {
+                let dst = bin_dir.join(name);
+                // A failed copy used to be ignored while the build still reported
+                // success, bundling a stale or missing DLL/bridge. Every other
+                // copy in this file fails loudly; do the same here.
+                std::fs::copy(&src, &dst).unwrap_or_else(|e| {
+                    panic!("copy {} -> {} failed: {}", src.display(), dst.display(), e);
+                });
+                println!("cargo:info=  resource -> {}", dst.display());
+            }
         }
     }
 

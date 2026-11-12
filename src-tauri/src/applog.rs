@@ -409,6 +409,29 @@ pub fn init() {
 mod tests {
     use super::*;
 
+    /// A directory this test may write to.
+    ///
+    /// `std::env::temp_dir()` is the obvious choice, but it is not writable
+    /// everywhere: on managed machines a test process can be denied directory
+    /// creation under %TEMP%, and the test then fails for a reason that has
+    /// nothing to do with what it checks. Fall back to the cargo target
+    /// directory, which is always writable, and only then give up.
+    fn scratch_dir(name: &str) -> std::path::PathBuf {
+        let candidates = [
+            std::env::var_os("CARGO_TARGET_TMPDIR").map(std::path::PathBuf::from),
+            Some(std::env::temp_dir()),
+            Some(std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target")),
+        ];
+        for base in candidates.into_iter().flatten() {
+            let dir = base.join(name);
+            let _ = std::fs::remove_dir_all(&dir);
+            if std::fs::create_dir_all(&dir).is_ok() {
+                return dir;
+            }
+        }
+        panic!("no writable scratch directory for the test");
+    }
+
     #[test]
     fn one_line_keeps_a_record_on_a_single_line() {
         assert_eq!(one_line("first\nsecond\tthird"), "first second third");
@@ -458,9 +481,7 @@ mod tests {
 
     #[test]
     fn prune_keeps_the_most_recent_days() {
-        let dir = std::env::temp_dir().join(format!("openspeedy-prune-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("create temp log dir");
+        let dir = scratch_dir(&format!("openspeedy-prune-{}", std::process::id()));
 
         // One more file than is kept, plus names that must be left alone.
         let day = |d: u32| format!("202609{d:02}");
