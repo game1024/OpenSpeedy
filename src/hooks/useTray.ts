@@ -131,6 +131,8 @@ export function useTray() {
       if (!live) unlistenClose();
     })();
 
+    // Startup may keep the current language, so initialize the tray explicitly.
+    void tray();
     i18n.on("languageChanged", rebuildMenu);
     return () => {
       live = false;
