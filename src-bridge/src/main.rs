@@ -485,3 +485,28 @@ fn main() {
     }
     pipe_server();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn speed_control_requires_explicit_enable() {
+        do_set_speed(100.0);
+        assert_eq!(do_get_speed(), 100.0);
+
+        let dll_wide = to_wide(OWN_SPEEDPATCH);
+        let module = unsafe { GetModuleHandleW(PCWSTR(dll_wide.as_ptr())) }.unwrap();
+        let is_enabled: unsafe extern "C" fn() -> i32 = unsafe {
+            std::mem::transmute(GetProcAddress(module, s!("SP_IsEnabled")).unwrap())
+        };
+        assert_eq!(unsafe { is_enabled() }, 0, "loading the DLL must not accelerate the bridge");
+
+        let pid = std::process::id();
+        do_enable(pid).unwrap();
+        assert_ne!(unsafe { is_enabled() }, 0);
+        do_disable(pid).unwrap();
+        assert_eq!(unsafe { is_enabled() }, 0);
+        do_set_speed(1.0);
+    }
+}

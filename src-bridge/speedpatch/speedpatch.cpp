@@ -73,7 +73,8 @@ void SP_Install()
         hFileMap = NULL;
         return;
     }
-    *pEnabled = true;
+    // The bridge also loads this DLL; targets are enabled explicitly by SP_Enable.
+    *pEnabled = false;
 }
 
 void SP_Uninstall()
