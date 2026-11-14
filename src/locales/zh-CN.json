@@ -94,7 +94,7 @@
     "silentAutostart": "静默启动",
     "silentAutostartHint": "开机自启动时不显示主窗口，仅在系统托盘中运行。",
     "alwaysOnTop": "窗口置顶",
-    "hideToTray": "隐藏托盘",
+    "hideToTray": "隐藏到托盘",
     "language": "语言",
     "registerSuccess": "快捷键 \"{{shortcut}}\" 注册成功",
     "registerFail": "快捷键 \"{{shortcut}}\" 注册失败",

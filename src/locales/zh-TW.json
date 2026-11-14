@@ -90,7 +90,7 @@
     "silentAutostart": "靜默啟動",
     "silentAutostartHint": "開機自動啟動時不顯示主視窗，僅在工作列通知區域中執行。",
     "alwaysOnTop": "視窗最上層",
-    "hideToTray": "關閉至系統匣",
+    "hideToTray": "隱藏至系統匣",
     "language": "語言",
     "registerSuccess": "快速鍵 \"{{shortcut}}\" 註冊成功",
     "registerFail": "快速鍵 \"{{shortcut}}\" 註冊失敗",
