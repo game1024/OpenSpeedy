@@ -94,7 +94,7 @@
     "silentAutostart": "साइलेंट स्टार्ट",
     "silentAutostartHint": "Windows के साथ शुरू होने पर मुख्य विंडो छिपी रहती है और ऐप केवल सिस्टम ट्रे में चलता है।",
     "alwaysOnTop": "हमेशा सबसे ऊपर",
-    "hideToTray": "ट्रे में छिपाएँ",
+    "hideToTray": "विंडो बंद करते समय ट्रे में छिपाएँ",
     "language": "भाषा",
     "registerSuccess": "शॉर्टकट \"{{shortcut}}\" पंजीकृत",
     "registerFail": "शॉर्टकट \"{{shortcut}}\" पंजीकरण विफल",

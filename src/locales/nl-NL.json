@@ -94,7 +94,7 @@
     "silentAutostart": "Stille start",
     "silentAutostartHint": "Bij het opstarten met Windows blijft het hoofdvenster verborgen en draait de app alleen in het systeemvak.",
     "alwaysOnTop": "Altijd op voorgrond",
-    "hideToTray": "Verbergen in systeemvak",
+    "hideToTray": "Bij sluiten verbergen in systeemvak",
     "language": "Taal",
     "registerSuccess": "Sneltoets \"{{shortcut}}\" geregistreerd",
     "registerFail": "Sneltoets \"{{shortcut}}\" registratie mislukt",

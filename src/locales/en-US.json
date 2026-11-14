@@ -94,7 +94,7 @@
     "silentAutostart": "Silent Start",
     "silentAutostartHint": "When Windows starts the app, keep the main window hidden and run in the tray only.",
     "alwaysOnTop": "Always on Top",
-    "hideToTray": "Hide to tray",
+    "hideToTray": "Hide to tray when closing the window",
     "language": "Language",
     "registerSuccess": "Shortcut \"{{shortcut}}\" registered",
     "registerFail": "Shortcut \"{{shortcut}}\" registration failed",

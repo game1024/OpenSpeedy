@@ -96,7 +96,7 @@
     "silentAutostart": "자동 시작 시 숨김",
     "silentAutostartHint": "Windows 시작 시 기본 창을 표시하지 않고 트레이에서만 실행합니다.",
     "alwaysOnTop": "항상 위",
-    "hideToTray": "트레이로 숨기기",
+    "hideToTray": "창을 닫을 때 트레이로 숨기기",
     "language": "언어",
     "registerSuccess": "단축키 \"{{shortcut}}\" 등록 성공",
     "registerFail": "단축키 \"{{shortcut}}\" 등록 실패",
