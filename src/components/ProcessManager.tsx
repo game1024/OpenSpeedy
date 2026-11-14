@@ -17,6 +17,7 @@ import SpeedPanel from "./SpeedPanel";
 import ProcessDetail from "./ProcessDetail";
 import { useSettings, useSpeed } from "../hooks/useSettings";
 import { getAcceleratedNames, addAcceleratedName, removeAcceleratedName } from "../store/process";
+import { withoutHiddenProcesses } from "../utils/processFilter";
 
 // ── Types & constants ────────────────────────────────────────────────────
 
@@ -345,9 +346,21 @@ export default function ProcessManager() {
   }
 
   // Data fetch
-  useEffect(() => { invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {}); }, []);
-  useEffect(() => { if (search.trim()) { invoke<ProcessInfo[]>("get_process_list").then(setProcesses).catch(() => {}); } }, [search]);
-  useInterval(async () => { try { setProcesses(await invoke<ProcessInfo[]>("get_process_list_fast")); } catch {} }, 1000);
+  useEffect(() => {
+    invoke<ProcessInfo[]>("get_process_list")
+      .then(list => setProcesses(withoutHiddenProcesses(list)))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (search.trim()) {
+      invoke<ProcessInfo[]>("get_process_list")
+        .then(list => setProcesses(withoutHiddenProcesses(list)))
+        .catch(() => {});
+    }
+  }, [search]);
+  useInterval(async () => {
+    try { setProcesses(withoutHiddenProcesses(await invoke<ProcessInfo[]>("get_process_list_fast"))); } catch {}
+  }, 1000);
 
   // Periodically inject saved process names
   useInterval(async () => {

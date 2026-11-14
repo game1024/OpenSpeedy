@@ -13,6 +13,7 @@ import {
   exeBase, exeKey, nextProfileName, occupiedBy, PROFILE_NAME_MAX, validateProfileName,
   type NameError, type ShortcutProfile,
 } from "../shortcutProfile";
+import { isHiddenProcess, withoutHiddenProcesses } from "../utils/processFilter";
 
 interface ProcessInfo {
   pid: number;
@@ -43,11 +44,12 @@ export default function ShortcutProfileDialog({ open, profiles, initial, onCance
   useEffect(() => {
     if (!open) return;
     setName(initial?.name ?? nextProfileName(profiles, n => t("settings.profileDefaultName", { n })));
-    setPicked((initial?.processes ?? []).map(exeBase).filter(Boolean));
+    // Drop helpers saved by older builds so they cannot resurface in the list.
+    setPicked((initial?.processes ?? []).map(exeBase).filter(label => label && !isHiddenProcess(label)));
     setQuery("");
     setShowSystem(false);
     let stop = false;
-    const apply = (list: ProcessInfo[]) => { if (!stop) setProcesses(list); };
+    const apply = (list: ProcessInfo[]) => { if (!stop) setProcesses(withoutHiddenProcesses(list)); };
     // Full scan once, so a pid cached earlier with no memory reading is filled in.
     // Fast polls after that pick up processes started while the dialog stays open.
     invoke<ProcessInfo[]>("get_process_list").then(apply).catch(() => {});
