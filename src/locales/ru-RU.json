@@ -94,7 +94,7 @@
     "silentAutostart": "Тихий запуск",
     "silentAutostartHint": "При запуске с Windows главное окно остаётся скрытым — приложение работает только в трее.",
     "alwaysOnTop": "Поверх всех окон",
-    "hideToTray": "Скрывать в трей при закрытии окна",
+    "hideToTray": "Скрывать в трей",
     "language": "Язык",
     "registerSuccess": "Сочетание \"{{shortcut}}\" зарегистрировано",
     "registerFail": "Ошибка регистрации \"{{shortcut}}\"",

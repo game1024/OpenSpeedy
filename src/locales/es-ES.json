@@ -94,7 +94,7 @@
     "silentAutostart": "Inicio silencioso",
     "silentAutostartHint": "Al iniciar con Windows, la ventana principal permanece oculta y la aplicación solo se ejecuta en la bandeja del sistema.",
     "alwaysOnTop": "Siempre Visible",
-    "hideToTray": "Ocultar en la bandeja al cerrar la ventana",
+    "hideToTray": "Ocultar en la bandeja",
     "language": "Idioma",
     "registerSuccess": "Atajo \"{{shortcut}}\" registrado",
     "registerFail": "Error al registrar atajo \"{{shortcut}}\"",

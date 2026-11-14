@@ -96,7 +96,7 @@
     "silentAutostart": "Démarrage silencieux",
     "silentAutostartHint": "Au démarrage avec Windows, la fenêtre principale reste masquée ; l'application s'exécute uniquement dans la zone de notification.",
     "alwaysOnTop": "Toujours au premier plan",
-    "hideToTray": "À la fermeture, réduire dans la zone de notification",
+    "hideToTray": "Réduire dans la zone de notification",
     "language": "Langue",
     "registerSuccess": "Raccourci \"{{shortcut}}\" enregistré",
     "registerFail": "Échec de l'enregistrement de \"{{shortcut}}\"",
