@@ -39,7 +39,48 @@ static std::atomic<double> pre_factor = 1.0;
 static HANDLE hFileMap;
 static bool*  pEnabled;
 
-inline VOID shouldUpdateAll();
+// Every hooked clock shares an anchor: (base real time, base virtual time,
+// factor). Rebasing that anchor must be atomic with respect to every reader.
+// Otherwise one call can pair the new factor with the old anchor and make a
+// clock jump backwards. Readers take the shared lock; the rare rebase takes
+// it exclusively.
+static std::shared_mutex timeMutex;
+
+template <typename T>
+struct ClockBase
+{
+    double factor = 1.0;
+    T real = 0;
+    T virt = 0;
+};
+
+template <typename T>
+inline T mapClock(const ClockBase<T>& base, T now)
+{
+    return base.virt + static_cast<T>(base.factor * (now - base.real));
+}
+
+// Rebuild the anchor under the exclusive lock. The sample is taken while the
+// lock is held, so no reader can observe a mix of old and new generations.
+template <typename T, typename Sample>
+inline void ensureClockBase(std::shared_lock<std::shared_mutex>& lock, ClockBase<T>& base, Sample sample)
+{
+    if (base.factor == SpeedFactor())
+    {
+        return;
+    }
+    lock.unlock();
+    std::unique_lock<std::shared_mutex> update(timeMutex);
+    if (base.factor != SpeedFactor())
+    {
+        T now = sample();
+        base.virt = base.virt + static_cast<T>(base.factor * (now - base.real));
+        base.real = now;
+        base.factor = SpeedFactor();
+    }
+    update.unlock();
+    lock.lock();
+}
 
 SPEEDPATCH_API void SP_SetSpeed(double factor_)
 {
@@ -245,11 +286,7 @@ UINT_PTR WINAPI Hook_SetTimer(HWND hWnd, UINT_PTR nIDEvent, UINT uElapse, TIMERP
     return Real_SetTimer(hWnd, nIDEvent, uElapse / SpeedFactor(), lpTimerFunc);
 }
 
-static std::atomic<DWORD> baseReal_TimeGetTime = 0;
-static std::atomic<DWORD> baseHook_TimeGetTime = 0;
-static std::atomic<DWORD> lastReal_TimeGetTime = 0;
-static std::atomic<DWORD> lastHook_TimeGetTime = 0;
-static std::atomic<bool> shouldUpdateTimeGetTime = false;
+static ClockBase<DWORD> clock_TimeGetTime;
 
 typedef DWORD (WINAPI* TIMEGETTIME) (VOID);
 
@@ -257,25 +294,9 @@ static TIMEGETTIME Real_TimeGetTime = NULL;
 
 DWORD WINAPI Hook_TimeGetTime(VOID)
 {
-
-    if (pre_factor != SpeedFactor())
-    {
-        pre_factor = SpeedFactor();
-        shouldUpdateAll();
-    }
-    bool expected = true;
-    if (shouldUpdateTimeGetTime.compare_exchange_weak(expected, false))
-    {
-        baseReal_TimeGetTime.store(lastReal_TimeGetTime.load());
-        baseHook_TimeGetTime.store(lastHook_TimeGetTime.load());
-    }
-    DWORD now = Real_TimeGetTime();
-    lastReal_TimeGetTime.store(now);
-    DWORD baseReal = baseReal_TimeGetTime.load();
-    DWORD delta = SpeedFactor() * (now - baseReal);
-    DWORD baseHook = baseHook_TimeGetTime.load();
-    lastHook_TimeGetTime.store(baseHook + delta);
-    return baseHook + delta;
+    std::shared_lock<std::shared_mutex> guard(timeMutex);
+    ensureClockBase(guard, clock_TimeGetTime, [] { return Real_TimeGetTime(); });
+    return mapClock(clock_TimeGetTime, Real_TimeGetTime());
 }
 
 typedef MMRESULT (WINAPI* TIMESETEVENT) (UINT, UINT, LPTIMECALLBACK, DWORD_PTR, UINT);
@@ -303,7 +324,7 @@ LONG WINAPI Hook_GetMessageTime(VOID)
     if (pre_factor != SpeedFactor())
     {
         pre_factor = SpeedFactor();
-        shouldUpdateAll();
+        shouldUpdateGetMessageTime = true;
     }
     bool expected = true;
     if (shouldUpdateGetMessageTime.compare_exchange_weak(expected, false))
@@ -320,11 +341,7 @@ LONG WINAPI Hook_GetMessageTime(VOID)
     return baseHook + delta;
 }
 
-static std::atomic<DWORD> baseReal_GetTickCount = 0;
-static std::atomic<DWORD> baseHook_GetTickCount = 0;
-static std::atomic<DWORD> lastReal_GetTickCount = 0;
-static std::atomic<DWORD> lastHook_GetTickCount = 0;
-static std::atomic<bool> shouldUpdateGetTickCount = false;
+static ClockBase<DWORD> clock_GetTickCount;
 
 typedef DWORD (WINAPI* GETTICKCOUNT) (VOID);
 
@@ -332,32 +349,12 @@ static GETTICKCOUNT Real_GetTickCount = NULL;
 
 DWORD WINAPI Hook_GetTickCount(VOID)
 {
-
-    if (pre_factor != SpeedFactor())
-    {
-        pre_factor = SpeedFactor();
-        shouldUpdateAll();
-    }
-    bool expected = true;
-    if (shouldUpdateGetTickCount.compare_exchange_weak(expected, false))
-    {
-        baseReal_GetTickCount.store(lastReal_GetTickCount.load());
-        baseHook_GetTickCount.store(lastHook_GetTickCount.load());
-    }
-    DWORD now = Real_GetTickCount();
-    lastReal_GetTickCount.store(now);
-    DWORD baseReal = baseReal_GetTickCount.load();
-    DWORD delta = SpeedFactor() * (now - baseReal);
-    DWORD baseHook = baseHook_GetTickCount.load();
-    lastHook_GetTickCount.store(baseHook + delta);
-    return baseHook + delta;
+    std::shared_lock<std::shared_mutex> guard(timeMutex);
+    ensureClockBase(guard, clock_GetTickCount, [] { return Real_GetTickCount(); });
+    return mapClock(clock_GetTickCount, Real_GetTickCount());
 }
 
-static std::atomic<ULONGLONG> baseReal_GetTickCount64 = 0;
-static std::atomic<ULONGLONG> baseHook_GetTickCount64 = 0;
-static std::atomic<ULONGLONG> lastReal_GetTickCount64 = 0;
-static std::atomic<ULONGLONG> lastHook_GetTickCount64 = 0;
-std::atomic<bool> shouldUpdateGetTickCount64 = false;
+static ClockBase<ULONGLONG> clock_GetTickCount64;
 
 typedef ULONGLONG (WINAPI* GETTICKCOUNT64) (VOID);
 
@@ -365,32 +362,12 @@ static GETTICKCOUNT64 Real_GetTickCount64 = NULL;
 
 ULONGLONG WINAPI Hook_GetTickCount64(VOID)
 {
-
-    if (pre_factor != SpeedFactor())
-    {
-        pre_factor = SpeedFactor();
-        shouldUpdateAll();
-    }
-    bool expected = true;
-    if (shouldUpdateGetTickCount64.compare_exchange_weak(expected, false))
-    {
-        baseReal_GetTickCount64.store(lastReal_GetTickCount64.load());
-        baseHook_GetTickCount64.store(lastHook_GetTickCount64.load());
-    }
-    ULONGLONG now = Real_GetTickCount64();
-    lastReal_GetTickCount64.store(now);
-    ULONGLONG baseReal = baseReal_GetTickCount64.load();
-    ULONGLONG delta = SpeedFactor() * (now - baseReal);
-    ULONGLONG baseHook = baseHook_GetTickCount64.load();
-    lastHook_GetTickCount64.store(baseHook + delta);
-    return baseHook + delta;
+    std::shared_lock<std::shared_mutex> guard(timeMutex);
+    ensureClockBase(guard, clock_GetTickCount64, [] { return Real_GetTickCount64(); });
+    return mapClock(clock_GetTickCount64, Real_GetTickCount64());
 }
 
-static std::atomic<LARGE_INTEGER> baseReal_QueryPerformanceCounter{};
-static std::atomic<LARGE_INTEGER> baseHook_QueryPerformanceCounter{};
-static std::atomic<LARGE_INTEGER> lastReal_QueryPerformanceCounter{};
-static std::atomic<LARGE_INTEGER> lastHook_QueryPerformanceCounter{};
-static std::atomic<bool> shouldUpdateQueryPerformanceCounter = false;
+static ClockBase<LONGLONG> clock_QueryPerformanceCounter;
 
 typedef BOOL (WINAPI* QUERYPERFORMANCECOUNTER) (LARGE_INTEGER*);
 
@@ -398,41 +375,25 @@ static QUERYPERFORMANCECOUNTER Real_QueryPerformanceCounter = NULL;
 
 BOOL WINAPI Hook_QueryPerformanceCounter(LARGE_INTEGER* lpPerformanceCount)
 {
-
     if (lpPerformanceCount == NULL)
     {
         return FALSE;
     }
-    if (pre_factor != SpeedFactor())
-    {
-        pre_factor = SpeedFactor();
-        shouldUpdateAll();
-    }
-    // 更新基准时间点
-    bool expected = true;
-    if (shouldUpdateQueryPerformanceCounter.compare_exchange_weak(expected, false))
-    {
-        baseReal_QueryPerformanceCounter.store(lastReal_QueryPerformanceCounter.load());
-        baseHook_QueryPerformanceCounter.store(lastHook_QueryPerformanceCounter.load());
-    }
+    std::shared_lock<std::shared_mutex> guard(timeMutex);
+    ensureClockBase(guard, clock_QueryPerformanceCounter, [] {
+        LARGE_INTEGER now;
+        Real_QueryPerformanceCounter(&now);
+        return now.QuadPart;
+    });
     LARGE_INTEGER now;
     BOOL rtncode = Real_QueryPerformanceCounter(&now);
-    lastReal_QueryPerformanceCounter.store(now);
-    LARGE_INTEGER baseReal = baseReal_QueryPerformanceCounter.load();
-    LARGE_INTEGER baseHook = baseHook_QueryPerformanceCounter.load();
-    LONGLONG delta = SpeedFactor() * (now.QuadPart - baseReal.QuadPart);
     LARGE_INTEGER result;
-    result.QuadPart = baseHook.QuadPart + delta;
+    result.QuadPart = mapClock(clock_QueryPerformanceCounter, now.QuadPart);
     *lpPerformanceCount = result;
-    lastHook_QueryPerformanceCounter.store(result);
     return rtncode;
 }
 
-static std::atomic<FILETIME> baseReal_GetSystemTimeAsFileTime({ 0 });
-static std::atomic<FILETIME> baseHook_GetSystemTimeAsFileTime({ 0 });
-static std::atomic<FILETIME> lastReal_GetSystemTimeAsFileTime({ 0 });
-static std::atomic<FILETIME> lastHook_GetSystemTimeAsFileTime({ 0 });
-static std::atomic<bool> shouldUpdateGetSystemTimeAsFileTime = false;
+static ClockBase<ULONGLONG> clock_GetSystemTimeAsFileTime;
 
 typedef VOID (WINAPI* GETSYSTEMTIMEASFILETIME) (LPFILETIME);
 
@@ -440,43 +401,26 @@ static GETSYSTEMTIMEASFILETIME Real_GetSystemTimeAsFileTime = NULL;
 
 VOID WINAPI Hook_GetSystemTimeAsFileTime(LPFILETIME lpSystemTimeAsFileTime)
 {
-
     if (lpSystemTimeAsFileTime == NULL)
     {
         return;
     }
-    if (pre_factor != SpeedFactor())
-    {
-        pre_factor = SpeedFactor();
-        shouldUpdateAll();
-    }
-    bool expected = true;
-    if (shouldUpdateGetSystemTimeAsFileTime.compare_exchange_weak(expected, false))
-    {
-        baseReal_GetSystemTimeAsFileTime.store(lastReal_GetSystemTimeAsFileTime.load());
-        baseHook_GetSystemTimeAsFileTime.store(lastHook_GetSystemTimeAsFileTime.load());
-    }
-    // 从全局变量读取基准点快照到线程栈
-    FILETIME baseReal_Snapshot = baseReal_GetSystemTimeAsFileTime.load();
-    ULARGE_INTEGER baseReal_ = { baseReal_Snapshot.dwLowDateTime, baseReal_Snapshot.dwHighDateTime };
-    FILETIME baseHook_Snapshot = baseHook_GetSystemTimeAsFileTime.load();
-    ULARGE_INTEGER baseHook_ = { baseHook_Snapshot.dwLowDateTime, baseHook_Snapshot.dwHighDateTime };
+    std::shared_lock<std::shared_mutex> guard(timeMutex);
+    ensureClockBase(guard, clock_GetSystemTimeAsFileTime, [] {
+        FILETIME now = { 0 };
+        Real_GetSystemTimeAsFileTime(&now);
+        ULARGE_INTEGER value = { now.dwLowDateTime, now.dwHighDateTime };
+        return value.QuadPart;
+    });
     FILETIME ftNow = { 0 };
     Real_GetSystemTimeAsFileTime(&ftNow);
-    lastReal_GetSystemTimeAsFileTime.store(ftNow);
     ULARGE_INTEGER ulNow = { ftNow.dwLowDateTime, ftNow.dwHighDateTime };
-    ULONGLONG delta = SpeedFactor() * (ulNow.QuadPart - baseReal_.QuadPart);
     ULARGE_INTEGER ulRtn = { 0 };
-    ulRtn.QuadPart = baseHook_.QuadPart + delta;
-    lastHook_GetSystemTimeAsFileTime.store({ ulRtn.LowPart, ulRtn.HighPart });
+    ulRtn.QuadPart = mapClock(clock_GetSystemTimeAsFileTime, ulNow.QuadPart);
     (*lpSystemTimeAsFileTime) = { ulRtn.LowPart, ulRtn.HighPart };
 }
 
-static std::atomic<FILETIME> baseReal_GetSystemTimePreciseAsFileTime({ 0 });
-static std::atomic<FILETIME> baseHook_GetSystemTimePreciseAsFileTime({ 0 });
-static std::atomic<FILETIME> lastReal_GetSystemTimePreciseAsFileTime({ 0 });
-static std::atomic<FILETIME> lastHook_GetSystemTimePreciseAsFileTime({ 0 });
-static std::atomic<bool> shouldUpdateGetSystemTimePreciseAsFileTime = false;
+static ClockBase<ULONGLONG> clock_GetSystemTimePreciseAsFileTime;
 
 typedef VOID (WINAPI* GETSYSTEMTIMEPRECISEASFILETIME) (LPFILETIME);
 
@@ -484,35 +428,22 @@ static GETSYSTEMTIMEPRECISEASFILETIME Real_GetSystemTimePreciseAsFileTime = NULL
 
 VOID WINAPI Hook_GetSystemTimePreciseAsFileTime(LPFILETIME lpSystemTimeAsFileTime)
 {
-
     if (lpSystemTimeAsFileTime == NULL)
     {
         return;
     }
-    if (pre_factor != SpeedFactor())
-    {
-        pre_factor = SpeedFactor();
-        shouldUpdateAll();
-    }
-    bool expected = true;
-    if (shouldUpdateGetSystemTimePreciseAsFileTime.compare_exchange_weak(expected, false))
-    {
-        baseReal_GetSystemTimePreciseAsFileTime.store(lastReal_GetSystemTimePreciseAsFileTime.load());
-        baseHook_GetSystemTimePreciseAsFileTime.store(lastHook_GetSystemTimePreciseAsFileTime.load());
-    }
-    // 从全局变量读取基准点快照到线程栈
-    FILETIME baseReal_Snapshot = baseReal_GetSystemTimePreciseAsFileTime.load();
-    ULARGE_INTEGER baseReal_ = { baseReal_Snapshot.dwLowDateTime, baseReal_Snapshot.dwHighDateTime };
-    FILETIME baseHook_Snapshot = baseHook_GetSystemTimePreciseAsFileTime.load();
-    ULARGE_INTEGER baseHook_ = { baseHook_Snapshot.dwLowDateTime, baseHook_Snapshot.dwHighDateTime };
+    std::shared_lock<std::shared_mutex> guard(timeMutex);
+    ensureClockBase(guard, clock_GetSystemTimePreciseAsFileTime, [] {
+        FILETIME now = { 0 };
+        Real_GetSystemTimePreciseAsFileTime(&now);
+        ULARGE_INTEGER value = { now.dwLowDateTime, now.dwHighDateTime };
+        return value.QuadPart;
+    });
     FILETIME ftNow = { 0 };
     Real_GetSystemTimePreciseAsFileTime(&ftNow);
-    lastReal_GetSystemTimePreciseAsFileTime.store(ftNow);
     ULARGE_INTEGER ulNow = { ftNow.dwLowDateTime, ftNow.dwHighDateTime };
-    ULONGLONG delta = SpeedFactor() * (ulNow.QuadPart - baseReal_.QuadPart);
     ULARGE_INTEGER ulRtn = { 0 };
-    ulRtn.QuadPart = baseHook_.QuadPart + delta;
-    lastHook_GetSystemTimePreciseAsFileTime.store({ ulRtn.LowPart, ulRtn.HighPart });
+    ulRtn.QuadPart = mapClock(clock_GetSystemTimePreciseAsFileTime, ulNow.QuadPart);
     (*lpSystemTimeAsFileTime) = { ulRtn.LowPart, ulRtn.HighPart };
 }
 
@@ -544,17 +475,6 @@ BOOL WINAPI Hook_SetWaitableTimerEx(HANDLE hTimer, const LARGE_INTEGER* lpDueTim
     LARGE_INTEGER dueTime = {0};
     dueTime.QuadPart = lpDueTime->QuadPart / SpeedFactor();
     return Real_SetWaitableTimerEx(hTimer, &dueTime, lPeriod, pfnCompletionRoutine, lpArgToCompletionRoutine, WakeContext, TolerableDelay);
-}
-
-inline VOID shouldUpdateAll()
-{
-    shouldUpdateTimeGetTime = true;
-    shouldUpdateGetMessageTime = true;
-    shouldUpdateGetTickCount = true;
-    shouldUpdateGetTickCount64 = true;
-    shouldUpdateQueryPerformanceCounter = true;
-    shouldUpdateGetSystemTimeAsFileTime = true;
-    shouldUpdateGetSystemTimePreciseAsFileTime = true;
 }
 
 // 记录 hook 安装失败。DllMain 运行在加载器锁里：既不能弹 MessageBox（模态框会把
@@ -614,55 +534,35 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         }
         SP_Install();
         {
-            /* Initial timeGetTime */
+            /* Seed every anchor at 1x. If a factor is already set, the first
+               call to each hook rebases against the real clock before it
+               returns a value. GetMessageTime keeps its own per-thread path. */
             DWORD tgt = timeGetTime();
-            baseReal_TimeGetTime.store(tgt);
-            lastReal_TimeGetTime.store(tgt);
-            baseHook_TimeGetTime.store(tgt);
-            lastHook_TimeGetTime.store(tgt);
+            clock_TimeGetTime = { 1.0, tgt, tgt };
 
-            /* Initial GetMessageTime */
             LONG gmt = GetMessageTime();
             baseReal_GetMessageTime.store(gmt);
             lastReal_GetMessageTime.store(gmt);
             baseHook_GetMessageTime.store(gmt);
             lastHook_GetMessageTime.store(gmt);
 
-            /* Initial GetTickCount */
             DWORD tck = GetTickCount();
-            baseReal_GetTickCount.store(tck);
-            lastReal_GetTickCount.store(tck);
-            baseHook_GetTickCount.store(tck);
-            lastHook_GetTickCount.store(tck);
+            clock_GetTickCount = { 1.0, tck, tck };
 
-            /* Initial GetTickCount64 */
             ULONGLONG tck64 = GetTickCount64();
-            baseReal_GetTickCount64.store(tck64);
-            lastReal_GetTickCount64.store(tck64);
-            baseHook_GetTickCount64.store(tck64);
-            lastHook_GetTickCount64.store(tck64);
+            clock_GetTickCount64 = { 1.0, tck64, tck64 };
 
-            /* Initial QueryPerformanceCounter */
             LARGE_INTEGER qpc;
             QueryPerformanceCounter(&qpc);
-            baseReal_QueryPerformanceCounter.store(qpc);
-            lastReal_QueryPerformanceCounter.store(qpc);
-            baseHook_QueryPerformanceCounter.store(qpc);
-            lastHook_QueryPerformanceCounter.store(qpc);
+            clock_QueryPerformanceCounter = { 1.0, qpc.QuadPart, qpc.QuadPart };
 
-            /* Initial GetSystemTimeAsFileTime */
             GetSystemTimeAsFileTime(&now);
-            baseReal_GetSystemTimeAsFileTime.store(now);
-            lastReal_GetSystemTimeAsFileTime.store(now);
-            baseHook_GetSystemTimeAsFileTime.store(now);
-            lastHook_GetSystemTimeAsFileTime.store(now);
+            ULARGE_INTEGER ftNow = { now.dwLowDateTime, now.dwHighDateTime };
+            clock_GetSystemTimeAsFileTime = { 1.0, ftNow.QuadPart, ftNow.QuadPart };
 
-            /* Initial GetSystemTimePreciseAsFileTime */
             GetSystemTimePreciseAsFileTime(&now);
-            baseReal_GetSystemTimePreciseAsFileTime.store(now);
-            lastReal_GetSystemTimePreciseAsFileTime.store(now);
-        baseHook_GetSystemTimePreciseAsFileTime.store(now);
-        lastHook_GetSystemTimePreciseAsFileTime.store(now);
+            ULARGE_INTEGER ftPrecise = { now.dwLowDateTime, now.dwHighDateTime };
+            clock_GetSystemTimePreciseAsFileTime = { 1.0, ftPrecise.QuadPart, ftPrecise.QuadPart };
         }
 
         MH_HOOK(&Sleep, &Hook_Sleep, reinterpret_cast<LPVOID*> (&Real_Sleep));
