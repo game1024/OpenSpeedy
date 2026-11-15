@@ -1,0 +1,80 @@
+name: Bug 反馈
+description: 报告 OpenSpeedy 的异常行为或错误
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > **AI 生成的 Issue 一律拒绝。**
+        > 请用你自己的语言描述问题。由 AI 代写、翻译或整段套用生成内容的 Issue 会被直接关闭，不再回复。
+
+        提交前请先搜索已有 Issue，并确认你使用的是最新版本（版本号见「关于」页）。
+  - type: textarea
+    id: software-info
+    attributes:
+      label: 软件信息
+      description: 打开「关于」页面，点击「软件信息」按钮，然后把复制到的 JSON 原样粘贴到这里。
+      placeholder: |
+        {
+          "appName": "OpenSpeedy",
+          "appVersion": "3.3.19",
+          "tauriVersion": "2.11.3",
+          "platform": "windows",
+          "platformArch": "x86_64",
+          "platformVersion": "10.0.26300"
+        }
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 发生了什么？在哪个页面、执行什么操作时出现？
+      placeholder: 例如：在「变速」页勾选某个游戏后，倍速没有变化，但界面显示已开启。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 按顺序列出可以稳定复现问题的操作。
+      placeholder: |
+        1. 打开 OpenSpeedy
+        2. 在进程列表中选择 xxx
+        3. 按下 xxx 快捷键
+        4. 观察到 xxx
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 期望结果与实际结果
+      placeholder: |
+        期望：……
+        实际：……
+  - type: input
+    id: target-app
+    attributes:
+      label: 相关游戏或程序（可选）
+      description: 如果问题与特定游戏或程序有关，请填写名称、版本和平台。
+      placeholder: 游戏名 / 版本 / 平台（Steam、Epic、独立程序等）
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志（可选）
+      description: 点击「关于」页的「打开日志」按钮，附上出问题当天的日志文件。可以直接把文件拖到这里。
+      render: text
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交确认
+      options:
+        - label: 我确认这个 Issue 由我本人撰写，不是 AI 生成的。
+          required: true
+        - label: 我已搜索过现有 Issue，确认没有重复。
+          required: true
+        - label: 我已尝试在最新版本上复现该问题。
+          required: true
