@@ -62,3 +62,17 @@ include(GNUInstallDirs)
 install(TARGETS ${TARGET_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# 时间 hook 回归测试：加载 DLL，多线程读取各时间 API，切换倍率并检查同线程
+# 是否倒退。默认不构建，避免拖慢常规 cargo 构建；需要时：
+#   cmake -S . -B build -DSPEEDPATCH_BUILD_TESTS=ON
+#   cmake --build build --config Release
+#   ctest --test-dir build -C Release --output-on-failure
+option(SPEEDPATCH_BUILD_TESTS "Build time-hook monotonicity regression tests" OFF)
+if(SPEEDPATCH_BUILD_TESTS)
+    enable_testing()
+    add_executable(time_hook_test tests/time_hook_test.cpp)
+    target_link_libraries(time_hook_test PRIVATE winmm)
+    add_dependencies(time_hook_test ${TARGET_NAME})
+    add_test(NAME time_hook_test COMMAND time_hook_test $<TARGET_FILE:${TARGET_NAME}>)
+endif()
