@@ -180,8 +180,9 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
         px: 2, py: 2, overflow: "auto", minHeight: 0,
         flex: modulesOpen ? "0 0 auto" : "1 1 0",
         maxHeight: modulesOpen ? "45%" : "none",
-        // Tighten the info rows a little; the panel is information-dense.
-        "& .MuiTypography-body2": { fontSize: "0.8rem" },
+        // Keep values and their labels on the same size; the panel is
+        // information-dense.
+        "& .MuiTypography-body2": { fontSize: "0.7rem" },
         "& .MuiTypography-caption": { fontSize: "0.7rem" },
       }}>
         {/* Detail fields */}
