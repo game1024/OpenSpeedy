@@ -29,7 +29,7 @@ use windows::Win32::Security::{
 };
 use windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES;
 use windows::Win32::UI::Shell::{
-    SHGetFileInfoW, SHGetImageList, SHFILEINFOW, SHGFI_SYSICONINDEX, SHIL_JUMBO,
+    SHGetFileInfoW, SHGetImageList, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGFI_SYSICONINDEX, SHIL_JUMBO,
 };
 use windows::Win32::UI::Controls::IImageList;
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -460,16 +460,81 @@ fn extract_icon_base64(exe_path: &str) -> Option<String> {
         return None;
     }
 
-    let icon_data = icon_to_png_data(hicon);
+    // Some executables only ship a 32px icon. The jumbo list then pads that
+    // icon into the top-left of a transparent 256x256 canvas instead of
+    // upscaling it, which renders as a tiny icon in the corner. Keep the
+    // system large icon as a fallback for that case.
+    let mut large = SHFILEINFOW::default();
+    let large_result = unsafe {
+        SHGetFileInfoW(
+            windows::core::PCWSTR(exe_wide.as_ptr()),
+            FILE_FLAGS_AND_ATTRIBUTES::default(),
+            Some(&mut large),
+            std::mem::size_of::<SHFILEINFOW>() as u32,
+            SHGFI_ICON | SHGFI_LARGEICON,
+        )
+    };
+    let fallback = if large_result != 0 && !large.hIcon.is_invalid() {
+        Some(large.hIcon)
+    } else {
+        None
+    };
+
+    let icon_data = icon_to_png_data(hicon, fallback);
     let _ = unsafe { DestroyIcon(hicon) };
+    if let Some(fallback) = fallback {
+        let _ = unsafe { DestroyIcon(fallback) };
+    }
 
     icon_data
+}
+
+/// Convert a top-down 32bpp BGRA DIB buffer to tightly packed RGBA.
+fn read_dib_rgba(bits: *const u8, pixel_count: usize) -> Vec<u8> {
+    let raw = unsafe { std::slice::from_raw_parts(bits, pixel_count * 4) };
+    let mut rgba = vec![0u8; pixel_count * 4];
+    for (i, chunk) in raw.chunks_exact(4).enumerate() {
+        rgba[i * 4] = chunk[2];     // R
+        rgba[i * 4 + 1] = chunk[1]; // G
+        rgba[i * 4 + 2] = chunk[0]; // B
+        rgba[i * 4 + 3] = chunk[3]; // A (set by DrawIconEx via mask)
+    }
+    rgba
+}
+
+/// True when the visible pixels occupy only a small part of the canvas.
+fn content_is_tiny(rgba: &[u8], size: usize) -> bool {
+    let mut min_x = size;
+    let mut min_y = size;
+    let mut max_x = 0usize;
+    let mut max_y = 0usize;
+    let mut any = false;
+    for y in 0..size {
+        for x in 0..size {
+            if rgba[(y * size + x) * 4 + 3] > 8 {
+                any = true;
+                min_x = min_x.min(x);
+                min_y = min_y.min(y);
+                max_x = max_x.max(x);
+                max_y = max_y.max(y);
+            }
+        }
+    }
+    if !any {
+        return true;
+    }
+    let w = max_x - min_x + 1;
+    let h = max_y - min_y + 1;
+    // A real jumbo icon fills most of the box; a padded 32px icon renders at
+    // roughly 8px inside a 64px canvas.
+    w < size / 3 || h < size / 3
 }
 
 /// Render HICON to a 32bpp RGBA buffer via DrawIconEx (Windows handles mask/transparency),
 /// then encode as PNG data URI.
 fn icon_to_png_data(
     hicon: windows::Win32::UI::WindowsAndMessaging::HICON,
+    fallback: Option<windows::Win32::UI::WindowsAndMessaging::HICON>,
 ) -> Option<String> {
     const ICON_SIZE: i32 = 64;
 
@@ -550,15 +615,21 @@ fn icon_to_png_data(
 
     // Read back pixels — DrawIconEx fills in proper alpha values
     let pixel_count = (ICON_SIZE * ICON_SIZE) as usize;
-    let raw = unsafe { std::slice::from_raw_parts(bits as *const u8, pixel_count * 4) };
+    let mut rgba = read_dib_rgba(bits as *const u8, pixel_count);
 
-    // Raw BGRA → RGBA for PNG encoder
-    let mut rgba = vec![0u8; pixel_count * 4];
-    for (i, chunk) in raw.chunks_exact(4).enumerate() {
-        rgba[i * 4] = chunk[2];     // R
-        rgba[i * 4 + 1] = chunk[1]; // G
-        rgba[i * 4 + 2] = chunk[0]; // B
-        rgba[i * 4 + 3] = chunk[3]; // A (set by DrawIconEx via mask)
+    // If the jumbo image was only a small icon padded into the corner, redraw
+    // with the system large icon so it fills the avatar instead of appearing
+    // tiny in the top-left.
+    if let Some(fallback) = fallback {
+        if content_is_tiny(&rgba, ICON_SIZE as usize) {
+            unsafe { std::ptr::write_bytes(bits as *mut u8, 0, pixel_count * 4); }
+            let drawn = unsafe {
+                DrawIconEx(hdc_screen, 0, 0, fallback, ICON_SIZE, ICON_SIZE, 0, None, DI_NORMAL)
+            };
+            if drawn.is_ok() {
+                rgba = read_dib_rgba(bits as *const u8, pixel_count);
+            }
+        }
     }
 
     // Cleanup GDI before encoding
