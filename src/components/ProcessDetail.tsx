@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  Box, Paper, Typography, Avatar, Chip, Divider,
+  Box, Paper, Typography, Avatar, Chip, Divider, IconButton,
   Table, TableCell, TableHead, TableRow,
 } from "@mui/material";
 import WindowIcon from "@mui/icons-material/Window";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ExtensionIcon from "@mui/icons-material/Extension";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -92,7 +94,7 @@ const ModuleRow = React.memo(function ModuleRow({
       alignItems: "center", borderBottom: 1, borderColor: "divider",
       "&:hover": { bgcolor: "action.hover" },
     }}>
-      <Typography variant="caption" noWrap sx={{ px: 1, fontWeight: 500 }}>{m.name}</Typography>
+      <Typography variant="caption" noWrap sx={{ px: 1, fontWeight: 500, fontSize: "0.65rem" }}>{m.name}</Typography>
       <Typography variant="caption" noWrap sx={{ px: 1, color: "text.disabled", fontSize: "0.65rem" }}>{m.path}</Typography>
       <Typography variant="caption" sx={{ px: 1, textAlign: "right", fontFamily: "monospace", fontSize: "0.65rem", color: "text.secondary" }}>{fmtHex(m.base_address)}</Typography>
       <Typography variant="caption" sx={{ px: 1, textAlign: "right", color: "text.secondary" }}>{fmtSize(m.size)}</Typography>
@@ -106,6 +108,9 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
   const { t } = useTranslation();
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null);
+  // Collapsed by default: the module list is long and usually not what the
+  // user opens the detail panel for.
+  const [modulesOpen, setModulesOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const sortedModules = useMemo(() => {
@@ -154,42 +159,38 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
       height: "100%", bgcolor: "background.paper", border: 1, borderColor: "divider",
       display: "flex", flexDirection: "column", overflow: "hidden",
     }}>
-      {/* Header */}
-      <Box sx={{ px: 2, pt: 1.5, pb: 1, display: "flex", alignItems: "center", flexShrink: 0 }}>
-        <InfoOutlinedIcon sx={{ color: "primary.main", fontSize: 18, mr: 1 }} />
-        <Typography variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "text.secondary" }}>
-          {t("process.detail.title")}
-        </Typography>
+      {/* Fixed header: process identity stays visible while the fields scroll. */}
+      <Box sx={{ px: 2, py: 1.25, display: "flex", alignItems: "center", gap: 1.25, flexShrink: 0 }}>
+        {icon ? (
+          <Avatar src={icon} variant="rounded" sx={{ width: 36, height: 36, borderRadius: 1, flexShrink: 0 }} />
+        ) : (
+          <Avatar variant="rounded" sx={{ width: 36, height: 36, flexShrink: 0, bgcolor: "transparent", borderRadius: 1 }}>
+            <WindowIcon sx={{ fontSize: 22, color: "text.disabled" }} />
+          </Avatar>
+        )}
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: "0.9rem" }}>{process.name}</Typography>
+          <Typography variant="caption" color="text.secondary">PID {process.pid}</Typography>
+        </Box>
       </Box>
       <Divider />
 
-      {/* Detail info (scrollable) */}
-      <Box sx={{ px: 2, py: 2, overflow: "auto", flexShrink: 0, maxHeight: "45%" }}>
-        {/* Process icon + name */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-          {icon ? (
-            <Avatar src={icon} variant="rounded" sx={{ width: 40, height: 40, borderRadius: 1, flexShrink: 0 }} />
-          ) : (
-            <Avatar variant="rounded" sx={{ width: 40, height: 40, flexShrink: 0, bgcolor: "transparent", borderRadius: 1 }}>
-              <WindowIcon sx={{ fontSize: 24, color: "text.disabled" }} />
-            </Avatar>
-          )}
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600 }}>{process.name}</Typography>
-            <Typography variant="caption" color="text.secondary">PID {process.pid}</Typography>
-          </Box>
-        </Box>
-
-        <Divider sx={{ mb: 2 }} />
-
+      {/* Detail info (scrollable). Fills the panel while modules are collapsed. */}
+      <Box sx={{
+        px: 2, py: 2, overflow: "auto", minHeight: 0,
+        flex: modulesOpen ? "0 0 auto" : "1 1 0",
+        maxHeight: modulesOpen ? "45%" : "none",
+        // Tighten the info rows a little; the panel is information-dense.
+        "& .MuiTypography-body2": { fontSize: "0.8rem" },
+        "& .MuiTypography-caption": { fontSize: "0.7rem" },
+      }}>
         {/* Detail fields */}
-        <DetailRow label={t("process.detail.pid")} value={<Typography variant="body2">{process.pid}</Typography>} />
         <DetailRow label={t("process.detail.arch")} value={
           <Chip label={process.arch} size="small" sx={{ fontWeight: 600, fontSize: "0.7rem", bgcolor: archColor, color: "#fff" }} />
         } />
         <DetailRow label={t("process.detail.memory")} value={<Typography variant="body2">{fmtMem(process.memory_kb)}</Typography>} />
         <DetailRow label={t("process.detail.exePath")} value={
-          <Typography variant="body2" sx={{ wordBreak: "break-all", fontSize: "0.8rem", color: process.exe_path ? "text.primary" : "text.disabled" }}>
+          <Typography variant="body2" sx={{ wordBreak: "break-all", fontSize: "0.7rem", color: process.exe_path ? "text.primary" : "text.disabled" }}>
             {process.exe_path || "—"}
           </Typography>
         } />
@@ -216,51 +217,86 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
         } />
       </Box>
 
-      {/* Modules section */}
-      <Divider />
-      <Box sx={{ px: 2, pt: 1, pb: 0.5, display: "flex", alignItems: "center", flexShrink: 0 }}>
-        <ExtensionIcon sx={{ color: "secondary.main", fontSize: 16, mr: 1 }} />
-        <Typography variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "text.secondary" }}>
-          {t("process.detail.modules")}
-        </Typography>
-        <Typography variant="caption" sx={{ ml: 1, fontWeight: 600, color: "secondary.main" }}>
-          {t("process.detail.modulesCount", { count: sortedModules.length })}
-        </Typography>
-      </Box>
+      {/* Modules section. The toggle floats on its top edge and takes no layout space. */}
+      <Box sx={{
+        position: "relative", display: "flex", flexDirection: "column",
+        flex: modulesOpen ? "1 1 0" : "0 0 auto", minHeight: 0,
+      }}>
+        <Divider />
+        <IconButton
+          size="small"
+          aria-expanded={modulesOpen}
+          aria-label={t("process.detail.modules")}
+          title={t("process.detail.modules")}
+          onClick={() => setModulesOpen(open => !open)}
+          sx={{
+            position: "absolute", top: -16, left: "50%", transform: "translateX(-50%)",
+            width: 32, height: 32, zIndex: 2,
+            bgcolor: "background.paper", border: 1, borderColor: "divider",
+            boxShadow: 1,
+            // Keep the background opaque: IconButton's own hover rule uses a
+            // translucent fill, which would let the divider behind show through.
+            "&:hover": { bgcolor: "background.paper", borderColor: "primary.main", color: "primary.main" },
+          }}
+        >
+          {modulesOpen ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
+        </IconButton>
+        <Box
+          onClick={() => setModulesOpen(open => !open)}
+          title={t("process.detail.modules")}
+          sx={{
+            px: 2, pt: 0.25, pb: 0.5, display: "flex", alignItems: "center",
+            flexShrink: 0, cursor: "pointer", userSelect: "none",
+            "&:hover": { bgcolor: "action.hover" },
+          }}
+        >
+          <ExtensionIcon sx={{ color: "secondary.main", fontSize: 16, mr: 1 }} />
+          <Typography variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "text.secondary" }}>
+            {t("process.detail.modules")}
+          </Typography>
+          <Typography variant="caption" sx={{ ml: 1, fontWeight: 600, color: "secondary.main" }}>
+            {t("process.detail.modulesCount", { count: sortedModules.length })}
+          </Typography>
+        </Box>
 
-      {/* Modules table header */}
-      <Box sx={{ px: 2, flexShrink: 0 }}>
-        <Table size="small" sx={{ tableLayout: "fixed" }}>
-          <colgroup><col /><col /><col width={90} /><col width={80} /></colgroup>
-          <TableHead><TableRow>
-            <TableCell
-              onClick={() => setSortDir(d => d === 'asc' ? 'desc' : d === 'desc' ? null : 'asc')}
-              sx={{ py: 0.5, cursor: "pointer", userSelect: "none", "&:hover": { color: "primary.main" } }}
-            >
-              {t("process.detail.moduleName")}
-              {sortDir === 'asc' ? ' ▲' : sortDir === 'desc' ? ' ▼' : ''}
-            </TableCell>
-            <TableCell sx={{ py: 0.5 }}>{t("process.detail.modulePath")}</TableCell>
-            <TableCell align="right" sx={{ py: 0.5 }}>{t("process.detail.moduleBase")}</TableCell>
-            <TableCell align="right" sx={{ py: 0.5 }}>{t("process.detail.moduleSize")}</TableCell>
-          </TableRow></TableHead>
-        </Table>
-      </Box>
-      <Divider />
-
-      {/* Modules virtualized list */}
-      <Box ref={scrollRef} sx={{ flex: 1, overflow: "auto", position: "relative", px: 2 }}>
-        <div style={{ height: vz.getTotalSize(), width: 1 }} />
-        {vz.getVirtualItems().map(vr => (
-          <ModuleRow key={vr.index} m={sortedModules[vr.index]} start={vr.start} />
-        ))}
-        {sortedModules.length === 0 && (
-          <Box sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Typography variant="caption" color="text.disabled">
-              {process ? "—" : ""}
-            </Typography>
+      {modulesOpen && (
+        <>
+          {/* Modules table header */}
+          <Box sx={{ px: 2, flexShrink: 0 }}>
+            <Table size="small" sx={{ tableLayout: "fixed" }}>
+              <colgroup><col /><col /><col width={90} /><col width={80} /></colgroup>
+              <TableHead sx={{ "& .MuiTableCell-root": { fontSize: "0.65rem" } }}><TableRow>
+                <TableCell
+                  onClick={() => setSortDir(d => d === 'asc' ? 'desc' : d === 'desc' ? null : 'asc')}
+                  sx={{ py: 0.5, cursor: "pointer", userSelect: "none", "&:hover": { color: "primary.main" } }}
+                >
+                  {t("process.detail.moduleName")}
+                  {sortDir === 'asc' ? ' ▲' : sortDir === 'desc' ? ' ▼' : ''}
+                </TableCell>
+                <TableCell sx={{ py: 0.5 }}>{t("process.detail.modulePath")}</TableCell>
+                <TableCell align="right" sx={{ py: 0.5 }}>{t("process.detail.moduleBase")}</TableCell>
+                <TableCell align="right" sx={{ py: 0.5 }}>{t("process.detail.moduleSize")}</TableCell>
+              </TableRow></TableHead>
+            </Table>
           </Box>
-        )}
+          <Divider />
+
+          {/* Modules virtualized list */}
+          <Box ref={scrollRef} sx={{ flex: 1, minHeight: 0, overflow: "auto", position: "relative", px: 2 }}>
+            <div style={{ height: vz.getTotalSize(), width: 1 }} />
+            {vz.getVirtualItems().map(vr => (
+              <ModuleRow key={vr.index} m={sortedModules[vr.index]} start={vr.start} />
+            ))}
+            {sortedModules.length === 0 && (
+              <Box sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Typography variant="caption" color="text.disabled">
+                  {process ? "—" : ""}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </>
+      )}
       </Box>
     </Paper>
   );

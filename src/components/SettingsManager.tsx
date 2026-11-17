@@ -4,7 +4,7 @@ import { keyframes } from "@emotion/react";
 import i18n from "../i18n";
 import {
   Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Typography, TextField, Switch, Divider, Tooltip,
-  Select, MenuItem, Table, TableBody, TableCell, TableHead, TableRow, useMediaQuery,
+  Select, MenuItem, Table, TableBody, TableCell, TableHead, TableRow, Tabs, Tab, useMediaQuery,
 } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import ShortcutField from "./ShortcutField";
@@ -40,6 +40,11 @@ import {
 const activePulse = keyframes`
   0%, 100% { box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.75); }
   50% { box-shadow: 0 0 0 7px rgba(102, 187, 106, 0); }
+`;
+
+const activeDotPulse = keyframes`
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.7); }
+  50% { transform: scale(1.2); box-shadow: 0 0 0 4px rgba(102, 187, 106, 0); }
 `;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -101,6 +106,16 @@ export default function SettingsManager() {
   const activeProfile = foregroundKey
     ? profiles.find(item => item.processes.some(proc => exeKey(proc) === foregroundKey)) ?? null
     : null;
+
+  const activeDot = (
+    <Tooltip title={t("settings.profileActiveNow")}>
+      <Box component="span" sx={{
+        width: 6, height: 6, borderRadius: "50%", bgcolor: "success.main", flexShrink: 0,
+        animation: `${activeDotPulse} 2s ease-in-out infinite`,
+        "@media (prefers-reduced-motion: reduce)": { animation: "none" },
+      }} />
+    </Tooltip>
+  );
   // Below this width the sidebar would leave too little room for the tables.
   const wide = useMediaQuery("(min-width: 720px)");
 
@@ -142,26 +157,6 @@ export default function SettingsManager() {
       </Box>
     );
   }
-
-  const profileSelect = (
-    <Select
-      size="small"
-      value={profile ? profile.id : "global"}
-      onChange={e => setSelectedId(e.target.value)}
-      sx={{
-        minWidth: 140,
-        maxWidth: 240,
-        "& .MuiSelect-select": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" },
-      }}
-    >
-      <MenuItem value="global">{t("settings.profileGlobal")}</MenuItem>
-      {profiles.map(item => (
-        <MenuItem key={item.id} value={item.id} sx={{ maxWidth: 320 }}>
-          <Typography noWrap sx={{ fontSize: "inherit" }}>{item.name}</Typography>
-        </MenuItem>
-      ))}
-    </Select>
-  );
 
   function numberCell(key: SpeedValueKey, fallback: number) {
     const [min, max] = SPEED_VALUE_BOUNDS[key];
@@ -306,6 +301,65 @@ export default function SettingsManager() {
     );
   }
 
+  // Narrow layout: a standalone tab strip pinned above the settings panel.
+  const narrowProfileTabs = (
+    <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 0.5, borderBottom: 1, borderColor: "divider" }}>
+      <Tabs
+        value={profile ? profile.id : "global"}
+        onChange={(_, value) => setSelectedId(value)}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
+        sx={{
+          flex: 1, minWidth: 0, minHeight: 0,
+          "& .MuiTab-root": {
+            minHeight: 32, minWidth: 0, px: 1, py: 0.5,
+            fontSize: "0.72rem", textTransform: "none", fontWeight: 500,
+          },
+          "& .Mui-selected": { fontWeight: 600 },
+          "& .MuiTabs-indicator": { height: 2 },
+        }}
+      >
+        <Tab value="global" label={
+          <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+            {t("settings.profileGlobal")}
+            {!activeProfile && activeDot}
+          </Box>
+        } />
+        {profiles.map(item => (
+          <Tab
+            key={item.id}
+            value={item.id}
+            label={
+              <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, maxWidth: 140 }}>
+                <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.name}
+                </Box>
+                {activeProfile?.id === item.id && activeDot}
+              </Box>
+            }
+          />
+        ))}
+      </Tabs>
+      <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+        {profile ? (
+          <>
+            <Button size="small" sx={{ minWidth: 0, px: 1, fontSize: "0.7rem" }} onClick={() => setDialogOpen(true)}>
+              {t("settings.profileEdit")}
+            </Button>
+            <Button size="small" color="error" sx={{ minWidth: 0, px: 1, fontSize: "0.7rem" }} onClick={() => setConfirmDelete(true)}>
+              {t("settings.profileDelete")}
+            </Button>
+          </>
+        ) : (
+          <Button size="small" sx={{ minWidth: 0, px: 1, fontSize: "0.7rem" }} onClick={() => setDialogOpen(true)}>
+            {t("settings.profileNew")}
+          </Button>
+        )}
+      </Box>
+    </Box>
+  );
+
   return (
     <Box sx={{ height: "calc(100vh - 48px)", display: "flex", gap: 1.5, px: 1.5, pb: 2 }}>
       {wide && (
@@ -338,21 +392,10 @@ export default function SettingsManager() {
           </Box>
         </Paper>
       )}
-      <Box sx={{ flex: 1, minWidth: 0, overflow: "auto" }}>
-        <Paper elevation={0} sx={{ mt: 2, p: 2, bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
-          {!wide && (
-            <Row label={t("settings.profile")}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                {profileSelect}
-                <Button size="small" onClick={() => setDialogOpen(true)}>
-                  {profile ? t("settings.profileEdit") : t("settings.profileNew")}
-                </Button>
-                {profile && (
-                  <Button size="small" color="error" onClick={() => setConfirmDelete(true)}>{t("settings.profileDelete")}</Button>
-                )}
-              </Box>
-            </Row>
-          )}
+      <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        {!wide && narrowProfileTabs}
+        <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <Paper elevation={0} sx={{ mt: wide ? 2 : 1, p: 2, bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
           {profile && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mb: 1, minHeight: 24 }}>
               <Typography variant="caption" color="text.disabled">{t("settings.profileAppliesTo")}</Typography>
@@ -568,6 +611,7 @@ export default function SettingsManager() {
         </Dialog>
 
         </Paper>
+        </Box>
       </Box>
     </Box>
   );

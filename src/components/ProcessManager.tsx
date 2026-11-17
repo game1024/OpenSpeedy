@@ -16,6 +16,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import SpeedPanel from "./SpeedPanel";
 import ProcessDetail from "./ProcessDetail";
 import { useSettings, useSpeed } from "../hooks/useSettings";
+import { useSnackbar } from "../contexts/SnackbarContext";
 import { getAcceleratedNames, addAcceleratedName, removeAcceleratedName } from "../store/process";
 import { withoutHiddenProcesses } from "../utils/processFilter";
 
@@ -76,15 +77,15 @@ const ProcessRow = React.memo(function ProcessRow({
         "&:hover": { bgcolor: selected ? "rgba(92,107,192,0.18)" : on ? "action.selected" : "action.hover" },
       }}
     >
-      <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.8rem" }}>{p.pid}</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.75rem" }}>{p.pid}</Typography>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, minWidth: 0 }}>
         <ProcessIcon pid={p.pid} icons={icons} />
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" noWrap sx={{ fontWeight: 500, fontSize: "0.8rem" }}>{p.name}</Typography>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 500, fontSize: "0.75rem" }}>{p.name}</Typography>
           {p.window_title && <Typography variant="caption" noWrap sx={{ color: "text.disabled", display: "block", lineHeight: 1.2, fontSize: "0.65rem" }}>{p.window_title}</Typography>}
         </Box>
       </Box>
-      {showMem && <Typography variant="body2" color="text.secondary" sx={{ textAlign: "right", pr: 1, fontSize: "0.8rem" }}>{formatMem(p.memory_kb)}</Typography>}
+      {showMem && <Typography variant="body2" color="text.secondary" sx={{ textAlign: "right", pr: 1, fontSize: "0.75rem" }}>{formatMem(p.memory_kb)}</Typography>}
       <Box sx={{ textAlign: "right", pr: 1 }}><Switch size="small" checked={on} onChange={() => onToggle(p.pid, p.arch)} /></Box>
     </Box>
   );
@@ -189,7 +190,7 @@ const ProcessTable = function ProcessTable({
         </Tooltip>
         <Box sx={{ flex: 1 }} />
         <Tabs value={tab} onChange={(_, v) => { onTabChange(v); scrollRef.current?.scrollTo(0, 0); }}
-          sx={{ minHeight: 0, "& .MuiTab-root": { minHeight: 32, py: 0, fontSize: "0.75rem" } }}>
+          sx={{ minHeight: 0, "& .MuiTab-root": { minHeight: 32, py: 0, fontSize: "0.7rem" } }}>
           <Tab label={t("process.byName")} />
           <Tab label={t("process.byPid")} />
         </Tabs>
@@ -208,10 +209,10 @@ const ProcessTable = function ProcessTable({
             <col width={COL.check} style={{ textAlign: "right" }} />
           </colgroup>
           <TableHead><TableRow>
-            <TableCell onClick={() => toggleSort(isPid ? "pid" : "count")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.75rem", py: 0.5 }}>{isPid ? t("process.pid") : t("process.count")}{sortIcon(isPid ? "pid" : "count")}</TableCell>
-            <TableCell onClick={() => toggleSort("name")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.75rem", py: 0.5 }}>{t("process.name")}{sortIcon("name")}</TableCell>
-            {isPid && <TableCell align="right" onClick={() => toggleSort("memory")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.75rem", py: 0.5 }}>{t("process.memory")}{sortIcon("memory")}</TableCell>}
-            <TableCell align="right" onClick={() => toggleSort("enabled")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.75rem", py: 0.5 }}>{t("process.enable")}{sortIcon("enabled")}</TableCell>
+            <TableCell onClick={() => toggleSort(isPid ? "pid" : "count")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.7rem", py: 0.5 }}>{isPid ? t("process.pid") : t("process.count")}{sortIcon(isPid ? "pid" : "count")}</TableCell>
+            <TableCell onClick={() => toggleSort("name")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.7rem", py: 0.5 }}>{t("process.name")}{sortIcon("name")}</TableCell>
+            {isPid && <TableCell align="right" onClick={() => toggleSort("memory")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.7rem", py: 0.5 }}>{t("process.memory")}{sortIcon("memory")}</TableCell>}
+            <TableCell align="right" onClick={() => toggleSort("enabled")} sx={{ cursor: "pointer", userSelect: "none", fontSize: "0.7rem", py: 0.5 }}>{t("process.enable")}{sortIcon("enabled")}</TableCell>
           </TableRow></TableHead>
         </Table>
 
@@ -236,11 +237,11 @@ const ProcessTable = function ProcessTable({
                       "&:hover": { bgcolor: "action.hover" },
                     }}
                   >
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.8rem" }}>{group.count}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.75rem" }}>{group.count}</Typography>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, minWidth: 0 }}>
                       <ProcessIcon pid={group.pids[0]} icons={icons} />
                       <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="body2" noWrap sx={{ fontWeight: 500, fontSize: "0.8rem" }}>{name}</Typography>
+                        <Typography variant="body2" noWrap sx={{ fontWeight: 500, fontSize: "0.75rem" }}>{name}</Typography>
                       </Box>
                     </Box>
                     <Box sx={{ textAlign: "right", pr: 1 }}><Switch size="small" checked={group.anyEnabled} onChange={() => onToggleName(name)} /></Box>
@@ -313,6 +314,8 @@ export default function ProcessManager() {
   const [showSystem, setShowSystem] = useState(false);
   const { settings } = useSettings();
   const { speed, setSpeed, commitSpeed } = useSpeed();
+  const { t } = useTranslation();
+  const { notify } = useSnackbar();
 
   const gears = useMemo(() => settings
     ? [1, 2, 3, 4, 5].map(i => (settings[`gear${i}Speed` as keyof typeof settings] as number) || 1)
@@ -332,8 +335,25 @@ export default function ProcessManager() {
     inflight.current.add(pid);
     if (!wasOn) {
       setSpeedMap(prev => { const n = new Map(prev); n.set(pid, { injected: true, enabled: true, arch }); return n; });
+      const rollback = () => setSpeedMap(prev => {
+        const n = new Map(prev);
+        const cur = n.get(pid);
+        if (cur) n.set(pid, { ...cur, enabled: false });
+        return n;
+      });
       invoke<boolean>("bridge_inject", { pid, arch })
-        .catch((e) => { console.error("[toggle] bridge_inject error:", e); })
+        .then(ok => {
+          // The command waits for the bridge during a cold start, so false
+          // means the injection really failed or the readiness timeout hit.
+          if (ok) return;
+          rollback();
+          notify(t("process.injectFail"), "error");
+        })
+        .catch((e) => {
+          console.error("[toggle] bridge_inject error:", e);
+          rollback();
+          notify(t("process.injectFail"), "error");
+        })
         .finally(() => { inflight.current.delete(pid); });
     } else {
       const procName = processes.find(p => p.pid === pid)?.name;
