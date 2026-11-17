@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getVersion, getName, getTauriVersion } from "@tauri-apps/api/app";
 import { platform, arch, version as osVersion } from "@tauri-apps/plugin-os";
+import { listen } from "@tauri-apps/api/event";
 import { ThemeProvider, createTheme, CssBaseline, Box, Tabs, Tab, Typography, Paper, Switch, Chip, IconButton, Button, Divider } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
@@ -143,8 +144,22 @@ function App() {
     Promise.all([platform(), arch(), osVersion()])
       .then(([pt, pa, pv]) => { setPlatformType(pt); setPlatformArch(pa); setPlatformVersion(pv); })
       .catch(() => { setPlatformType("windows"); setPlatformArch("x86_64"); setPlatformVersion("unknown"); });
-    invoke<boolean>("bridge64_health").catch(() => false).then(setB64);
-    invoke<boolean>("bridge32_health").catch(() => false).then(setB32);
+  }, []);
+
+  // The bridges start on a background thread. Flip the B64/B32 indicators as
+  // soon as each one is actually ready; the 5 s poll above is the fallback for
+  // an event that fires before this listener attaches.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let dead = false;
+    listen<{ arch: string; ok: boolean }>("bridge-ready", event => {
+      if (event.payload.arch === "x64") setB64(event.payload.ok);
+      else if (event.payload.arch === "x86") setB32(event.payload.ok);
+    }).then(unlisten => {
+      if (dead) unlisten();
+      else stop = unlisten;
+    }).catch(() => {});
+    return () => { dead = true; stop?.(); };
   }, []);
 
   return (

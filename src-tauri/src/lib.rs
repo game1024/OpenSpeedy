@@ -1,6 +1,7 @@
 pub mod applog;
 mod bridge_client;
 mod bridge_job;
+mod bridge_state;
 mod gamepad;
 mod process_enumerator;
 pub mod startup;
@@ -10,6 +11,9 @@ use process_enumerator::ProcessInfo;
 use process_enumerator::ModuleInfo;
 use std::process::Child;
 use std::sync::Mutex;
+use std::time::Duration;
+
+use tauri::Emitter;
 
 use windows::Win32::System::Console::SetConsoleCtrlHandler;
 use windows::Win32::Foundation::BOOL;
@@ -23,7 +27,7 @@ unsafe extern "system" fn ctrlc_handler(_ctrl_type: u32) -> BOOL {
     std::process::exit(0);
 }
 
-fn ensure_bridges() {
+fn ensure_bridges(app: tauri::AppHandle) {
     // A poisoned lock here used to panic the whole process; the bridge list is
     // bookkeeping, so recover the data instead.
     let mut children = match BRIDGE_CHILDREN.lock() {
@@ -44,7 +48,10 @@ fn ensure_bridges() {
         .unwrap_or_default();
     applog::info("bridge", format!("looking for bridge binaries in {}", exe_dir.display()));
 
-    for name in &["bridge64.exe", "bridge32.exe"] {
+    let targets: [(&str, &str); 2] = [("bridge64.exe", "x64"), ("bridge32.exe", "x86")];
+    let mut spawned = [false; 2];
+
+    for (i, (name, _arch)) in targets.iter().enumerate() {
         let path = exe_dir.join(name);
         let log_path = exe_dir.join(format!("{name}.log"));
         if !path.exists() {
@@ -79,30 +86,56 @@ fn ensure_bridges() {
                         bridge_job::assign(&child, name);
                     }
                 }
+                spawned[i] = true;
                 children.push(child);
             }
             Err(e) => applog::error("bridge", format!("failed to spawn {}: {e}", path.display())),
         }
     }
 
-    // Wait until bridges are ready (pipe server accepting connections)
-    let health_checks: [(&str, fn() -> bool); 2] = [
-        ("bridge64", bridge_client::bridge64_health as fn() -> bool),
-        ("bridge32", bridge_client::bridge32_health as fn() -> bool),
+    // Injection is gated on bridge_state now, so the process list can be
+    // released before the checks: shutdown must not wait for them.
+    drop(children);
+
+    let health_checks: [(fn() -> bool, &str, &str); 2] = [
+        (bridge_client::bridge64_health as fn() -> bool, "bridge64", "x64"),
+        (bridge_client::bridge32_health as fn() -> bool, "bridge32", "x86"),
     ];
-    for (name, check) in &health_checks {
-        let start = std::time::Instant::now();
-        let mut ok = check();
-        while !ok && start.elapsed() < std::time::Duration::from_secs(2) {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            ok = check();
+
+    // Check both bridges in parallel: a slow bridge32 must not delay bridge64.
+    std::thread::scope(|scope| {
+        for (i, (check, name, arch)) in health_checks.into_iter().enumerate() {
+            let app = &app;
+            let was_spawned = spawned[i];
+            scope.spawn(move || {
+                let ready = if !was_spawned {
+                    applog::warn("bridge", format!("{name} was not spawned — marking it unavailable"));
+                    false
+                } else {
+                    let start = std::time::Instant::now();
+                    let mut ok = check();
+                    while !ok && start.elapsed() < Duration::from_secs(2) {
+                        std::thread::sleep(Duration::from_millis(25));
+                        ok = check();
+                    }
+                    if ok {
+                        applog::info("bridge", format!("{name} ready after {} ms", start.elapsed().as_millis()));
+                    } else {
+                        applog::error("bridge", format!("{name} did not become ready within 2 s — speed patching will not work"));
+                    }
+                    ok
+                };
+                bridge_state::set(arch, if ready { bridge_state::Phase::Ready } else { bridge_state::Phase::Failed });
+                let _ = app.emit("bridge-ready", BridgeReady { arch, ok: ready });
+            });
         }
-        if ok {
-            applog::info("bridge", format!("{name} ready after {} ms", start.elapsed().as_millis()));
-        } else {
-            applog::error("bridge", format!("{name} did not become ready within 2 s — speed patching will not work"));
-        }
-    }
+    });
+}
+
+#[derive(Clone, serde::Serialize)]
+struct BridgeReady {
+    arch: &'static str,
+    ok: bool,
 }
 
 fn shutdown_bridges() {
@@ -116,6 +149,8 @@ fn shutdown_bridges() {
     // later `ensure_bridges` to hand to `AssignProcessToJobObject`. There is
     // nothing to gain either — process exit closes it, which is exactly the
     // signal that tears the bridges down.
+    // Release any command waiting for a bridge before killing the processes.
+    bridge_state::stop_all();
     if let Ok(mut children) = BRIDGE_CHILDREN.lock() {
         for mut child in children.drain(..) {
             applog::info("bridge", format!("killing bridge pid {}", child.id()));
@@ -133,7 +168,6 @@ async fn foreground_exe_name() -> String {
 /// Emits `foreground-changed` when the foreground exe changes. A native thread keeps
 /// running while the webview is hidden and its timers are throttled.
 fn watch_foreground(app: tauri::AppHandle) {
-    use tauri::Emitter;
     std::thread::spawn(move || {
         let mut last = String::new();
         loop {
@@ -187,6 +221,17 @@ async fn bridge32_health() -> bool {
 
 #[tauri::command(async)]
 async fn bridge_set_speed(factor: f64) -> bool {
+    // On cold start the bridges may still be launching; wait for whichever
+    // becomes ready first, then apply the factor to both.
+    let ready = tauri::async_runtime::spawn_blocking(|| {
+        let x64 = bridge_state::wait_ready("x64", Duration::from_secs(5));
+        let x86 = bridge_state::wait_ready("x86", Duration::from_secs(5));
+        x64 || x86
+    }).await.unwrap_or(false);
+    if !ready {
+        applog::warn("bridge", "set_speed skipped: no bridge ready");
+        return false;
+    }
     let a = bridge_client::bridge64_set_speed(factor);
     let b = bridge_client::bridge32_set_speed(factor);
     a || b
@@ -194,6 +239,13 @@ async fn bridge_set_speed(factor: f64) -> bool {
 
 #[tauri::command(async)]
 async fn bridge_get_speed() -> Option<f64> {
+    let ready = tauri::async_runtime::spawn_blocking(|| {
+        bridge_state::wait_ready("x64", Duration::from_secs(5))
+    }).await.unwrap_or(false);
+    if !ready {
+        applog::warn("bridge", "get_speed skipped: bridge64 not ready");
+        return None;
+    }
     bridge_client::bridge64_get_speed()
 }
 
@@ -204,6 +256,16 @@ async fn get_system_stats() -> system_stats::SystemStats {
 
 #[tauri::command(async)]
 async fn bridge_inject(pid: u32, arch: String) -> bool {
+    // A cold start launches the bridges on a background thread. Wait for the
+    // one that handles this architecture instead of failing the first click.
+    let wait_arch = arch.clone();
+    let ready = tauri::async_runtime::spawn_blocking(move || {
+        bridge_state::wait_ready(&wait_arch, Duration::from_secs(5))
+    }).await.unwrap_or(false);
+    if !ready {
+        applog::warn("bridge", format!("inject {pid} ({arch}) skipped: bridge not ready"));
+        return false;
+    }
     if arch == "x86" {
         let ok = bridge_client::bridge32_inject(pid);
         bridge_client::bridge32_enable(pid);
@@ -288,10 +350,14 @@ pub fn run() -> Result<(), String> {
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             applog::info("setup", "tauri setup callback entered");
-            // Before the bridge health checks, which can block for seconds:
-            // the window is created hidden and is only revealed here.
+            // The window is created hidden and is only revealed here, before
+            // anything that could block the event loop.
             startup::apply_initial_window_visibility(app.handle());
-            ensure_bridges();
+            // Bridge startup includes health checks that can take seconds on a
+            // cold start. Run it in the background so the window paints; the
+            // commands that need a bridge wait on bridge_state instead.
+            let bridge_app = app.handle().clone();
+            std::thread::spawn(move || ensure_bridges(bridge_app));
             gamepad::start(app.handle().clone());
             watch_foreground(app.handle().clone());
             // Register Ctrl+C handler so bridges are killed on console exit
