@@ -6,6 +6,7 @@ import {
   Box, Paper, Typography, Avatar, Chip, Divider, IconButton,
   Table, TableCell, TableHead, TableRow,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import WindowIcon from "@mui/icons-material/Window";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ExtensionIcon from "@mui/icons-material/Extension";
@@ -222,6 +223,14 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
       <Box sx={{
         position: "relative", display: "flex", flexDirection: "column",
         flex: modulesOpen ? "1 1 0" : "0 0 auto", minHeight: 0,
+        // Opaque background plus an upward shadow lifts this section above the
+        // detail fields; the panel's overflow clips the other sides.
+        bgcolor: "background.paper",
+        zIndex: 1,
+        boxShadow: (theme) => `0 -8px 24px ${alpha(
+          theme.palette.common.black,
+          theme.palette.mode === "dark" ? 0.45 : 0.08,
+        )}`,
       }}>
         <Divider />
         <IconButton
@@ -251,11 +260,14 @@ export default function ProcessDetail({ process, speedState, icons }: ProcessDet
             "&:hover": { bgcolor: "action.hover" },
           }}
         >
-          <ExtensionIcon sx={{ color: "secondary.main", fontSize: 16, mr: 1 }} />
-          <Typography variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "text.secondary" }}>
-            {t("process.detail.modules")}
-          </Typography>
-          <Typography variant="caption" sx={{ ml: 1, fontWeight: 600, color: "secondary.main" }}>
+          <Box sx={{ display: "flex", alignItems: "center", minWidth: 0, maxWidth: "calc(50% - 20px)" }}>
+            <ExtensionIcon sx={{ color: "secondary.main", fontSize: 16, mr: 1, flexShrink: 0 }} />
+            <Typography variant="caption" noWrap sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "text.secondary" }}>
+              {t("process.detail.modules")}
+            </Typography>
+          </Box>
+          {/* Right-aligned so the centered floating toggle cannot cover it. */}
+          <Typography variant="caption" noWrap sx={{ ml: "auto", pl: 1, flexShrink: 0, fontWeight: 600, color: "secondary.main" }}>
             {t("process.detail.modulesCount", { count: sortedModules.length })}
           </Typography>
         </Box>

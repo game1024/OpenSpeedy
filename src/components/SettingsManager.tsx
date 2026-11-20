@@ -221,7 +221,10 @@ export default function SettingsManager() {
     return (
       <TableCell sx={{ border: "none" }}>
         {unique.length === 0 ? label : (
-          <Tooltip title={t("settings.profileOverridden", { names: unique.join(profileNameSep) })}>
+          <Tooltip
+            title={t("settings.profileOverridden", { names: unique.join(profileNameSep) })}
+            slotProps={{ transition: { timeout: 0 } }}
+          >
             <Box component="span" sx={{
               cursor: "help",
               textDecoration: "underline dotted",
