@@ -37,7 +37,7 @@ body:
     attributes:
       label: 当前版本（可选）
       description: 版本号可以在「关于」页查看。
-      placeholder: 例如：3.3.20
+      placeholder: 例如：3.3.0
   - type: textarea
     id: extra
     attributes:
