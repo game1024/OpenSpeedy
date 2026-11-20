@@ -7,6 +7,7 @@
 //! the frontend syncs via `set_raw_shortcuts`.
 
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use tauri::{AppHandle, Emitter};
@@ -15,28 +16,58 @@ use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Input::{
     GetRawInputData, RegisterRawInputDevices, HRAWINPUT, RAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER,
-    RIDEV_INPUTSINK, RID_INPUT, RIM_TYPEKEYBOARD,
+    RIDEV_INPUTSINK, RIDEV_REMOVE, RID_INPUT, RIM_TYPEKEYBOARD, RIM_TYPEMOUSE,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_MESSAGE, MSG,
-    RegisterClassW, RI_KEY_BREAK, RI_KEY_E0, TranslateMessage, WM_INPUT, WNDCLASSW,
+    PostMessageW, RegisterClassW, RI_KEY_BREAK, RI_KEY_E0, RI_MOUSE_BUTTON_1_DOWN,
+    RI_MOUSE_BUTTON_1_UP, RI_MOUSE_BUTTON_2_DOWN, RI_MOUSE_BUTTON_2_UP, RI_MOUSE_BUTTON_3_DOWN,
+    RI_MOUSE_BUTTON_3_UP, RI_MOUSE_BUTTON_4_DOWN, RI_MOUSE_BUTTON_4_UP, RI_MOUSE_BUTTON_5_DOWN,
+    RI_MOUSE_BUTTON_5_UP, RI_MOUSE_HWHEEL, RI_MOUSE_WHEEL, TranslateMessage, WM_INPUT, WNDCLASSW,
 };
 
 use crate::applog;
 
+/// Notifies the raw-input window thread that the mouse registration state may
+/// have changed. `WM_APP` leaves the range used by system messages.
+const WM_APP_MOUSE: u32 = 0x8000 + 1;
+
 static APP: OnceLock<AppHandle> = OnceLock::new();
 /// Keyboard shortcuts currently in effect, as canonical chord strings.
 static ACTIVE: Mutex<Vec<String>> = Mutex::new(Vec::new());
+/// True while at least one active chord uses a mouse button. Mouse raw input
+/// is only registered then, so mouse movement costs nothing otherwise.
+static WANT_MOUSE: AtomicBool = AtomicBool::new(false);
+static MOUSE_REGISTERED: AtomicBool = AtomicBool::new(false);
+/// Message-only window handle, stored as an integer because `HWND` is not
+/// `Send`/`Sync`. Used to wake the listener thread when mouse support changes.
+static RAW_WINDOW: OnceLock<isize> = OnceLock::new();
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum MouseButton {
+    Left,
+    Middle,
+    Right,
+    X1,
+    X2,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum TriggerKey {
+    Key(u16),
+    Mouse(MouseButton),
+}
 
 struct HeldChord {
     chord: String,
-    /// The virtual keys that made up this chord; releasing any of them ends it.
-    keys: Vec<u16>,
+    /// The keys/buttons that made up this chord; releasing any ends it.
+    triggers: Vec<TriggerKey>,
 }
 
 #[derive(Default)]
 struct KeyState {
     down: HashSet<u16>,
+    mouse_down: HashSet<MouseButton>,
     held: Vec<HeldChord>,
 }
 
@@ -55,13 +86,56 @@ fn key_state() -> &'static Mutex<KeyState> {
 /// Called from `set_raw_shortcuts` whenever the active profile changes.
 pub fn set_shortcuts(shortcuts: Vec<String>) {
     let shortcuts: Vec<String> = shortcuts.into_iter().map(|chord| normalize_chord(&chord)).collect();
+    let needs_mouse = shortcuts.iter().any(|chord| chord_has_mouse(chord));
     applog::info(
         "rawinput",
-        format!("active shortcuts: [{}]", shortcuts.join(", ")),
+        format!(
+            "active shortcuts (mouse={needs_mouse}): [{}]",
+            shortcuts.join(", ")
+        ),
     );
     match ACTIVE.lock() {
         Ok(mut active) => *active = shortcuts,
         Err(poisoned) => *poisoned.into_inner() = shortcuts,
+    }
+
+    // Register raw mouse input only while a mouse shortcut is in effect. The
+    // window may not exist yet; `run` applies the current state on startup.
+    WANT_MOUSE.store(needs_mouse, Ordering::Relaxed);
+    if let Some(raw) = RAW_WINDOW.get() {
+        let hwnd = HWND(*raw as *mut core::ffi::c_void);
+        unsafe {
+            let _ = PostMessageW(hwnd, WM_APP_MOUSE, WPARAM(0), LPARAM(0));
+        }
+    }
+}
+
+fn chord_has_mouse(chord: &str) -> bool {
+    chord.split('+').any(is_mouse_token)
+}
+
+fn is_mouse_token(token: &str) -> bool {
+    matches!(
+        token,
+        "MouseLeft"
+            | "MouseMiddle"
+            | "MouseRight"
+            | "Mouse4"
+            | "Mouse5"
+            | "WheelUp"
+            | "WheelDown"
+            | "WheelLeft"
+            | "WheelRight"
+    )
+}
+
+fn mouse_token(button: MouseButton) -> &'static str {
+    match button {
+        MouseButton::Left => "MouseLeft",
+        MouseButton::Middle => "MouseMiddle",
+        MouseButton::Right => "MouseRight",
+        MouseButton::X1 => "Mouse4",
+        MouseButton::X2 => "Mouse5",
     }
 }
 
@@ -120,9 +194,9 @@ fn run() -> windows::core::Result<()> {
         )?
     };
 
-    // Keyboard only: raw mouse input would add a WM_INPUT callback for every
-    // mouse-move packet (1000+ per second on high-polling-rate mice), and no
-    // shortcut currently consumes wheel events.
+    // Keyboard is always registered. Mouse registration is toggled on demand
+    // in `apply_mouse_registration`, because it adds a WM_INPUT callback for
+    // every mouse-move packet (1000+ per second on high-polling-rate mice).
     let devices = [RAWINPUTDEVICE {
         usUsagePage: 0x01,
         usUsage: 0x06, // keyboard
@@ -132,6 +206,8 @@ fn run() -> windows::core::Result<()> {
     unsafe {
         RegisterRawInputDevices(&devices, std::mem::size_of::<RAWINPUTDEVICE>() as u32)?;
     }
+    let _ = RAW_WINDOW.set(window.0 as isize);
+    apply_mouse_registration(window);
 
     applog::info("rawinput", "listening for raw keyboard input");
 
@@ -148,6 +224,10 @@ fn to_wide(s: &str) -> Vec<u16> {
 }
 
 unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if msg == WM_APP_MOUSE {
+        apply_mouse_registration(hwnd);
+        return LRESULT(0);
+    }
     if msg == WM_INPUT {
         read_raw_input(HRAWINPUT(lparam.0 as *mut core::ffi::c_void));
         return LRESULT(0);
@@ -155,19 +235,56 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
     unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
 }
 
-unsafe fn read_raw_input(hraw: HRAWINPUT) {
-    let header_size = std::mem::size_of::<RAWINPUTHEADER>() as u32;
-    let mut size = 0u32;
-    if GetRawInputData(hraw, RID_INPUT, None, &mut size, header_size) == u32::MAX || size == 0 {
+/// Bring the mouse raw-input registration in line with `WANT_MOUSE`. Runs on
+/// the listener thread, so registration and message pumping share a thread.
+fn apply_mouse_registration(window: HWND) {
+    let want = WANT_MOUSE.load(Ordering::Relaxed);
+    if want == MOUSE_REGISTERED.load(Ordering::Relaxed) {
         return;
     }
-    let mut buf = vec![0u8; size as usize];
+
+    let device = if want {
+        RAWINPUTDEVICE {
+            usUsagePage: 0x01,
+            usUsage: 0x02, // mouse
+            dwFlags: RIDEV_INPUTSINK,
+            hwndTarget: window,
+        }
+    } else {
+        RAWINPUTDEVICE {
+            usUsagePage: 0x01,
+            usUsage: 0x02,
+            dwFlags: RIDEV_REMOVE,
+            hwndTarget: HWND::default(),
+        }
+    };
+    match unsafe { RegisterRawInputDevices(&[device], std::mem::size_of::<RAWINPUTDEVICE>() as u32) } {
+        Ok(()) => {
+            MOUSE_REGISTERED.store(want, Ordering::Relaxed);
+            if want {
+                applog::info("rawinput", "mouse shortcuts active — raw mouse registered");
+            } else {
+                applog::info("rawinput", "no mouse shortcuts — raw mouse released");
+                // Without the registration we will never see the button-up,
+                // so clear held mouse state before dropping the device.
+                release_mouse_held();
+            }
+        }
+        Err(e) => applog::warn("rawinput", format!("mouse registration change failed: {e}")),
+    }
+}
+
+unsafe fn read_raw_input(hraw: HRAWINPUT) {
+    // Keyboard and mouse packets are small and fixed-size; a stack buffer
+    // avoids a heap allocation for every mouse-move WM_INPUT.
+    let mut buf = [0u8; 128];
+    let mut size = buf.len() as u32;
     let read = GetRawInputData(
         hraw,
         RID_INPUT,
         Some(buf.as_mut_ptr() as *mut core::ffi::c_void),
         &mut size,
-        header_size,
+        std::mem::size_of::<RAWINPUTHEADER>() as u32,
     );
     if read == u32::MAX || read == 0 {
         return;
@@ -182,6 +299,31 @@ unsafe fn read_raw_input(hraw: HRAWINPUT) {
         let is_up = (keyboard.Flags as u32 & RI_KEY_BREAK) != 0;
         let is_e0 = (keyboard.Flags as u32 & RI_KEY_E0) != 0;
         handle_key(keyboard.VKey, keyboard.MakeCode, is_e0, is_up);
+    } else if raw.header.dwType == RIM_TYPEMOUSE.0 {
+        let flags = raw.data.mouse.Anonymous.Anonymous.usButtonFlags as u32;
+        let buttons = [
+            (RI_MOUSE_BUTTON_1_DOWN, RI_MOUSE_BUTTON_1_UP, MouseButton::Left),
+            (RI_MOUSE_BUTTON_2_DOWN, RI_MOUSE_BUTTON_2_UP, MouseButton::Right),
+            (RI_MOUSE_BUTTON_3_DOWN, RI_MOUSE_BUTTON_3_UP, MouseButton::Middle),
+            (RI_MOUSE_BUTTON_4_DOWN, RI_MOUSE_BUTTON_4_UP, MouseButton::X1),
+            (RI_MOUSE_BUTTON_5_DOWN, RI_MOUSE_BUTTON_5_UP, MouseButton::X2),
+        ];
+        for (down, up, button) in buttons {
+            if flags & down != 0 {
+                handle_mouse(button, false);
+            }
+            if flags & up != 0 {
+                handle_mouse(button, true);
+            }
+        }
+
+        let delta = raw.data.mouse.Anonymous.Anonymous.usButtonData as i16 as i32;
+        if flags & RI_MOUSE_WHEEL != 0 {
+            handle_wheel(delta, false);
+        }
+        if flags & RI_MOUSE_HWHEEL != 0 {
+            handle_wheel(delta, true);
+        }
     }
 }
 
@@ -203,18 +345,7 @@ fn handle_key(vk: u16, make_code: u16, is_e0: bool, is_up: bool) {
 
     if is_up {
         state.down.remove(&vk);
-        let mut released = Vec::new();
-        {
-            let KeyState { down, held } = &mut *state;
-            held.retain(|entry| {
-                if entry.keys.iter().all(|key| down.contains(key)) {
-                    true
-                } else {
-                    released.push(entry.chord.clone());
-                    false
-                }
-            });
-        }
+        let released = release_held(&mut state);
         drop(state);
         for chord in released {
             emit_shortcut(&chord, "Released");
@@ -230,7 +361,76 @@ fn handle_key(vk: u16, make_code: u16, is_e0: bool, is_up: bool) {
         return;
     };
 
-    let (ctrl, shift, alt, mut keys) = modifier_keys(&state.down);
+    let (chord, mut triggers) = build_chord(&state, &main);
+    if !is_active(&chord) {
+        return;
+    }
+    triggers.push(TriggerKey::Key(vk));
+    state.held.push(HeldChord { chord: chord.clone(), triggers });
+    drop(state);
+    emit_shortcut(&chord, "Pressed");
+}
+
+fn handle_mouse(button: MouseButton, is_up: bool) {
+    let mut state = match key_state().lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
+    if is_up {
+        state.mouse_down.remove(&button);
+        let released = release_held(&mut state);
+        drop(state);
+        for chord in released {
+            emit_shortcut(&chord, "Released");
+        }
+        return;
+    }
+
+    if !state.mouse_down.insert(button) {
+        return;
+    }
+    let (chord, mut triggers) = build_chord(&state, mouse_token(button));
+    if !is_active(&chord) {
+        return;
+    }
+    triggers.push(TriggerKey::Mouse(button));
+    state.held.push(HeldChord { chord: chord.clone(), triggers });
+    drop(state);
+    emit_shortcut(&chord, "Pressed");
+}
+
+/// A wheel tick has no key-up edge, so it reports Pressed and Released back to
+/// back. This keeps ordinary chord actions working and returns hold shortcuts
+/// to their resting speed.
+fn handle_wheel(delta: i32, horizontal: bool) {
+    if delta == 0 {
+        return;
+    }
+    let main = match (horizontal, delta > 0) {
+        (false, true) => "WheelUp",
+        (false, false) => "WheelDown",
+        (true, true) => "WheelRight",
+        (true, false) => "WheelLeft",
+    };
+
+    let state = match key_state().lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let (chord, _) = build_chord(&state, main);
+    drop(state);
+
+    if !is_active(&chord) {
+        return;
+    }
+    emit_shortcut(&chord, "Pressed");
+    emit_shortcut(&chord, "Released");
+}
+
+/// Build a chord in the same order the recorder writes it.
+fn build_chord(state: &KeyState, main: &str) -> (String, Vec<TriggerKey>) {
+    let (ctrl, shift, alt, modifier_vks) = modifier_keys(&state.down);
     let mut chord = String::new();
     if ctrl {
         chord.push_str("Ctrl+");
@@ -241,20 +441,45 @@ fn handle_key(vk: u16, make_code: u16, is_e0: bool, is_up: bool) {
     if alt {
         chord.push_str("Alt+");
     }
-    chord.push_str(&main);
+    chord.push_str(main);
+    (chord, modifier_vks.into_iter().map(TriggerKey::Key).collect())
+}
 
-    let matched = match ACTIVE.lock() {
-        Ok(active) => active.iter().any(|item| item == &chord),
-        Err(poisoned) => poisoned.into_inner().iter().any(|item| item == &chord),
-    };
-    if !matched {
-        return;
+fn is_active(chord: &str) -> bool {
+    match ACTIVE.lock() {
+        Ok(active) => active.iter().any(|item| item == chord),
+        Err(poisoned) => poisoned.into_inner().iter().any(|item| item == chord),
     }
+}
 
-    keys.push(vk);
-    state.held.push(HeldChord { chord: chord.clone(), keys });
+/// Drop held chords whose any trigger is no longer down and return them.
+fn release_held(state: &mut KeyState) -> Vec<String> {
+    let KeyState { down, mouse_down, held } = state;
+    let mut released = Vec::new();
+    held.retain(|entry| {
+        let still_down = entry.triggers.iter().all(|trigger| match trigger {
+            TriggerKey::Key(vk) => down.contains(vk),
+            TriggerKey::Mouse(button) => mouse_down.contains(button),
+        });
+        if !still_down {
+            released.push(entry.chord.clone());
+        }
+        still_down
+    });
+    released
+}
+
+fn release_mouse_held() {
+    let mut state = match key_state().lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    state.mouse_down.clear();
+    let released = release_held(&mut state);
     drop(state);
-    emit_shortcut(&chord, "Pressed");
+    for chord in released {
+        emit_shortcut(&chord, "Released");
+    }
 }
 
 fn modifier_keys(down: &HashSet<u16>) -> (bool, bool, bool, Vec<u16>) {

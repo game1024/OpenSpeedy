@@ -29,6 +29,13 @@ export function shortcutLabel(shortcut: string): string {
 }
 
 function prettyToken(key: string): string {
+  switch (key) {
+    case "MouseLeft": return "LMB";
+    case "MouseMiddle": return "MMB";
+    case "MouseRight": return "RMB";
+    case "Mouse4": return "MB4";
+    case "Mouse5": return "MB5";
+  }
   const raw = /^V[0-9A-F]{4}P[0-9A-F]{4}([BAH])(\d+)([A-Za-z]*)$/.exec(key);
   if (!raw) return key;
   if (raw[1] === "B") return `B${raw[2]}`;

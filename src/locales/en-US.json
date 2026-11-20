@@ -75,7 +75,16 @@
     "notSet": "Not set",
     "keyNotSupported": "This key cannot be used as a shortcut",
     "inherited": "Inherited",
-    "restoreInherit": "Use global"
+    "restoreInherit": "Use global",
+    "mouseLeft": "LMB",
+    "mouseMiddle": "MMB",
+    "mouseRight": "RMB",
+    "mouse4": "MB4",
+    "mouse5": "MB5",
+    "wheelUp": "WheelUp",
+    "wheelDown": "WheelDown",
+    "wheelLeft": "WheelLeft",
+    "wheelRight": "WheelRight"
   },
   "settings": {
     "loading": "Loading settings…",

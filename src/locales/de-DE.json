@@ -75,7 +75,16 @@
     "notSet": "Nicht gesetzt",
     "keyNotSupported": "Diese Taste kann nicht als Tastenkürzel verwendet werden",
     "inherited": "Geerbt",
-    "restoreInherit": "Global verwenden"
+    "restoreInherit": "Global verwenden",
+    "mouseLeft": "Linksklick",
+    "mouseMiddle": "Mittelklick",
+    "mouseRight": "Rechtsklick",
+    "mouse4": "Maustaste4",
+    "mouse5": "Maustaste5",
+    "wheelUp": "RadAuf",
+    "wheelDown": "RadAb",
+    "wheelLeft": "RadLinks",
+    "wheelRight": "RadRechts"
   },
   "settings": {
     "loading": "Einstellungen laden…",

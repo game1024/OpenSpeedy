@@ -75,7 +75,16 @@
     "notSet": "Не задано",
     "keyNotSupported": "Эту клавишу нельзя использовать как сочетание",
     "inherited": "Унаследовано",
-    "restoreInherit": "Как в общем"
+    "restoreInherit": "Как в общем",
+    "mouseLeft": "ЛКМ",
+    "mouseMiddle": "СКМ",
+    "mouseRight": "ПКМ",
+    "mouse4": "М4",
+    "mouse5": "М5",
+    "wheelUp": "КолесоВверх",
+    "wheelDown": "КолесоВниз",
+    "wheelLeft": "КолесоВлево",
+    "wheelRight": "КолесоВправо"
   },
   "settings": {
     "loading": "Загрузка настроек…",

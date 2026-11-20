@@ -75,7 +75,16 @@
     "notSet": "Sin definir",
     "keyNotSupported": "Esta tecla no se puede usar como atajo",
     "inherited": "Heredado",
-    "restoreInherit": "Usar global"
+    "restoreInherit": "Usar global",
+    "mouseLeft": "Izquierdo",
+    "mouseMiddle": "Medio",
+    "mouseRight": "Derecho",
+    "mouse4": "Ratón4",
+    "mouse5": "Ratón5",
+    "wheelUp": "RuedaArriba",
+    "wheelDown": "RuedaAbajo",
+    "wheelLeft": "RuedaIzq",
+    "wheelRight": "RuedaDer"
   },
   "settings": {
     "loading": "Cargando ajustes…",
