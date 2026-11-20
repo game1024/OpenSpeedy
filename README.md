@@ -167,9 +167,7 @@ OpenSpeedy adjusts game speed by hooking the following Windows system time funct
 - Open-source software without digital signatures may trigger false positives from antivirus software
 
 <p align="center">
-  <a href="https://www.365tz96752.com/?r=RWQVZD">
-  <img src="https://github.com/user-attachments/assets/e50ac3de-a1a8-4185-b081-c9f22ea126fe" />
-  </a>
+  365VPN使用专线连接全球，体验至高10Gbps/s网速，我从小用到大。下载立刻开始免费冲浪🏄 <a href="https://www.365tz96752.com/?r=RWQVZD">https://www.365tz96752.com/?r=RWQVZD</a>
 </p>
 
 # 🔄 Feedback
