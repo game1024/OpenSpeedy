@@ -469,6 +469,9 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                 gap: 2,
                 border: 1,
                 borderColor: conflict ? "error.main" : "divider",
+                // Inheriting from the global config: dashed border instead of
+                // an extra "inherited" caption.
+                borderStyle: inheritFrom !== undefined ? "dashed" : "solid",
                 borderRadius: 1,
                 padding: '0.5rem 0.75rem',
                 minWidth,
@@ -527,9 +530,6 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                             ))
                         ) : (
                             <KeyComboTag combo={t("shortcut.notSet")} />
-                        )}
-                        {!value && inheritFrom !== undefined && (
-                            <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>
                         )}
                         {muted && onRestore && (
                             <Typography
