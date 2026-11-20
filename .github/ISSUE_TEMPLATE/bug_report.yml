@@ -19,7 +19,7 @@ body:
       placeholder: |
         {
           "appName": "OpenSpeedy",
-          "appVersion": "3.3.0",
+          "appVersion": "3.5.0",
           "tauriVersion": "2.11.3",
           "platform": "windows",
           "platformArch": "x86_64",
