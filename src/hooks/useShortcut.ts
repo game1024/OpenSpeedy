@@ -115,7 +115,8 @@ function runSlot(slot: ShortcutSlot, phase: "press" | "release") {
   }
   if (slot === "decreaseSpeedShortcut" && phase === "press") {
     invoke<number | null>("bridge_get_speed").then(current => {
-      const next = Math.max(0.01, (current ?? 1) - speedOf("decreaseSpeedStep", 0.5));
+      const speed = current ?? 1;
+      const next = Math.min(speed, Math.max(0.01, speed - speedOf("decreaseSpeedStep", 0.5)));
       invoke("bridge_set_speed", { factor: next });
       persistSpeed(next);
     });
