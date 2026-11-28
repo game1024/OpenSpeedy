@@ -73,6 +73,27 @@ function displayKey(key: string): string {
     }
 }
 
+/** Browsers report mouse buttons as 0 left, 1 middle, 2 right, 3 back, 4 forward. */
+function mouseButtonToken(button: number): string | null {
+    switch (button) {
+        case 0: return "MouseLeft";
+        case 1: return "MouseMiddle";
+        case 2: return "MouseRight";
+        case 3: return "Mouse4";
+        case 4: return "Mouse5";
+        default: return null;
+    }
+}
+
+/** Convert a wheel delta to the dominant direction token. */
+function wheelToken(deltaX: number, deltaY: number): string | null {
+    if (deltaX === 0 && deltaY === 0) return null;
+    if (Math.abs(deltaY) >= Math.abs(deltaX)) {
+        return deltaY < 0 ? "WheelUp" : "WheelDown";
+    }
+    return deltaX < 0 ? "WheelLeft" : "WheelRight";
+}
+
 export default function ShortcutField({ value, onChange, disable = false, minWidth = '10rem', conflict = false, inheritFrom, muted = false, onRestore }: ShortcutFieldProps) {
     const { t } = useTranslation();
     const [isRecording, setIsRecording] = useState(false);
@@ -261,11 +282,104 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
         setCurrentCombo('');
     };
 
+    // Use mousedown rather than click to start: a mouse chord is also saved on
+    // mousedown, and the click that follows would start a second recording.
+    const handleContainerMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+        if (isRecording || disable || event.button !== 0) return;
+        // Clear / restore-inherit controls are real buttons; let them handle it.
+        if (event.target instanceof Element && event.target.closest('button')) return;
+        handleStartRecording();
+    };
+
+    const handleShortcutMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+        if (!isRecording) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const mainKey = mouseButtonToken(event.button);
+        if (!mainKey) {
+            notify(t("shortcut.keyNotSupported"), 'warning');
+            return;
+        }
+
+        const keys: string[] = [];
+        if (event.ctrlKey) keys.push('Ctrl');
+        if (event.shiftKey) keys.push('Shift');
+        if (event.altKey) keys.push('Alt');
+
+        // Same platform policy as keyboard recording.
+        const os = osRef.current;
+        if (event.metaKey) {
+            switch (os) {
+                case 'windows':
+                    notify('不支持使用 Win 键作为快捷键', 'warning');
+                    return;
+                case 'macos':
+                    keys.push('Command');
+                    break;
+                case 'linux':
+                    notify('不支持使用 Meta 键作为快捷键', 'warning');
+                    return;
+            }
+        }
+
+        keys.push(mainKey);
+        onChange(keys.join('+'));
+        resumeAfterRecording();
+        setIsRecording(false);
+        setCurrentCombo('');
+    };
+
     // 当进入录制模式时自动聚焦
     useEffect(() => {
         if (isRecording && inputRef.current) {
             inputRef.current.focus();
         }
+    }, [isRecording]);
+
+    // React attaches wheel listeners as passive, so use a native listener to
+    // both capture the direction and stop the settings page from scrolling.
+    useEffect(() => {
+        if (!isRecording) return;
+        const node = inputRef.current;
+        if (!node) return;
+
+        const handleWheel = (event: WheelEvent) => {
+            const mainKey = wheelToken(event.deltaX, event.deltaY);
+            if (!mainKey) return;
+            event.preventDefault();
+            event.stopPropagation();
+
+            const keys: string[] = [];
+            if (event.ctrlKey) keys.push('Ctrl');
+            if (event.shiftKey) keys.push('Shift');
+            if (event.altKey) keys.push('Alt');
+
+            const os = osRef.current;
+            if (event.metaKey) {
+                switch (os) {
+                    case 'windows':
+                        notify('不支持使用 Win 键作为快捷键', 'warning');
+                        return;
+                    case 'macos':
+                        keys.push('Command');
+                        break;
+                    case 'linux':
+                        notify('不支持使用 Meta 键作为快捷键', 'warning');
+                        return;
+                }
+            }
+
+            keys.push(mainKey);
+            onChangeRef.current(keys.join('+'));
+            resumeAfterRecording();
+            setIsRecording(false);
+            setCurrentCombo('');
+        };
+
+        node.addEventListener('wheel', handleWheel, { passive: false });
+        return () => node.removeEventListener('wheel', handleWheel);
     }, [isRecording]);
 
     // Keyboard capture only sees keys. Held pad buttons are a preview; the
@@ -334,6 +448,19 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
         onChange('');
     };
 
+    const mouseLabels: Record<string, string> = {
+        MouseLeft: t("shortcut.mouseLeft"),
+        MouseMiddle: t("shortcut.mouseMiddle"),
+        MouseRight: t("shortcut.mouseRight"),
+        Mouse4: t("shortcut.mouse4"),
+        Mouse5: t("shortcut.mouse5"),
+        WheelUp: t("shortcut.wheelUp"),
+        WheelDown: t("shortcut.wheelDown"),
+        WheelLeft: t("shortcut.wheelLeft"),
+        WheelRight: t("shortcut.wheelRight"),
+    };
+    const keyLabel = (key: string) => mouseLabels[key] ?? displayKey(key);
+
     return (
         <Box
             sx={{
@@ -342,6 +469,9 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                 gap: 2,
                 border: 1,
                 borderColor: conflict ? "error.main" : "divider",
+                // Inheriting from the global config: dashed border instead of
+                // an extra "inherited" caption.
+                borderStyle: inheritFrom !== undefined ? "dashed" : "solid",
                 borderRadius: 1,
                 padding: '0.5rem 0.75rem',
                 minWidth,
@@ -349,7 +479,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                 cursor: disable ? 'not-allowed' : 'pointer',
                 opacity: disable ? 0.7 : 1,
             }}
-            onClick={handleStartRecording}
+            onMouseDown={handleContainerMouseDown}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}>
             {isRecording ? (
@@ -358,13 +488,15 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                     sx={{ width: '100%', display: 'flex', alignItems: 'center', outline: 'none' }}
                     onKeyDown={handleShortcutKeyDown}
                     onKeyUp={handleShortcutKeyUp}
+                    onMouseDown={handleShortcutMouseDown}
+                    onContextMenu={(event) => event.preventDefault()}
                     onBlur={handleCancelRecording}
                     tabIndex={0}>
                     {currentCombo ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             {currentCombo.split('+').map((key, index, array) => (
                                 <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <KeyComboTag combo={displayKey(key)} />
+                                    <KeyComboTag combo={keyLabel(key)} />
                                     {index < array.length - 1 && (
                                         <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>+</Typography>
                                     )}
@@ -390,7 +522,7 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                         ) : (value || inheritFrom) ? (
                             shortcutLabel(value || inheritFrom || "").split('+').map((key, index, array) => (
                                 <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <KeyComboTag combo={displayKey(key)} />
+                                    <KeyComboTag combo={keyLabel(key)} />
                                     {index < array.length - 1 && (
                                         <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>+</Typography>
                                     )}
@@ -398,9 +530,6 @@ export default function ShortcutField({ value, onChange, disable = false, minWid
                             ))
                         ) : (
                             <KeyComboTag combo={t("shortcut.notSet")} />
-                        )}
-                        {!value && inheritFrom !== undefined && (
-                            <Typography variant="caption" color="text.disabled">{t("shortcut.inherited")}</Typography>
                         )}
                         {muted && onRestore && (
                             <Typography

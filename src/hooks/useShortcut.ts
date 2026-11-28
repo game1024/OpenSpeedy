@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import * as GlobalShortcut from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useSettings } from "./useSettings";
@@ -17,12 +16,6 @@ import {
   type SpeedValueKey,
 } from "../shortcutProfile";
 
-type ShortcutTriggerState = {
-  id: number;
-  shortcut: string;
-  state: "Pressed" | "Released";
-};
-
 const PAD_PREFIX = "Pad:";
 
 export function isGamepadShortcut(shortcut: string): boolean {
@@ -36,6 +29,13 @@ export function shortcutLabel(shortcut: string): string {
 }
 
 function prettyToken(key: string): string {
+  switch (key) {
+    case "MouseLeft": return "LMB";
+    case "MouseMiddle": return "MMB";
+    case "MouseRight": return "RMB";
+    case "Mouse4": return "MB4";
+    case "Mouse5": return "MB5";
+  }
   const raw = /^V[0-9A-F]{4}P[0-9A-F]{4}([BAH])(\d+)([A-Za-z]*)$/.exec(key);
   if (!raw) return key;
   if (raw[1] === "B") return `B${raw[2]}`;
@@ -156,8 +156,8 @@ function onChord(entry: RegEntry, state: "Pressed" | "Released") {
 }
 
 async function registerChord(entry: RegEntry) {
-  // Pad chords never reach the OS hotkey API; gamepad.rs reports the edges and
-  // the handler table here dispatches them.
+  // Pad chords never reach raw input; gamepad.rs reports the edges and the
+  // handler table here dispatches them.
   if (isGamepadShortcut(entry.shortcut)) {
     ensurePadListener();
     if (padHandlers.has(entry.shortcut)) {
@@ -168,22 +168,15 @@ async function registerChord(entry: RegEntry) {
     remember(entry.shortcut, true);
     return;
   }
-  try {
-    await GlobalShortcut.register(entry.shortcut, (event: ShortcutTriggerState) => onChord(entry, event.state));
-    remember(entry.shortcut, true);
-    console.log("[shortcut] register OK:", entry.shortcut);
-  } catch (e) {
-    console.error("[shortcut] register FAIL:", entry.shortcut, e);
-    remember(entry.shortcut, false);
-  }
+  // Keyboard chords are matched by the raw-input listener in Rust. The active
+  // list is synced after every profile change; nothing is registered per key.
+  remember(entry.shortcut, true);
 }
 
 async function unregisterChord(shortcut: string) {
   if (!shortcut) return;
   if (isGamepadShortcut(shortcut)) {
     padHandlers.delete(shortcut);
-  } else if (await GlobalShortcut.isRegistered(shortcut)) {
-    await GlobalShortcut.unregister(shortcut);
   }
   const { [shortcut]: _, ...rest } = _statusCache;
   _statusCache = rest;
@@ -209,6 +202,9 @@ async function applyActive(force: boolean) {
     active = [];
     activeSig = "";
     lastForeground = foreground;
+    // Stop raw-input matching while a shortcut field is recording, otherwise
+    // pressing a registered chord would also trigger its action.
+    void invoke("set_raw_shortcuts", { shortcuts: [] }).catch(() => {});
     return;
   }
 
@@ -229,7 +225,6 @@ async function applyActive(force: boolean) {
     persistSpeed(1);
   }
   if (!primed) {
-    await GlobalShortcut.unregisterAll().catch(() => {});
     padHandlers.clear();
     _statusCache = {};
     emit();
@@ -242,6 +237,11 @@ async function applyActive(force: boolean) {
   active = next;
   activeSig = nextSig;
   lastForeground = foreground;
+  // Hand the effective keyboard chords to the raw-input listener. Pad chords
+  // are dispatched in JS and must not be sent.
+  void invoke("set_raw_shortcuts", {
+    shortcuts: next.filter(entry => !isGamepadShortcut(entry.shortcut)).map(entry => entry.shortcut),
+  }).catch((e) => console.error("[shortcut] set_raw_shortcuts", e));
 }
 
 function enqueue(force: boolean): Promise<void> {
@@ -269,6 +269,12 @@ export function resumeShortcuts(): Promise<void> {
 export function initShortcuts() {
   if (watching) return;
   watching = true;
+  // Raw input is matched in Rust so chords still arrive while an exclusive
+  // fullscreen game owns the keyboard. Look the chord up in the active profile.
+  void listen<{ shortcut: string; state: "Pressed" | "Released" }>("shortcut-trigger", (event) => {
+    const entry = active.find(item => item.shortcut === event.payload.shortcut);
+    if (entry) onChord(entry, event.payload.state);
+  });
   // Rust watches the foreground window. A webview timer stalls while the window sits in the tray.
   void listen("foreground-changed", () => { void enqueue(false); });
   void enqueue(true);

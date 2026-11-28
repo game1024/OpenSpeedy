@@ -178,7 +178,15 @@ export default function SettingsManager() {
             profile.id,
           );
         }}
-        sx={{ width: 80, ...(inheriting ? { "& .MuiInputBase-input": { color: "text.disabled" } } : {}) }}
+        sx={{
+          width: 80,
+          ...(inheriting ? {
+            "& .MuiInputBase-input": { color: "text.disabled" },
+            // Inheriting from the global config: dashed outline instead of an
+            // extra "inherited" caption.
+            "& .MuiOutlinedInput-notchedOutline": { borderStyle: "dashed" },
+          } : {}),
+        }}
         slotProps={{ htmlInput: { min, max, step: 0.1 } }} />
     );
     return (
@@ -192,11 +200,6 @@ export default function SettingsManager() {
           }}>
             <ClearIcon sx={{ fontSize: "1rem", color: "text.secondary" }} />
           </IconButton>
-        )}
-        {inheriting && (
-          <Typography variant="caption" color="text.disabled" sx={{ whiteSpace: "nowrap" }}>
-            {t("shortcut.inherited")}
-          </Typography>
         )}
       </Box>
     );
@@ -218,7 +221,10 @@ export default function SettingsManager() {
     return (
       <TableCell sx={{ border: "none" }}>
         {unique.length === 0 ? label : (
-          <Tooltip title={t("settings.profileOverridden", { names: unique.join(profileNameSep) })}>
+          <Tooltip
+            title={t("settings.profileOverridden", { names: unique.join(profileNameSep) })}
+            slotProps={{ transition: { timeout: 0 } }}
+          >
             <Box component="span" sx={{
               cursor: "help",
               textDecoration: "underline dotted",

@@ -75,7 +75,16 @@
     "notSet": "Niet ingesteld",
     "keyNotSupported": "Deze toets kan niet als sneltoets worden gebruikt",
     "inherited": "Geërfd",
-    "restoreInherit": "Globaal gebruiken"
+    "restoreInherit": "Globaal gebruiken",
+    "mouseLeft": "Links",
+    "mouseMiddle": "Midden",
+    "mouseRight": "Rechts",
+    "mouse4": "Muis4",
+    "mouse5": "Muis5",
+    "wheelUp": "WielOp",
+    "wheelDown": "WielNeer",
+    "wheelLeft": "WielLinks",
+    "wheelRight": "WielRechts"
   },
   "settings": {
     "loading": "Instellingen laden…",

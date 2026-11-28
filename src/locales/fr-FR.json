@@ -75,7 +75,16 @@
     "notSet": "Non défini",
     "keyNotSupported": "Cette touche ne peut pas servir de raccourci",
     "inherited": "Hérité",
-    "restoreInherit": "Utiliser le global"
+    "restoreInherit": "Utiliser le global",
+    "mouseLeft": "Gauche",
+    "mouseMiddle": "Milieu",
+    "mouseRight": "Droite",
+    "mouse4": "Souris4",
+    "mouse5": "Souris5",
+    "wheelUp": "MoletteHaut",
+    "wheelDown": "MoletteBas",
+    "wheelLeft": "MoletteGauche",
+    "wheelRight": "MoletteDroite"
   },
   "settings": {
     "loading": "Chargement des paramètres…",

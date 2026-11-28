@@ -127,7 +127,16 @@
     "notSet": "未設定",
     "keyNotSupported": "不支援此按鍵作為快速鍵",
     "inherited": "繼承",
-    "restoreInherit": "恢復繼承"
+    "restoreInherit": "恢復繼承",
+    "mouseLeft": "左鍵",
+    "mouseMiddle": "中鍵",
+    "mouseRight": "右鍵",
+    "mouse4": "側鍵1",
+    "mouse5": "側鍵2",
+    "wheelUp": "滾輪上",
+    "wheelDown": "滾輪下",
+    "wheelLeft": "滾輪左",
+    "wheelRight": "滾輪右"
   },
   "about": {
     "title": "OpenSpeedy",

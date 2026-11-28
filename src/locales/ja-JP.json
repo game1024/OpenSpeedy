@@ -75,7 +75,16 @@
     "notSet": "未設定",
     "keyNotSupported": "このキーはショートカットに使用できません",
     "inherited": "継承",
-    "restoreInherit": "グローバルに戻す"
+    "restoreInherit": "グローバルに戻す",
+    "mouseLeft": "左クリック",
+    "mouseMiddle": "中クリック",
+    "mouseRight": "右クリック",
+    "mouse4": "マウス4",
+    "mouse5": "マウス5",
+    "wheelUp": "ホイール上",
+    "wheelDown": "ホイール下",
+    "wheelLeft": "ホイール左",
+    "wheelRight": "ホイール右"
   },
   "settings": {
     "loading": "設定を読み込み中…",

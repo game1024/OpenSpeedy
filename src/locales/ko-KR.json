@@ -75,7 +75,16 @@
     "notSet": "설정 안 됨",
     "keyNotSupported": "이 키는 단축키로 사용할 수 없습니다",
     "inherited": "상속",
-    "restoreInherit": "전역으로"
+    "restoreInherit": "전역으로",
+    "mouseLeft": "좌클릭",
+    "mouseMiddle": "휠클릭",
+    "mouseRight": "우클릭",
+    "mouse4": "마우스4",
+    "mouse5": "마우스5",
+    "wheelUp": "휠업",
+    "wheelDown": "휠다운",
+    "wheelLeft": "휠왼쪽",
+    "wheelRight": "휠오른쪽"
   },
   "settings": {
     "loading": "설정 로딩 중…",

@@ -1,6 +1,6 @@
 [package]
 name = "openspeedy"
-version = "3.3.20"
+version = "3.5.0"
 description = "Open Source Game Speed Controller"
 authors = ["Game1024"]
 edition = "2021"
@@ -43,6 +43,7 @@ windows = { version = "0.58", features = [
     "Win32_System_JobObjects",
     "Win32_System_Memory",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input",
     "Win32_UI_Shell",
     "Win32_UI_Controls",
     "Win32_Graphics_Gdi",

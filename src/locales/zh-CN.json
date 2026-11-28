@@ -75,7 +75,16 @@
     "notSet": "未设置",
     "keyNotSupported": "不支持此按键作为快捷键",
     "inherited": "继承",
-    "restoreInherit": "恢复继承"
+    "restoreInherit": "恢复继承",
+    "mouseLeft": "左键",
+    "mouseMiddle": "中键",
+    "mouseRight": "右键",
+    "mouse4": "侧键1",
+    "mouse5": "侧键2",
+    "wheelUp": "滚轮上",
+    "wheelDown": "滚轮下",
+    "wheelLeft": "滚轮左",
+    "wheelRight": "滚轮右"
   },
   "settings": {
     "loading": "加载设置中…",

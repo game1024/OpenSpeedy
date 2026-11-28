@@ -4,6 +4,7 @@ mod bridge_job;
 mod bridge_state;
 mod gamepad;
 mod process_enumerator;
+mod raw_input;
 pub mod startup;
 mod system_stats;
 
@@ -158,6 +159,12 @@ fn shutdown_bridges() {
             let _ = child.wait();
         }
     }
+}
+
+/// Sync the chord strings that the raw-input listener should report.
+#[tauri::command]
+fn set_raw_shortcuts(shortcuts: Vec<String>) {
+    raw_input::set_shortcuts(shortcuts);
 }
 
 #[tauri::command(async)]
@@ -359,6 +366,7 @@ pub fn run() -> Result<(), String> {
             let bridge_app = app.handle().clone();
             std::thread::spawn(move || ensure_bridges(bridge_app));
             gamepad::start(app.handle().clone());
+            raw_input::start(app.handle().clone());
             watch_foreground(app.handle().clone());
             // Register Ctrl+C handler so bridges are killed on console exit
             unsafe { let _ = SetConsoleCtrlHandler(Some(ctrlc_handler), true); }
@@ -367,6 +375,7 @@ pub fn run() -> Result<(), String> {
         })
         .invoke_handler(tauri::generate_handler![
             foreground_exe_name,
+            set_raw_shortcuts,
             probe_acceleration,
             get_process_list,
             get_process_list_fast,
